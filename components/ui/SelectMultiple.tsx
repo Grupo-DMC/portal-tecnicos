@@ -128,7 +128,7 @@ export default function SelectMultiple({
                   role="option"
                   aria-selected={marcada}
                   onClick={() => alternar(o.v)}
-                  className="w-full flex items-center gap-2.5 min-h-10 px-3 text-left text-[14px] leading-[1.25] cursor-pointer border-0 bg-transparent text-[var(--color-text)] hover:bg-[var(--color-surface)]"
+                  className="w-full flex items-center gap-2.5 min-h-10 px-3 text-left text-ui leading-[1.25] cursor-pointer border-0 bg-transparent text-[var(--color-text)] hover:bg-[var(--color-surface)]"
                   style={{ fontWeight: marcada ? 800 : 400 }}
                 >
                   <span
@@ -146,7 +146,7 @@ export default function SelectMultiple({
               );
             })}
             {filtradas.length === 0 ? (
-              <div className="px-3 py-3 text-[13px] opacity-66">
+              <div className="px-3 py-3 text-meta opacity-66">
                 {texto.trim() ? `Nada coincide con «${texto}».` : "No hay opciones."}
               </div>
             ) : null}
@@ -156,11 +156,11 @@ export default function SelectMultiple({
               type="button"
               disabled={borrador.length === 0}
               onClick={() => setBorrador([])}
-              className="bg-transparent border-0 p-0 text-xs underline underline-offset-[3px] cursor-pointer text-[var(--color-accent-active)] disabled:opacity-40 disabled:cursor-default"
+              className="bg-transparent border-0 p-0 text-cap underline underline-offset-[3px] cursor-pointer text-[var(--color-accent-active)] disabled:opacity-40 disabled:cursor-default"
             >
               Quitar selección
             </button>
-            <button type="button" onClick={cerrar} className="btn btn-primary min-h-8 px-3 text-xs">
+            <button type="button" onClick={cerrar} className="btn btn-primary min-h-8 px-3 text-cap">
               Aplicar
             </button>
           </div>

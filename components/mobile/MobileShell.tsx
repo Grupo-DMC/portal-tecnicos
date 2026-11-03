@@ -33,7 +33,7 @@ export default function MobileShell({
   const mostrarTabs = !volverHref;
 
   return (
-    <div className="h-screen overflow-hidden flex justify-center bg-[#c9c7c6]">
+    <div className="h-screen overflow-hidden flex justify-center bg-[#cac7cd]">
       <div className="w-full max-w-[460px] min-w-0 bg-[var(--color-bg)] text-[var(--color-text)] flex flex-col h-screen overflow-y-auto overflow-x-hidden relative">
         <div className="flex flex-col min-h-full">
           <div className="sticky top-0 z-20 bg-[var(--color-bg)] border-b-2 border-[var(--color-divider)]">
@@ -50,7 +50,7 @@ export default function MobileShell({
                 </button>
               ) : null}
               <Image src="/DMC-logo.png" alt="Grupo dMC" width={64} height={18} className="h-[18px] w-auto flex-none" />
-              <div className="text-[9px] tracking-[.15em] uppercase opacity-62">{titulo}</div>
+              <div className="text-cap opacity-62">{titulo}</div>
               <button
                 type="button"
                 disabled={saliendo}
@@ -90,7 +90,7 @@ export default function MobileShell({
                     style={{ color: "var(--color-text)", opacity: activo ? 1 : 0.6 }}
                   >
                     {activo ? <span className="absolute top-0 left-0 right-0 h-[3px] bg-[var(--color-accent)]" /> : null}
-                    <span className="font-extrabold text-[11px] tracking-[.09em] uppercase">{t.label}</span>
+                    <span className="font-extrabold text-cap ">{t.label}</span>
                   </Link>
                 );
               })}

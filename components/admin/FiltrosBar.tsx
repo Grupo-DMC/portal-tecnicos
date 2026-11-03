@@ -107,7 +107,7 @@ export default function FiltrosBar({
               key={c.label}
               type="button"
               onClick={c.onQuitar}
-              className="tag tag-accent min-h-8 border-0 cursor-pointer gap-2 px-2.5 text-[11px] tracking-[.06em] uppercase"
+              className="tag tag-accent min-h-8 border-0 cursor-pointer gap-2 px-2.5 text-cap "
             >
               <span>{c.label}</span>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
@@ -120,7 +120,7 @@ export default function FiltrosBar({
             <button
               type="button"
               onClick={onLimpiar}
-              className="min-h-8 px-1 bg-transparent border-0 text-[var(--color-accent-active)] text-xs underline underline-offset-[3px] cursor-pointer"
+              className="min-h-8 px-1 bg-transparent border-0 text-[var(--color-accent-active)] text-cap underline underline-offset-[3px] cursor-pointer"
             >
               Quitar todos
             </button>
@@ -128,14 +128,14 @@ export default function FiltrosBar({
         </div>
 
         <div className="ml-auto flex items-center gap-3">
-          <div className="text-[11px] tracking-[.08em] uppercase opacity-62 tabular-nums">{conteo}</div>
+          <div className="text-cap opacity-62 tabular-nums">{conteo}</div>
           {acciones}
         </div>
       </div>
 
       {abierto && campos.length > 0 ? (
         <div className="px-4 md:px-7 pt-5 pb-5.5 border-b border-[var(--color-divider-soft)] bg-[var(--color-surface)] animate-fade-in">
-          <div className="text-[10px] tracking-[.14em] uppercase text-[var(--color-accent-active)] mb-3.5">
+          <div className="text-meta font-semibold text-[var(--color-muted)] mb-3.5">
             Elige por qué quieres filtrar
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

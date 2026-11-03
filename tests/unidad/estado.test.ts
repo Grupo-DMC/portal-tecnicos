@@ -75,8 +75,8 @@ describe("estados del problema", () => {
     expect(ESTADOS_PROBLEMA_BASE.map((e) => e.codigo)).toEqual(["ABIERTO", "AGENDADO", "PENDIENTE", "RESUELTO"]);
   });
 
-  it("abierto resalta, resuelto va oscuro y los intermedios en contorno", () => {
-    expect(tagEstadoProblema("ABIERTO")).toBe("accent");
+  it("abierto va en rojo de alarma, resuelto va oscuro y los intermedios en contorno", () => {
+    expect(tagEstadoProblema("ABIERTO")).toBe("danger");
     expect(tagEstadoProblema("RESUELTO")).toBe("dark");
     expect(tagEstadoProblema("AGENDADO")).toBe("outline");
     expect(tagEstadoProblema("LO_QUE_SEA")).toBe("outline");

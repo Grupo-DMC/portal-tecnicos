@@ -19,26 +19,23 @@ export default async function CambiarPasswordPage() {
   }
 
   return (
-    <div className="h-screen overflow-hidden flex justify-center bg-[#c9c7c6]">
+    <div className="h-screen overflow-hidden flex justify-center bg-[#cac7cd]">
       <div className="w-full max-w-[460px] min-w-0 bg-[var(--color-bg)] flex flex-col min-h-screen overflow-y-auto">
         <div className="flex flex-col min-h-screen px-[22px] pb-7">
           <div className="pt-[52px]">
             <Image src="/DMC-logo.png" alt="Grupo dMC — Ideas tecnológicas de seguridad" width={172} height={73} priority />
           </div>
           <div className="h-0.5 bg-[var(--color-text)] mt-[18px]" />
-          <div className="text-[10px] tracking-[.16em] uppercase text-[var(--color-accent-active)] mt-[22px] mb-2">
-            Antes de seguir
-          </div>
-          <h1 className="font-extrabold text-[34px] leading-[1.06] tracking-[-.03em] mb-2.5">
+          <h1 className="font-extrabold text-display leading-[1.06] tracking-[-.03em] mt-[22px] mb-2.5">
             Elige tu
             <br />
             contraseña
           </h1>
-          <p className="mb-[26px] text-sm opacity-60 max-w-[34ch]">
+          <p className="mb-[26px] text-ui opacity-60 max-w-[34ch]">
             Entraste con una clave que te entregaron. Cámbiala por una que solo sepas tú: mínimo{" "}
             {LARGO_MINIMO_PASSWORD} caracteres y distinta de tu correo.
           </p>
-          <div className="text-[13px] mb-4 opacity-75 break-all">{sesion.usuario.email}</div>
+          <div className="text-meta mb-4 opacity-75 break-all">{sesion.usuario.email}</div>
 
           <CambiarPasswordForm />
         </div>

@@ -134,7 +134,7 @@ export default function RolesView({
 
   return (
     <>
-      <AdminHeader kicker="Maestros · quién puede hacer qué" title="Usuarios" pestanas={pestanas}>
+      <AdminHeader title="Usuarios" pestanas={pestanas}>
         <button
           onClick={() => setDialogo({ id: null, form: { nombre: "", descripcion: "" }, permisos: [] })}
           className="btn btn-primary"
@@ -148,7 +148,7 @@ export default function RolesView({
 
       <div className="px-4 md:px-7 pt-6 pb-10 animate-fade-in">
         <>
-            <p className="m-0 mb-4 text-[13px] opacity-66 max-w-[80ch]">
+            <p className="m-0 mb-4 text-meta opacity-66 max-w-[80ch]">
               Cada usuario del panel tiene un rol y puede hacer lo que su rol tenga marcado. El rol se le asigna en
               la pestaña Cuentas.
             </p>
@@ -218,8 +218,8 @@ export default function RolesView({
             </table>
             </div>
 
-            <h2 className="mt-9 mb-1 text-[11px] font-extrabold tracking-[.11em] uppercase">Permisos del celular</h2>
-            <p className="m-0 mb-4 text-[13px] opacity-66 max-w-[80ch]">
+            <h2 className="mt-9 mb-1 text-cap font-extrabold ">Permisos del celular</h2>
+            <p className="m-0 mb-4 text-meta opacity-66 max-w-[80ch]">
               Qué puede hacer un técnico desde la app del celular. Lo heredan todas las cuentas de técnico; ven solo sus
               propias visitas, sin importar estos permisos.
             </p>
@@ -271,7 +271,6 @@ export default function RolesView({
 
       {dialogo ? (
         <Dialogo
-          kicker={dialogo.celular ? "Permisos del celular" : "Maestro · rol"}
           titulo={
             dialogo.celular
               ? "Permisos del técnico en el celular"
@@ -294,8 +293,8 @@ export default function RolesView({
         >
           <div className="mt-5 border border-black/[.3]">
             <div className="flex items-center gap-2.5 px-3.5 py-2.5 bg-[var(--color-surface)] border-b border-[var(--color-divider-soft)]">
-              <div className="font-extrabold text-[11px] tracking-[.11em] uppercase">Qué puede hacer</div>
-              <div className="ml-auto text-[11px] tracking-[.06em] uppercase opacity-66 tabular-nums">
+              <div className="font-extrabold text-cap ">Qué puede hacer</div>
+              <div className="ml-auto text-cap opacity-66 tabular-nums">
                 {dialogo.permisos.length} de {total} permisos
               </div>
             </div>
@@ -304,15 +303,15 @@ export default function RolesView({
               return (
                 <div key={m.clave} className="px-3.5 py-3 border-b border-black/[.18] last:border-b-0">
                   <div className="flex items-center gap-2.5 mb-2">
-                    <div className="font-extrabold text-[13px]">{m.label}</div>
-                    <div className="text-[11px] opacity-62 tabular-nums">
+                    <div className="font-extrabold text-meta">{m.label}</div>
+                    <div className="text-cap opacity-62 tabular-nums">
                       {marcadas} de {m.acciones.length}
                     </div>
                     {m.acciones.length > 1 ? (
                       <button
                         type="button"
                         onClick={() => alternarModulo(m)}
-                        className="ml-auto min-h-7 px-2.5 bg-transparent border border-black/[.35] text-[11px] tracking-[.06em] uppercase cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
+                        className="ml-auto min-h-7 px-2.5 bg-transparent border border-black/[.35] text-cap cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
                       >
                         {marcadas === m.acciones.length ? "Quitar todo" : "Marcar todo"}
                       </button>
@@ -328,10 +327,10 @@ export default function RolesView({
                           role="checkbox"
                           aria-checked={activo}
                           onClick={() => alternar(m, a.clave)}
-                          className="flex items-center gap-2 min-h-9 px-2.5 border border-black/[.35] text-[13px] leading-[1.2] cursor-pointer text-left"
+                          className="flex items-center gap-2 min-h-9 px-2.5 border border-black/[.35] text-meta leading-[1.2] cursor-pointer text-left"
                           style={{
-                            background: activo ? "var(--color-text)" : "var(--color-bg)",
-                            color: activo ? "var(--color-bg)" : "var(--color-text)",
+                            background: activo ? "var(--color-accent)" : "var(--color-bg)",
+                            color: activo ? "#fff" : "var(--color-text)",
                             fontWeight: activo ? 800 : 400,
                           }}
                         >

@@ -34,8 +34,8 @@ export default function EditarActa(props: Parameters<typeof useEditarActa>[0]) {
   const { visita, toast, guardando, hrefActa, guardar, conCambios, hayCambios } = fv;
   return (
     <div className="pb-16 animate-fade-in">
-      <AdminHeader kicker={`Visitas · ${visita.folio}`} title="Editar acta">
-        <span className="text-[13px] opacity-66 tabular-nums max-sm:hidden">
+      <AdminHeader title={`Editar acta ${visita.folio}`}>
+        <span className="text-meta opacity-66 tabular-nums max-sm:hidden">
           {hayCambios
             ? `${conCambios.length} ${conCambios.length === 1 ? "sección con cambios" : "secciones con cambios"}`
             : "Sin cambios todavía"}

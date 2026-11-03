@@ -98,8 +98,8 @@ export function BloqueTienda({
           className="flex-1 min-w-0 flex items-center gap-2.5 min-h-9 bg-transparent border-0 cursor-pointer text-[var(--color-text)] text-left"
         >
           <Flecha abierto={tienda.abierto} />
-          <span className="font-extrabold text-[14px] truncate">{nombre}</span>
-          <span className="text-[11px] tracking-[.06em] uppercase opacity-66 tabular-nums flex-none">
+          <span className="font-extrabold text-ui truncate">{nombre}</span>
+          <span className="text-cap opacity-66 tabular-nums flex-none">
             {informes.length} {informes.length === 1 ? "informe" : "informes"}
           </span>
           {incompletos ? <span className="tag tag-accent flex-none">{incompletos} sin completar</span> : null}
@@ -124,7 +124,7 @@ export function BloqueTienda({
               onQuitar={onQuitarInforme}
             />
           ))}
-          <button type="button" onClick={onAgregarInforme} className="btn btn-secondary min-h-9 px-3 text-[13px] mt-2.5">
+          <button type="button" onClick={onAgregarInforme} className="btn btn-secondary min-h-9 px-3 text-meta mt-2.5">
             + Agregar informe en {nombre}
           </button>
         </div>
@@ -151,11 +151,11 @@ export function Chip({
       role="checkbox"
       aria-checked={activo}
       onClick={onClick}
-      className="min-h-8 px-2.5 flex items-center gap-1.5 text-[13px] leading-[1.2] cursor-pointer text-left"
+      className="min-h-8 px-2.5 flex items-center gap-1.5 text-meta leading-[1.2] cursor-pointer text-left"
       style={{
         background: activo ? (fuerte ? "var(--color-text)" : "var(--color-accent-100)") : "var(--color-surface)",
         color: activo && fuerte ? "var(--color-bg)" : "var(--color-text)",
-        border: `1px solid ${activo ? (fuerte ? "var(--color-text)" : "var(--color-accent)") : "rgba(32,30,29,.35)"}`,
+        border: `1px solid ${activo ? (fuerte ? "var(--color-text)" : "var(--color-accent)") : "rgba(31,28,33,.35)"}`,
         fontWeight: activo ? 800 : 400,
       }}
     >

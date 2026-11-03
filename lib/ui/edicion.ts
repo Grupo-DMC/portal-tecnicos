@@ -64,15 +64,15 @@ export function formularioDesdeActa(visita: Visita): ActaEnFormulario {
   };
 }
 
-/** "2026-08-13T08:30:00" → "13-08-2026 a las 08:30". */
+/** "2026-08-13T08:30:00" → "13/08/2026 a las 08:30". */
 export function fechaHoraCorta(iso: string | null | undefined): string {
   if (!iso) return "—";
   const [fecha, hora = ""] = iso.split("T");
   const [a, m, d] = fecha.split("-");
-  return `${d}-${m}-${a} a las ${hora.slice(0, 5)}`;
+  return `${d}/${m}/${a} a las ${hora.slice(0, 5)}`;
 }
 
-/** "Editada por Ana desde el celular el 13-08-2026 a las 08:30". */
+/** "Editada por Ana desde el celular el 13/08/2026 a las 08:30". */
 export function resumenEdicion(e: VisitaEdicion): string {
   return `${e.por} · desde ${e.origen === "MOVIL" ? "el celular" : "el panel"} · ${fechaHoraCorta(e.editadoEn)}`;
 }

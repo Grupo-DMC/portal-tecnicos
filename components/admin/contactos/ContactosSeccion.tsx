@@ -41,8 +41,8 @@ export default function ContactosSeccion({
   return (
     <div className="p-4 md:p-6 border-b border-black/[.12]">
       <div className="flex items-center gap-2.5 flex-wrap">
-        <h2 className="font-extrabold text-[17px] m-0">{titulo}</h2>
-        <span className="text-[11px] tracking-[.08em] uppercase opacity-60">{filas.length}</span>
+        <h2 className="font-extrabold text-lead m-0">{titulo}</h2>
+        <span className="text-cap opacity-60">{filas.length}</span>
         {puede(ref, "contactos.crear") ? (
           <button type="button" className="btn btn-secondary ml-auto" onClick={() => setDialogo({ contacto: null })}>
             Agregar contacto
@@ -51,7 +51,7 @@ export default function ContactosSeccion({
       </div>
 
       {filas.length === 0 ? (
-        <p className="mt-3 mb-0 text-[13px] opacity-62">{vacio}</p>
+        <p className="mt-3 mb-0 text-meta opacity-62">{vacio}</p>
       ) : (
         <ul className="list-none m-0 mt-2 p-0">
           {filas.map((f, i) => {
@@ -60,10 +60,10 @@ export default function ContactosSeccion({
             return (
               <li key={`${f.contactoId}-${i}`} className="flex items-start gap-3 py-2.5 border-b border-black/[.1]">
                 <div className="min-w-0 flex-1">
-                  <div className="font-bold text-[14px]">
+                  <div className="font-bold text-ui">
                     {c.nombre} <span className="font-normal opacity-72">· {f.cargo}</span>
                   </div>
-                  <div className="text-[12px] opacity-72 mt-0.5 break-words">
+                  <div className="text-cap opacity-72 mt-0.5 break-words">
                     {[c.email, c.telefono].filter(Boolean).join(" · ") || "Sin datos de contacto"}
                   </div>
                   <div className="mt-1">

@@ -1,41 +1,68 @@
 @import "tailwindcss";
 
-/* Tokens 1:1 con el sistema de diseño de los mockups (Claude Design ·
-   Modernist): fondo claro, texto casi negro, acento rojo/coral, radios en 0. */
+/* Tokens de la app: fondo claro, texto casi negro, radios en 0 y el morado
+   del logo de Grupo dMC como color de marca. Los grises van apenas teñidos
+   hacia ese violeta para que el morado no flote sobre un gris cálido. */
 :root {
-  --color-bg: #f3f2f2;
-  --color-surface: #eae9e9;
-  --color-surface-2: #eae7e7;
-  --color-surface-3: #f8f4f4;
-  --color-text: #201e1d;
-  --color-divider: rgba(32, 30, 29, 0.4);
-  --color-divider-soft: rgba(32, 30, 29, 0.25);
-  --color-divider-faint: rgba(32, 30, 29, 0.18);
+  --color-bg: #f4f3f5;
+  --color-surface: #ebe9ed;
+  --color-surface-2: #e9e6eb;
+  --color-surface-3: #f9f7fa;
+  --color-text: #1f1c21;
+  --color-divider: rgba(31, 28, 33, 0.22);
+  --color-divider-soft: rgba(31, 28, 33, 0.16);
+  --color-divider-faint: rgba(31, 28, 33, 0.12);
 
-  --color-accent: #ec3013;
-  --color-accent-hover: #dd2b0f;
-  --color-accent-active: #ae1800;
-  --color-accent-100: #fff2ef;
-  --color-accent-200: #ffe0d9;
-  --color-accent-300: #ffc4b8;
-  --color-accent-400: #ff9783;
-  --color-accent-800: #7c1405;
-  --color-accent-900: #4d170e;
+  /* Texto secundario: 5.5:1 sobre --color-surface, 6:1 sobre --color-bg. */
+  --color-muted: #5f5b63;
+  /* Líneas en tres pasos: estructura, filas, controles. */
+  --color-line: #d7d4da;
+  --color-line-soft: #e3e1e5;
+  --color-line-control: #a8a4ad;
 
-  --color-accent-2-100: #fff2ef;
-  --color-accent-2-800: #71261b;
+  /* Marca: el morado exacto del logo (#762282, «MC») y el lila de la «d»
+     (#c69dc8) como su tono claro. Texto blanco sobre el morado: 9:1. */
+  --color-accent: #762282;
+  --color-accent-hover: #661d71;
+  --color-accent-active: #571862;
+  --color-accent-100: #f6eef7;
+  --color-accent-200: #ecdcee;
+  --color-accent-300: #dcc1df;
+  --color-accent-400: #c69dc8;
+  /* Morado medio: estados planificados (reagendada, agendado). 4.9:1 sobre el fondo. */
+  --color-accent-500: #8f4a9a;
+  --color-accent-800: #4a1453;
+  --color-accent-900: #2e0c34;
 
-  --color-neutral-100: #f8f4f4;
-  --color-neutral-200: #eae7e7;
-  --color-neutral-300: #d7d3d3;
-  --color-neutral-400: #bab6b6;
-  --color-neutral-500: #9b9797;
-  --color-neutral-600: #7d7979;
-  --color-neutral-700: #605d5d;
-  --color-neutral-800: #444141;
-  --color-neutral-900: #2d2b2b;
+
+  /* Alarma: solo para lo que está mal o pendiente (errores, problemas
+     abiertos, atrasos). Nunca como decoración ni como color de marca. */
+  --color-danger: #c4260d;
+  --color-danger-100: #fdeeeb;
+  --color-danger-200: #f9dcd6;
+  --color-danger-400: #e0705e;
+  --color-danger-800: #7c1405;
+
+  --color-neutral-100: #f9f7fa;
+  --color-neutral-200: #e9e6eb;
+  --color-neutral-300: #d6d3d9;
+  --color-neutral-400: #b9b5bd;
+  --color-neutral-500: #9a969e;
+  --color-neutral-600: #7c7880;
+  --color-neutral-700: #5f5b63;
+  --color-neutral-800: #433f46;
+  --color-neutral-900: #2c292e;
 
   --font-heading-weight: 800;
+
+  /* Movimiento: una curva y tres duraciones para toda la app. La salida es
+     más corta que la entrada. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  /* Salida de la hoja: igual a SALIDA_MS en components/mobile/Sheet.tsx. */
+  --duration-medium: 200ms;
+  --duration-slow: 280ms;
 }
 
 @theme inline {
@@ -43,7 +70,33 @@
   --color-surface: var(--color-surface);
   --color-text: var(--color-text);
   --color-accent: var(--color-accent);
-  --font-sans: var(--font-archivo), system-ui, sans-serif;
+  --color-danger: var(--color-danger);
+  --font-sans: var(--font-fira-sans), system-ui, sans-serif;
+  --font-mono: var(--font-fira-code), ui-monospace, monospace;
+
+  /* Escala de tipo: diez pasos con nombre por función. Pasos de 1 px abajo,
+     donde se lee de cerca (12–15), y de ~1.25 arriba, donde se ve de lejos
+     (17 → 56). Cada paso trae su interlineado; `leading-*` lo pisa. */
+  --text-cap: 12px; /* etiquetas, tags, cabeceras de tabla */
+  --text-cap--line-height: 1.35;
+  --text-meta: 13px; /* datos secundarios */
+  --text-meta--line-height: 1.45;
+  --text-ui: 14px; /* botones, tablas, campos */
+  --text-ui--line-height: 1.45;
+  --text-body: 15px; /* texto corrido */
+  --text-body--line-height: 1.55;
+  --text-lead: 17px; /* títulos de tarjeta, hoja y panel */
+  --text-lead--line-height: 1.3;
+  --text-h3: 20px;
+  --text-h3--line-height: 1.2;
+  --text-h2: 24px;
+  --text-h2--line-height: 1.15;
+  --text-h1: 30px;
+  --text-h1--line-height: 1.08;
+  --text-display: 40px; /* portada y cifras grandes */
+  --text-display--line-height: 1.04;
+  --text-hero: 56px;
+  --text-hero--line-height: 1;
   --radius-none: 0px;
 }
 
@@ -67,12 +120,25 @@
   /* El lienzo detrás de la columna móvil, igual que en los mockups: la columna
      se pinta con --color-bg y lo que sobra a los lados queda en este gris. */
   body {
-    background: #c9c7c6;
+    background: #cac7cd;
     color: var(--color-text);
-    font-family: var(--font-archivo), system-ui, sans-serif;
+    font-family: var(--font-fira-sans), system-ui, sans-serif;
     font-size: 15px;
     line-height: 1.55;
     -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    /* Cifras de igual ancho en toda la app: folios, horas, conteos y KPI no
+       bailan cuando cambian. */
+    font-variant-numeric: tabular-nums;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
   }
 
   /* Los enlaces heredan el color del contenedor. En los mockups todo lo que se
@@ -85,10 +151,25 @@
     text-decoration: none;
   }
 
+  /* Todo lo clicable cambia de fondo, borde o color con una transición
+     corta en vez de saltar. Una utilidad `transition-*` de Tailwind lo pisa
+     cuando un elemento necesita otra cosa (el cajón usa transform). */
+  a,
+  button,
+  label,
+  summary,
+  [role="button"],
+  [role="tab"] {
+    transition-property: background-color, border-color, color, opacity, text-decoration-color;
+    transition-duration: var(--duration-fast, 250ms);
+    transition-timing-function: var(--ease-out, ease-out);
+  }
+
   .link {
     color: var(--color-accent-active);
     text-decoration: underline;
     text-underline-offset: 3px;
+    transition: color var(--duration-fast, 250ms) var(--ease-out, ease-out);
   }
   .link:hover {
     color: var(--color-accent);
@@ -98,7 +179,28 @@
   select,
   textarea,
   button {
-    font-family: var(--font-archivo), system-ui, sans-serif;
+    font-family: var(--font-fira-sans), system-ui, sans-serif;
+  }
+
+  /* Lo que el navegador dibuja también lleva la marca: selección, cursor de
+     texto y barras de desplazamiento. */
+  ::selection {
+    background: var(--color-accent-200);
+    color: var(--color-accent-900);
+  }
+  html {
+    accent-color: var(--color-accent);
+    scrollbar-color: var(--color-neutral-400) transparent;
+  }
+
+  /* Cifras y datos en Fira Code: KPI, folios, horas, conteos. Solo datos;
+     los títulos y el texto van en Fira Sans. */
+  .num {
+    font-family: var(--font-fira-code), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    /* cv11: cero sin barra. */
+    font-feature-settings: "cv11";
+    letter-spacing: -0.02em;
   }
 
   button:focus-visible,
@@ -111,6 +213,10 @@
   }
 }
 
+/* — movimiento —
+   Entradas cortas de opacidad y un desplazamiento chico; nada se anima con
+   `all`. La hoja y el diálogo tienen su salida (clase `-out`), más corta que
+   la entrada. */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -119,20 +225,38 @@
     opacity: 1;
   }
 }
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
 @keyframes upSheet {
   from {
-    transform: translateY(14px);
-    opacity: 0.4;
+    transform: translateY(24px);
+    opacity: 0;
   }
   to {
     transform: translateY(0);
     opacity: 1;
   }
 }
+@keyframes downSheet {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+}
 @keyframes upDlg {
   from {
-    transform: translateY(10px);
-    opacity: 0.5;
+    transform: translateY(8px);
+    opacity: 0;
   }
   to {
     transform: translateY(0);
@@ -140,13 +264,32 @@
   }
 }
 .animate-fade-in {
-  animation: fadeIn 0.2s ease-out;
+  animation: fadeIn var(--duration-fast, 250ms) var(--ease-out, ease-out);
+}
+.animate-fade-out {
+  animation: fadeOut var(--duration-fast, 250ms) var(--ease-out, ease-out) forwards;
 }
 .animate-up-sheet {
-  animation: upSheet 0.18s ease-out;
+  animation: upSheet var(--duration-slow, 400ms) var(--ease-out, ease-out);
+}
+.animate-down-sheet {
+  animation: downSheet var(--duration-medium, 350ms) var(--ease-out, ease-out) forwards;
 }
 .animate-up-dlg {
-  animation: upDlg 0.16s ease-out;
+  animation: upDlg var(--duration-base) var(--ease-out, ease-out);
+}
+
+/* Quien pidió menos movimiento en su sistema ve los cambios sin
+   desplazamientos: el contenido aparece igual, solo que de inmediato. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @layer components {
@@ -167,53 +310,69 @@
   min-height: 42px;
   border-radius: 0;
   white-space: nowrap;
+  transition-property: background-color, border-color, color, scale;
+  transition-duration: var(--duration-fast, 250ms);
+  transition-timing-function: var(--ease-out, ease-out);
+}
+.btn:active:not(:disabled) {
+  scale: 0.96;
 }
 .btn:disabled {
-  opacity: 0.45;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 .btn-primary {
   background: var(--color-accent);
-  color: var(--color-bg);
+  color: #fff;
 }
-.btn-primary:hover {
+.btn-primary:disabled {
+  opacity: 1;
+  background: var(--color-neutral-300);
+  color: var(--color-neutral-700);
+}
+.btn-primary:hover:not(:disabled) {
   background: var(--color-accent-hover);
 }
-.btn-primary:active {
+.btn-primary:active:not(:disabled) {
   background: var(--color-accent-active);
 }
 .btn-secondary {
-  border-color: var(--color-divider);
+  border-color: var(--color-line-control);
 }
-.btn-secondary:hover {
-  background: rgba(32, 30, 29, 0.07);
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(31, 28, 33, 0.06);
+  border-color: var(--color-text);
 }
-.btn-secondary:active {
-  background: rgba(32, 30, 29, 0.14);
+.btn-secondary:active:not(:disabled) {
+  background: rgba(31, 28, 33, 0.12);
 }
 .btn-ghost {
-  color: var(--color-accent);
+  color: var(--color-accent-active);
   padding-inline: 4px;
-  font-weight: 400;
+  font-weight: 600;
   text-decoration: underline;
+  text-decoration-color: rgba(87, 24, 98, 0.35);
   text-underline-offset: 3px;
+  transition-property: background-color, color, text-decoration-color, scale;
 }
-.btn-ghost:hover {
-  background: rgba(236, 48, 19, 0.1);
+.btn-ghost:hover:not(:disabled) {
+  background: var(--color-accent-100);
+  text-decoration-color: currentColor;
 }
 .btn-icon {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   padding: 0;
 }
 
-/* — formularios — */
+/* — formularios —
+   Etiqueta arriba, en tipo normal y gris legible; el campo blanco sobre el
+   fondo de la página para que se lea como "algo que se llena". */
 .field label {
   display: block;
-  font-size: 11px;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  opacity: 0.62;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-muted);
   margin-bottom: 6px;
 }
 .input {
@@ -224,16 +383,26 @@
   font-size: 14px;
   color: var(--color-text);
   caret-color: var(--color-accent);
-  background: var(--color-surface);
-  border: 1px solid var(--color-divider);
+  background: #fff;
+  border: 1px solid var(--color-line-control);
   border-radius: 0;
+  transition-property: border-color, box-shadow;
+  transition-duration: var(--duration-fast, 250ms);
+  transition-timing-function: var(--ease-out, ease-out);
+}
+.input::placeholder {
+  color: #736f77;
 }
 .input:hover {
-  border-color: rgba(32, 30, 29, 0.55);
+  border-color: var(--color-neutral-700);
 }
 .input:focus-visible {
   border-color: var(--color-accent);
   outline-offset: 0;
+}
+.input:disabled {
+  background: var(--color-surface);
+  color: var(--color-muted);
 }
 textarea.input {
   min-height: 90px;
@@ -249,10 +418,12 @@ textarea.input {
 /* — tags / badges de estado — */
 .tag {
   display: inline-flex;
+  flex: none;
   align-items: center;
-  font-size: 11px;
-  letter-spacing: 0.02em;
-  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  padding: 3px 9px;
   border-radius: 0;
   white-space: nowrap;
 }
@@ -260,24 +431,26 @@ textarea.input {
   background: var(--color-accent-100);
   color: var(--color-accent-800);
 }
-.tag-accent-2 {
-  background: var(--color-accent-2-100);
-  color: var(--color-accent-2-800);
+.tag-danger {
+  background: var(--color-danger-100);
+  color: var(--color-danger-800);
 }
 .tag-neutral {
-  background: var(--color-neutral-100);
+  background: var(--color-neutral-200);
   color: var(--color-neutral-800);
 }
 .tag-outline {
   border: 1px solid var(--color-accent);
-  color: var(--color-accent);
+  color: var(--color-accent-active);
 }
 .tag-dark {
   background: var(--color-text);
   color: var(--color-bg);
 }
 
-/* — tablas — */
+/* — tablas —
+   Cabecera en tipo normal y gris, una sola línea fuerte bajo ella y reglas
+   de fila suaves. */
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -285,38 +458,82 @@ textarea.input {
 }
 .table th {
   text-align: left;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(32, 30, 29, 0.6);
-  padding: 8px;
-  border-bottom: 2px solid var(--color-divider);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-muted);
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--color-line-control);
 }
 .table td {
-  padding: 8px;
-  border-bottom: 1px solid var(--color-divider);
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--color-line);
+}
+.table tbody tr {
+  transition: background-color var(--duration-fast, 250ms) var(--ease-out, ease-out);
 }
 .table tbody tr:hover {
-  background: rgba(32, 30, 29, 0.05);
+  background: rgba(31, 28, 33, 0.04);
 }
 
 /* — segmented control (Hoy/Semana/Mes) — */
 .seg {
   display: inline-flex;
   overflow: hidden;
-  border: 1px solid var(--color-divider);
+  border: 1px solid var(--color-line-control);
 }
 .seg-opt {
   display: inline-flex;
   align-items: center;
   min-height: 38px;
   padding: 0 14px;
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
+  transition-property: background-color, color;
+  transition-duration: var(--duration-fast, 250ms);
+  transition-timing-function: var(--ease-out, ease-out);
 }
 .seg-opt + .seg-opt {
-  border-left: 1px solid var(--color-divider);
+  border-left: 1px solid var(--color-line-control);
 }
+}
+
+/* Tabla de visitas en el celular: la misma tabla, apilada. Cada fila es una
+   grilla (folio y estado, cliente, sucursal, fecha y hora, técnico) con el
+   botón de ver a la derecha; sin desplazamiento horizontal. */
+@media (max-width: 767px) {
+  .tabla-apilable colgroup,
+  .tabla-apilable thead {
+    display: none;
+  }
+  .tabla-apilable,
+  .tabla-apilable tbody {
+    display: block;
+  }
+  .tabla-apilable tbody tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    column-gap: 10px;
+    row-gap: 2px;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--color-line);
+  }
+  .tabla-apilable td {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+  }
+  .tabla-apilable td[data-c="sel"] { grid-column: 1; grid-row: 1 / span 5; }
+  .tabla-apilable td[data-c="folio"] { grid-column: 2; grid-row: 1; }
+  .tabla-apilable td[data-c="estado"] { grid-column: 3; grid-row: 1; justify-self: end; }
+  .tabla-apilable td[data-c="ver"] { grid-column: 4; grid-row: 1 / span 5; align-self: center; }
+  .tabla-apilable td[data-c="cliente"] { grid-column: 2 / span 2; grid-row: 2; font-weight: 600; }
+  .tabla-apilable td[data-c="sucursal"] { grid-column: 2 / span 2; grid-row: 3; }
+  .tabla-apilable td[data-c="fecha"] { grid-column: 2; grid-row: 4; font-size: 13px; }
+  .tabla-apilable td[data-c="hora"] { grid-column: 3; grid-row: 4; justify-self: end; font-size: 13px; }
+  .tabla-apilable td[data-c="tecnico"] { grid-column: 2 / span 2; grid-row: 5; font-size: 13px; }
+  .tabla-apilable td[data-c="motivo"] { display: none; }
+  .tabla-apilable td[data-c="motivo-tecnico"] { grid-column: 2 / span 2; grid-row: 6; font-size: 13px; }
 }

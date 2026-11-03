@@ -25,7 +25,7 @@ function Miniatura({ a }: { a: AdjuntoTrabajo }) {
     <div className={CELDA}>
       <video src={a.url} controls preload="metadata" playsInline className="w-full h-full object-cover bg-black" />
       {a.duracionSeg ? (
-        <span className="absolute left-1 bottom-1 px-1.5 text-[11px] bg-black/70 text-white tabular-nums pointer-events-none">
+        <span className="absolute left-1 bottom-1 px-1.5 text-cap bg-black/70 text-white tabular-nums pointer-events-none">
           {reloj(a.duracionSeg)}
         </span>
       ) : null}
@@ -46,7 +46,7 @@ export function AdjuntosVista({
   if (!adjuntos.length) return null;
   return (
     <div>
-      {titulo ? <div className="text-[11px] tracking-[.09em] uppercase opacity-60 mb-1.5">{titulo}</div> : null}
+      {titulo ? <div className="text-cap opacity-60 mb-1.5">{titulo}</div> : null}
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
         {adjuntos.map((a) => (
           <div key={a.id} className="relative">
@@ -56,7 +56,7 @@ export function AdjuntosVista({
                 type="button"
                 onClick={() => onQuitar(a)}
                 aria-label="Quitar adjunto"
-                className="absolute top-1 right-1 w-7 h-7 grid place-items-center bg-black/75 text-white border-0 cursor-pointer text-base leading-none"
+                className="absolute top-1 right-1 w-7 h-7 grid place-items-center bg-black/75 text-white border-0 cursor-pointer text-lead leading-none"
               >
                 ×
               </button>
@@ -112,7 +112,7 @@ export function SelectorAdjuntos({
         onClick={() => entrada.current?.click()}
         className={
           claseBoton ??
-          "min-h-[48px] px-3.5 inline-flex items-center gap-2 bg-transparent border border-dashed border-[var(--color-text)] text-[var(--color-text)] font-bold text-[13px] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          "min-h-[48px] px-3.5 inline-flex items-center gap-2 bg-transparent border border-dashed border-[var(--color-text)] text-[var(--color-text)] font-bold text-meta cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         }
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -120,7 +120,7 @@ export function SelectorAdjuntos({
         </svg>
         <span>Adjuntar fotos o videos</span>
       </button>
-      <div className="mt-1 text-[11px] opacity-60 leading-[1.4]">
+      <div className="mt-1 text-cap opacity-60 leading-[1.4]">
         Para explicar qué se debe hacer. Hasta {ADJUNTOS_MAX} archivos; los videos se bajan a 720p y un minuto.
       </div>
 
@@ -136,7 +136,7 @@ export function SelectorAdjuntos({
                   <video src={p.preview} muted playsInline preload="metadata" className="w-full h-full object-cover bg-black" />
                 )}
                 {p.estado !== "listo" || p.progreso !== null ? (
-                  <div className="absolute inset-0 grid place-items-center bg-black/55 text-white text-[12px] font-bold text-center px-1">
+                  <div className="absolute inset-0 grid place-items-center bg-black/55 text-white text-cap font-bold text-center px-1">
                     {p.estado === "error"
                       ? "No sirve"
                       : p.progreso !== null
@@ -145,7 +145,7 @@ export function SelectorAdjuntos({
                   </div>
                 ) : null}
                 {p.tipo === "VIDEO" && p.blob && p.estado === "listo" && p.progreso === null ? (
-                  <span className="absolute left-1 bottom-1 px-1.5 text-[11px] bg-black/70 text-white tabular-nums">
+                  <span className="absolute left-1 bottom-1 px-1.5 text-cap bg-black/70 text-white tabular-nums">
                     {mb(p.blob.size)}
                   </span>
                 ) : null}
@@ -154,12 +154,12 @@ export function SelectorAdjuntos({
                   onClick={() => onQuitar(p.clave)}
                   aria-label="Quitar adjunto"
                   disabled={p.progreso !== null && p.estado === "listo"}
-                  className="absolute top-1 right-1 w-7 h-7 grid place-items-center bg-black/75 text-white border-0 cursor-pointer text-base leading-none"
+                  className="absolute top-1 right-1 w-7 h-7 grid place-items-center bg-black/75 text-white border-0 cursor-pointer text-lead leading-none"
                 >
                   ×
                 </button>
               </div>
-              {p.error ? <div className="mt-0.5 text-[11px] leading-[1.3] text-[var(--color-accent-800)]">{p.error}</div> : null}
+              {p.error ? <div className="mt-0.5 text-cap leading-[1.3] text-[var(--color-danger-800)]">{p.error}</div> : null}
             </div>
           ))}
         </div>

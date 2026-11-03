@@ -7,7 +7,7 @@ import { contactosCandidatos } from "@/lib/data/contactos";
 import { getCliente, getMall, getSucursal, listarMarcas } from "@/lib/data/maestros";
 import { getFilasFicha } from "@/lib/data/visitas-lista";
 import { sesionCon } from "@/lib/auth";
-import { hoyISO } from "@/lib/ui/fecha";
+import { hoyISO, fechaCL } from "@/lib/ui/fecha";
 import { garantiaDe, ETIQUETA_GARANTIA, resumenGarantia } from "@/lib/ui/garantia";
 import { calibracionDeSucursal } from "@/lib/ui/sino";
 import { contactosDeTienda, origenDe } from "@/lib/ui/contactos";
@@ -58,7 +58,7 @@ export default async function SucursalFichaPage({ params }: { params: Promise<{ 
     { label: "Dirección", valor: s.direccion },
     { label: "Comuna · región", valor: [s.comuna, s.region].filter(Boolean).join(" · ") },
     { label: "Teléfono", valor: s.telefono ?? "" },
-    { label: "Instalada el", valor: s.fechaInstalacion ?? "" },
+    { label: "Instalada el", valor: s.fechaInstalacion ? fechaCL(s.fechaInstalacion) : "" },
     { label: "Modalidad", valor: siNo(s.remota, "Remota", "Presencial") },
     // Estado calculado: la duración propia manda sobre el plan del cliente (lib/ui/garantia.ts).
     { label: "Garantía", valor: ETIQUETA_GARANTIA[garantia.estado] },
@@ -73,7 +73,6 @@ export default async function SucursalFichaPage({ params }: { params: Promise<{ 
   return (
     <FichaVisitas
       modo="sucursal"
-      kicker="Maestros · ficha de sucursal"
       titulo={s.nombre}
       subtitulo={[cliente?.nombreFantasia, marca?.nombre, textoMall(mall), s.comuna].filter(Boolean).join(" · ")}
       activo={s.activo}

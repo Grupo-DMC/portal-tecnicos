@@ -7,7 +7,7 @@ import Tag from "@/components/Tag";
 import AdminHeader from "@/components/admin/AdminHeader";
 import FiltrosBar from "@/components/admin/FiltrosBar";
 import { ESTADO_VISITA_COLOR, ESTADO_VISITA_LABEL, ESTADO_VISITA_TAG } from "@/lib/ui/estado";
-import { textoFechaVisita } from "@/lib/ui/fecha";
+import { textoFechaVisita, fechaCL } from "@/lib/ui/fecha";
 import { sinTildes } from "@/lib/ui/formato";
 import type { DatoFicha, FilaFicha } from "@/components/admin/maestros/FichaPartes";
 import type { EstadoVisita } from "@/lib/types";
@@ -40,7 +40,6 @@ const diasEntre = (a: string, b: string) => Math.round((Date.parse(b) - Date.par
 
 export default function FichaVisitas({
   modo,
-  kicker,
   titulo,
   subtitulo,
   activo,
@@ -56,7 +55,6 @@ export default function FichaVisitas({
 }: {
   /** De qué es la ficha: cambia un gráfico y las columnas de las tablas. */
   modo: "sucursal" | "cliente" | "mall";
-  kicker: string;
   titulo: string;
   subtitulo: string;
   activo: boolean;
@@ -176,7 +174,7 @@ export default function FichaVisitas({
 
   return (
     <>
-      <AdminHeader kicker={kicker} title={titulo}>
+      <AdminHeader title={titulo}>
         <Tag variant={activo ? "accent" : "neutral"}>{activo ? (modo === "sucursal" ? "Activa" : "Activo") : modo === "sucursal" ? "Inactiva" : "Inactivo"}</Tag>
         {acciones?.map((a) => (
           <Link key={a.href} href={a.href} className="btn btn-secondary">
@@ -192,7 +190,7 @@ export default function FichaVisitas({
       </AdminHeader>
 
       <div className="pb-10 animate-fade-in">
-        <div className="px-4 md:px-7 py-3 text-[13px] opacity-70 border-b border-[var(--color-divider-soft)]">{subtitulo}</div>
+        <div className="px-4 md:px-7 py-3 text-meta opacity-70 border-b border-[var(--color-divider-soft)]">{subtitulo}</div>
 
         {/* Cifras */}
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 border-b-2 border-[var(--color-divider)]">
@@ -201,17 +199,17 @@ export default function FichaVisitas({
           <Kpi
             label="En espera"
             n={verVisitas ? enEspera : "—"}
-            sub={proxima ? `Próxima: ${proxima.fecha} · ${proxima.folio}` : "Nada agendado"}
+            sub={proxima ? `Próxima: ${fechaCL(proxima.fecha)} · ${proxima.folio}` : "Nada agendado"}
           />
           <Kpi
             label="Problemas sin resolver"
             n={verVisitas ? problemasAbiertos : "—"}
             sub={`de ${problemas} registrados`}
-            color={problemasAbiertos ? "var(--color-accent)" : undefined}
+            color={problemasAbiertos ? "var(--color-danger)" : undefined}
           />
           <Kpi
             label="Última visita hecha"
-            n={<span className="text-[24px] md:text-[28px]">{ultima ? ultima.fecha : "—"}</span>}
+            n={<span className="text-h2 md:text-h1">{ultima ? ultima.fecha : "—"}</span>}
             sub={ultima ? `hace ${diasEntre(ultima.fecha, hoy)} días · ${ultima.folio}` : "Todavía ninguna"}
           />
         </div>
@@ -224,8 +222,8 @@ export default function FichaVisitas({
             <dl className="m-0 mt-2">
               {datos.map((d) => (
                 <div key={d.label} className="flex gap-4 py-2.5 border-b border-black/[.1]">
-                  <dt className="text-[11px] tracking-[.08em] uppercase opacity-62 w-[150px] flex-none pt-0.5">{d.label}</dt>
-                  <dd className="m-0 text-[14px] min-w-0 break-words font-semibold">
+                  <dt className="text-cap opacity-62 w-[150px] flex-none pt-0.5">{d.label}</dt>
+                  <dd className="m-0 text-ui min-w-0 break-words font-semibold">
                     {d.href ? (
                       <Link href={d.href} className="underline underline-offset-2">
                         {d.valor}
@@ -238,7 +236,7 @@ export default function FichaVisitas({
               ))}
             </dl>
             {notas ? (
-              <div className="mt-4 px-3 py-2.5 text-[13px] border-l-[3px] border-[var(--color-divider)] bg-[var(--color-surface)] whitespace-pre-line">
+              <div className="mt-4 px-3 py-2.5 text-meta border border-[var(--color-divider)] bg-[var(--color-surface)] whitespace-pre-line">
                 {notas}
               </div>
             ) : null}
@@ -253,7 +251,7 @@ export default function FichaVisitas({
                     <div key={e.estado} style={{ width: `${e.pct}%`, background: e.color }} className="border-r border-black/[.15]" />
                   ))}
                 </div>
-                <p className="mt-3 mb-0 text-xs opacity-62">Haz clic en un estado para ver esas visitas abajo.</p>
+                <p className="mt-3 mb-0 text-cap opacity-62">Haz clic en un estado para ver esas visitas abajo.</p>
                 <div className="mt-1.5">
                   {porEstado.map((e) => (
                     <button
@@ -263,9 +261,9 @@ export default function FichaVisitas({
                       className="w-full flex items-center gap-2.5 py-2.5 border-b border-black/[.1] hover:bg-black/5 bg-transparent text-left cursor-pointer"
                     >
                       <span className="w-2.5 h-2.5 shrink-0 border border-black/[.35]" style={{ background: e.color }} />
-                      <span className="text-[13px]">{e.label}</span>
-                      <span className="ml-auto font-extrabold text-sm tabular-nums">{e.n}</span>
-                      <span className="w-11 text-right text-xs opacity-62 tabular-nums">{e.pct}%</span>
+                      <span className="text-meta">{e.label}</span>
+                      <span className="ml-auto font-extrabold text-ui tabular-nums">{e.n}</span>
+                      <span className="w-11 text-right text-cap opacity-62 tabular-nums">{e.pct}%</span>
                     </button>
                   ))}
                 </div>
@@ -302,25 +300,25 @@ export default function FichaVisitas({
           <Panel titulo="Problemas y tiempo en sitio">
             <div className="grid grid-cols-2 gap-6 mt-3">
               <div>
-                <div className="text-[10px] tracking-[.12em] uppercase opacity-66">Problemas registrados</div>
+                <div className="text-cap opacity-66">Problemas registrados</div>
                 <div className="flex items-baseline gap-2 mt-2">
-                  <div className="font-extrabold text-[44px] leading-none tracking-[-.03em] tabular-nums">{problemas}</div>
-                  <div className="text-[13px] opacity-62">en {filas.filter((f) => f.problemas).length} visitas</div>
+                  <div className="num font-bold text-display leading-none tracking-[-.03em] tabular-nums">{problemas}</div>
+                  <div className="text-meta opacity-62">en {filas.filter((f) => f.problemas).length} visitas</div>
                 </div>
                 <div className="h-2 mt-4 bg-[var(--color-neutral-300)]">
                   <div className="h-2 bg-[var(--color-text)]" style={{ width: `${pct(problemas - problemasAbiertos, problemas)}%` }} />
                 </div>
-                <div className="text-xs opacity-66 mt-1.5">
+                <div className="text-cap opacity-66 mt-1.5">
                   {problemas ? `${pct(problemas - problemasAbiertos, problemas)}% resueltos · ${problemasAbiertos} sin resolver` : "Ninguno"}
                 </div>
               </div>
               <div>
-                <div className="text-[10px] tracking-[.12em] uppercase opacity-66">Tiempo en sitio</div>
+                <div className="text-cap opacity-66">Tiempo en sitio</div>
                 <div className="flex items-baseline gap-1.5 mt-2">
-                  <div className="font-extrabold text-[44px] leading-none tracking-[-.03em] tabular-nums">{minutosProm ?? "—"}</div>
-                  <div className="text-[13px] opacity-62">min prom.</div>
+                  <div className="num font-bold text-display leading-none tracking-[-.03em] tabular-nums">{minutosProm ?? "—"}</div>
+                  <div className="text-meta opacity-62">min prom.</div>
                 </div>
-                <div className="text-xs opacity-66 mt-4">
+                <div className="text-cap opacity-66 mt-4">
                   {conTiempo.length ? `Según ${conTiempo.length} actas con hora de inicio y término.` : "Sin actas con hora de término."}
                 </div>
               </div>
@@ -358,7 +356,7 @@ export default function FichaVisitas({
                               <div className="flex-1 h-2 bg-[var(--color-neutral-300)]">
                                 <div className="h-2 bg-[var(--color-text)]" style={{ width: `${pct(v?.n ?? 0, maxTienda)}%` }} />
                               </div>
-                              <span className="w-7 text-right font-extrabold text-[13px] tabular-nums">{v?.n ?? 0}</span>
+                              <span className="w-7 text-right font-extrabold text-meta tabular-nums">{v?.n ?? 0}</span>
                             </div>
                           </td>
                           <td className="tabular-nums opacity-65 whitespace-nowrap">{v?.ultima ?? "—"}</td>
@@ -465,8 +463,8 @@ export default function FichaVisitas({
                 </table>
                 {filtradas.length === 0 ? (
                   <div className="py-14 text-center">
-                    <div className="font-extrabold text-[17px] mb-1.5">Nada que mostrar</div>
-                    <div className="text-[13px] opacity-66">{total ? "Ajusta la búsqueda o los filtros." : "Todavía no hay visitas registradas."}</div>
+                    <div className="font-extrabold text-lead mb-1.5">Nada que mostrar</div>
+                    <div className="text-meta opacity-66">{total ? "Ajusta la búsqueda o los filtros." : "Todavía no hay visitas registradas."}</div>
                   </div>
                 ) : null}
               </div>
@@ -483,11 +481,11 @@ export default function FichaVisitas({
 function Kpi({ label, n, sub, color = "var(--color-text)" }: { label: string; n: React.ReactNode; sub: string; color?: string }) {
   return (
     <div className="px-4 md:px-6 pt-4 md:pt-[22px] pb-4.5 border-r border-b xl:border-b-0 border-black/[.2] min-w-0">
-      <div className="text-[10px] tracking-[.12em] uppercase opacity-66">{label}</div>
-      <div className="font-extrabold text-[32px] md:text-[40px] leading-none tracking-[-.03em] tabular-nums mt-3" style={{ color }}>
+      <div className="text-cap opacity-66">{label}</div>
+      <div className="num font-bold text-h1 md:text-display leading-none tracking-[-.03em] tabular-nums mt-3" style={{ color }}>
         {n}
       </div>
-      <div className="text-xs opacity-66 mt-2.5 truncate">{sub}</div>
+      <div className="text-cap opacity-66 mt-2.5 truncate">{sub}</div>
     </div>
   );
 }
@@ -507,8 +505,8 @@ function Panel({
   return (
     <div className={`p-4 md:p-6 border-b border-black/[.12] ${borde === "r" ? "lg:border-r" : ""}`}>
       <div className="flex items-baseline gap-2.5">
-        <h2 className="font-extrabold text-[17px] m-0">{titulo}</h2>
-        {extra ? <span className="ml-auto text-[11px] tracking-[.08em] uppercase opacity-60">{extra}</span> : null}
+        <h2 className="font-extrabold text-lead m-0">{titulo}</h2>
+        {extra ? <span className="ml-auto text-cap opacity-60">{extra}</span> : null}
       </div>
       {children}
     </div>
@@ -518,8 +516,8 @@ function Panel({
 function Cabecera({ titulo, extra }: { titulo: string; extra?: string }) {
   return (
     <div className="flex items-baseline gap-2.5 px-4 md:px-7 pt-6 pb-3">
-      <h2 className="font-extrabold text-[20px] tracking-[-.02em] m-0">{titulo}</h2>
-      {extra ? <span className="ml-auto text-[11px] tracking-[.08em] uppercase opacity-60">{extra}</span> : null}
+      <h2 className="font-extrabold text-h3 tracking-[-.02em] m-0">{titulo}</h2>
+      {extra ? <span className="ml-auto text-cap opacity-60">{extra}</span> : null}
     </div>
   );
 }
@@ -531,8 +529,8 @@ function Barras({ filas, color, vacio }: { filas: { nombre: string; n: number; p
       {filas.map((f) => (
         <div key={f.nombre} className="py-2.5 border-b border-black/[.1]">
           <div className="flex items-baseline gap-2.5">
-            <span className="text-[13px] min-w-0 truncate">{f.nombre}</span>
-            <span className="ml-auto font-extrabold text-sm tabular-nums">{f.n}</span>
+            <span className="text-meta min-w-0 truncate">{f.nombre}</span>
+            <span className="ml-auto font-extrabold text-ui tabular-nums">{f.n}</span>
           </div>
           <div className="h-2 mt-1.5 bg-[var(--color-neutral-300)]">
             <div className="h-2" style={{ width: `${f.pct}%`, background: color }} />
@@ -544,7 +542,7 @@ function Barras({ filas, color, vacio }: { filas: { nombre: string; n: number; p
 }
 
 function Vacio({ texto }: { texto: string }) {
-  return <div className="px-4 md:px-7 py-6 text-[13px] opacity-66">{texto}</div>;
+  return <div className="px-4 md:px-7 py-6 text-meta opacity-66">{texto}</div>;
 }
 
 /** Una barra por mes de los últimos 12: el total, y en oscuro lo completado. */
@@ -562,12 +560,12 @@ function GraficoMeses({
   return (
     <div className="p-4 md:p-6 border-b border-black/[.12] lg:border-r">
       <div className="flex items-baseline gap-2.5">
-        <h2 className="font-extrabold text-[17px] m-0">Visitas por mes</h2>
-        <span className="ml-auto text-[11px] tracking-[.08em] uppercase opacity-60">últimos 12 meses</span>
+        <h2 className="font-extrabold text-lead m-0">Visitas por mes</h2>
+        <span className="ml-auto text-cap opacity-60">últimos 12 meses</span>
       </div>
 
       <div
-        className="mt-3.5 px-3 py-2.5 text-xs min-h-5 border-l-[3px]"
+        className="mt-3.5 px-3 py-2.5 text-cap min-h-5 border"
         style={{
           background: mes ? "var(--color-accent-200)" : "var(--color-surface)",
           borderColor: mes ? "var(--color-accent)" : "var(--color-divider)",
@@ -575,7 +573,7 @@ function GraficoMeses({
       >
         {mes
           ? `${mes.label} ${mes.anio} · ${mes.total} ${mes.total === 1 ? "visita" : "visitas"} · ${mes.completadas} completadas`
-          : "Pasa el mouse por un mes para ver su detalle."}
+          : "Toca o pasa el mouse por un mes para ver su detalle."}
       </div>
 
       <div className="flex items-end gap-1.5 md:gap-2.5 h-[140px] mt-3.5 border-b-2 border-[var(--color-divider)]">
@@ -587,14 +585,14 @@ function GraficoMeses({
               onMouseEnter={() => setHover(m.clave)}
               onMouseLeave={() => setHover(null)}
               className="flex-1 flex flex-col justify-end items-stretch h-full"
-              style={{ background: activo ? "rgba(32,30,29,.07)" : "transparent" }}
+              style={{ background: activo ? "rgba(31,28,33,.07)" : "transparent" }}
             >
-              <div className="text-[10px] font-extrabold text-center tabular-nums mb-1" style={{ opacity: m.total ? (activo ? 1 : 0.55) : 0 }}>
+              <div className="text-cap font-extrabold text-center tabular-nums mb-1" style={{ opacity: m.total ? (activo ? 1 : 0.55) : 0 }}>
                 {m.total}
               </div>
               <div className="flex flex-col justify-end" style={{ height: `${(m.total / max) * 100}%` }}>
                 <div style={{ flex: m.total - m.completadas, background: activo ? "var(--color-accent-active)" : "var(--color-accent-400)" }} />
-                <div style={{ flex: m.completadas, background: activo ? "var(--color-text)" : "#4a4646" }} />
+                <div style={{ flex: m.completadas, background: activo ? "var(--color-text)" : "var(--color-neutral-800)" }} />
               </div>
             </div>
           );
@@ -604,16 +602,16 @@ function GraficoMeses({
         {meses.map((m) => (
           <div
             key={m.clave}
-            className="flex-1 text-center text-[10px] tracking-[.04em] uppercase"
+            className="flex-1 text-center text-cap "
             style={{ opacity: hover === m.clave || m.clave === ultimo ? 1 : 0.5, fontWeight: hover === m.clave || m.clave === ultimo ? 800 : 400 }}
           >
             {m.label}
           </div>
         ))}
       </div>
-      <div className="flex gap-4 mt-3 text-[11px] opacity-75">
+      <div className="flex gap-4 mt-3 text-cap opacity-75">
         <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 bg-[#4a4646]" /> Completadas
+          <span className="w-2.5 h-2.5 bg-[var(--color-neutral-800)]" /> Completadas
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 bg-[var(--color-accent-400)]" /> Otras

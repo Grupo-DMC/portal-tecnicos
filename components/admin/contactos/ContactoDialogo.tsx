@@ -104,7 +104,6 @@ export default function ContactoDialogo({
 
   return (
     <Dialogo
-      kicker="Maestro · contacto"
       titulo={contacto ? "Editar contacto" : "Nuevo contacto"}
       cta={contacto ? "Guardar cambios" : "Crear contacto"}
       nota="Un contacto puede tener varios cargos. Cada cargo vale para su propio alcance: un cliente, una marca, una región o una sucursal, y las tiendas que ese alcance contiene lo heredan."
@@ -124,7 +123,7 @@ export default function ContactoDialogo({
       guardando={guardando}
     >
       <div className="mt-5">
-        <div className="text-[11px] tracking-[.11em] uppercase opacity-72 mb-2">Cargos y alcance</div>
+        <div className="text-cap opacity-72 mb-2">Cargos y alcance</div>
         {cargos.map((c, i) => (
           <div key={c.key} className="mb-3 p-3 border border-black/[.2] grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="field min-w-0">
@@ -182,7 +181,7 @@ export default function ContactoDialogo({
         </button>
       </div>
       {error ? (
-        <p role="alert" className="mt-4 mb-0 text-[13px] font-extrabold text-[var(--color-accent-800)]">
+        <p role="alert" className="mt-4 mb-0 text-meta font-extrabold text-[var(--color-danger-800)]">
           {error}
         </p>
       ) : null}

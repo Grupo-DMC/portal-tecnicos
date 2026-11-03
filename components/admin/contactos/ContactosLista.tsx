@@ -30,7 +30,7 @@ export default function ContactosLista({ contactos }: { contactos: Contacto[] })
 
   return (
     <>
-      <AdminHeader kicker="Maestros" title="Contactos" />
+      <AdminHeader title="Contactos" />
       <div className="p-4 md:p-6">
         <div className="flex gap-3 flex-wrap items-center mb-4">
           <input
@@ -48,16 +48,16 @@ export default function ContactosLista({ contactos }: { contactos: Contacto[] })
         </div>
 
         {filtrados.length === 0 ? (
-          <p className="text-[13px] opacity-62">{contactos.length === 0 ? "Todavía no hay contactos." : "Ningún contacto coincide."}</p>
+          <p className="text-meta opacity-62">{contactos.length === 0 ? "Todavía no hay contactos." : "Ningún contacto coincide."}</p>
         ) : (
           <ul className="list-none m-0 p-0">
             {filtrados.map((c) => (
               <li key={c.id} className="flex items-start gap-3 py-3 border-b border-black/[.1]">
                 <div className="min-w-0 flex-1">
-                  <div className="font-bold text-[14px]">
+                  <div className="font-bold text-ui">
                     {c.nombre} {!c.activo ? <Tag variant="neutral">Inactivo</Tag> : null}
                   </div>
-                  <div className="text-[12px] opacity-72 break-words">
+                  <div className="text-cap opacity-72 break-words">
                     {[c.email, c.telefono].filter(Boolean).join(" · ") || "Sin datos de contacto"}
                   </div>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">

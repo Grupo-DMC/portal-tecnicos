@@ -35,7 +35,7 @@ export default function Pestanas({
             type="button"
             aria-selected={esActiva}
             onClick={() => onCambiar(p.clave)}
-            className="relative min-h-10 flex items-center gap-2 px-3.5 border-2 border-b-0 cursor-pointer font-extrabold text-[13px] -mb-0.5"
+            className="relative min-h-10 flex items-center gap-2 px-3.5 border-2 border-b-0 cursor-pointer font-extrabold text-meta -mb-0.5"
             style={{
               background: esActiva ? "var(--color-bg)" : "transparent",
               borderColor: esActiva ? "var(--color-divider)" : "transparent",
@@ -46,7 +46,7 @@ export default function Pestanas({
             <span>{p.label}</span>
             {p.n !== undefined ? (
               <span
-                className="min-w-[20px] h-5 px-1.5 grid place-items-center text-[11px] tabular-nums"
+                className="min-w-[20px] h-5 px-1.5 grid place-items-center text-cap tabular-nums"
                 style={{
                   background: p.urgente && p.n > 0 ? "var(--color-accent)" : "var(--color-neutral-300)",
                   color: p.urgente && p.n > 0 ? "var(--color-bg)" : "var(--color-text)",

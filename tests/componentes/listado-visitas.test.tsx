@@ -35,7 +35,6 @@ function tabla(f: Partial<FiltrosVisitas> = {}, visitas = [visitaFalsa()], extra
   const filtros = { ...SIN_FILTROS, ...f };
   return (
     <VisitasTable
-      kicker="Panel"
       title="Visitas"
       filtros={filtros}
       pagina={{ visitas, total: visitas.length, pagina: 1, paginas: 1 }}
@@ -77,7 +76,7 @@ describe("listado de visitas", () => {
   it("una visita sin hora lo dice; con margen de días muestra el rango", () => {
     pintar(tabla({}, [visitaFalsa({ horaProgramada: null, fechaHasta: "2026-10-30" })]));
     expect(screen.getByText("Sin hora")).toBeInTheDocument();
-    expect(screen.getByText("2026-10-26 → 2026-10-30")).toBeInTheDocument();
+    expect(screen.getByText("26/10/2026 → 30/10/2026")).toBeInTheDocument();
   });
 
   it("marca las visitas eliminadas y las editadas", () => {

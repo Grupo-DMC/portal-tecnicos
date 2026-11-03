@@ -73,14 +73,14 @@ export default function VisorFotos({
       {/* Cabecera: qué foto es y cómo salir. */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex-none flex items-center gap-3 px-4 py-3 border-b border-white/15 text-[#f3f2f2]"
+        className="flex-none flex items-center gap-3 px-4 py-3 border-b border-white/15 text-[#f4f3f5]"
       >
         <div className="min-w-0">
-          <div className="font-extrabold text-sm leading-[1.2] truncate">{foto.titulo || "Foto del trabajo"}</div>
-          {foto.subtitulo ? <div className="text-[11px] opacity-70 tabular-nums mt-0.5">{foto.subtitulo}</div> : null}
+          <div className="font-extrabold text-ui leading-[1.2] truncate">{foto.titulo || "Foto del trabajo"}</div>
+          {foto.subtitulo ? <div className="text-cap opacity-70 tabular-nums mt-0.5">{foto.subtitulo}</div> : null}
         </div>
         {total > 1 ? (
-          <div className="ml-auto text-[11px] tracking-[.1em] uppercase opacity-70 tabular-nums">
+          <div className="ml-auto text-cap opacity-70 tabular-nums">
             {indice + 1} de {total}
           </div>
         ) : null}
@@ -88,7 +88,7 @@ export default function VisorFotos({
           type="button"
           onClick={onCerrar}
           aria-label="Cerrar la foto"
-          className={`${total > 1 ? "" : "ml-auto"} w-11 h-11 flex-none grid place-items-center bg-transparent border border-white/25 text-[#f3f2f2] cursor-pointer hover:bg-white/10`}
+          className={`${total > 1 ? "" : "ml-auto"} w-11 h-11 flex-none grid place-items-center bg-transparent border border-white/25 text-[#f4f3f5] cursor-pointer hover:bg-white/10`}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
             <path d="M6 6l12 12M18 6L6 18" />
@@ -126,7 +126,7 @@ export default function VisorFotos({
               type="button"
               onClick={() => ir(-1)}
               aria-label="Foto anterior"
-              className="min-h-11 px-3.5 flex items-center gap-2 bg-transparent border border-white/25 text-[#f3f2f2] font-extrabold text-[13px] cursor-pointer hover:bg-white/10"
+              className="min-h-11 px-3.5 flex items-center gap-2 bg-transparent border border-white/25 text-[#f4f3f5] font-extrabold text-meta cursor-pointer hover:bg-white/10"
             >
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
                 <path d="M15 6l-6 6 6 6" />
@@ -137,7 +137,7 @@ export default function VisorFotos({
               type="button"
               onClick={() => ir(1)}
               aria-label="Foto siguiente"
-              className="min-h-11 px-3.5 flex items-center gap-2 bg-transparent border border-white/25 text-[#f3f2f2] font-extrabold text-[13px] cursor-pointer hover:bg-white/10"
+              className="min-h-11 px-3.5 flex items-center gap-2 bg-transparent border border-white/25 text-[#f4f3f5] font-extrabold text-meta cursor-pointer hover:bg-white/10"
             >
               <span>Siguiente</span>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
@@ -149,7 +149,7 @@ export default function VisorFotos({
         <button
           type="button"
           onClick={() => setAmpliada((v) => !v)}
-          className="ml-auto min-h-11 px-3.5 flex items-center gap-2 bg-transparent border border-white/25 text-[#f3f2f2] font-extrabold text-[13px] cursor-pointer hover:bg-white/10"
+          className="ml-auto min-h-11 px-3.5 flex items-center gap-2 bg-transparent border border-white/25 text-[#f4f3f5] font-extrabold text-meta cursor-pointer hover:bg-white/10"
         >
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
             <circle cx="11" cy="11" r="7" />

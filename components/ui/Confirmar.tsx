@@ -63,7 +63,7 @@ export default function Confirmar({
       <div
         role="dialog"
         aria-modal="true"
-        className="fixed inset-0 z-[60] bg-[rgba(45,43,43,.55)] flex flex-col justify-end items-center"
+        className="fixed inset-0 z-[60] bg-[rgba(31,28,33,.55)] flex flex-col justify-end items-center"
         onClick={onCerrar}
       >
         <div
@@ -71,15 +71,14 @@ export default function Confirmar({
           className="w-full max-w-[460px] bg-[var(--color-bg)] border-t-2 border-[var(--color-text)] animate-up-sheet"
         >
           <div className="px-4 pt-4 pb-3.5 border-b border-[var(--color-divider-soft)]">
-            <div className="text-[10px] tracking-[.14em] uppercase text-[var(--color-accent-active)]">Confirmar</div>
-            <div className="font-extrabold text-[19px] leading-[1.2] mt-1.5">{cfg.titulo}</div>
+            <div className="font-extrabold text-h3 leading-[1.2]">{cfg.titulo}</div>
           </div>
           <div className="px-4 pt-3.5 pb-5">
-            <p className="m-0 text-[15px] leading-[1.55]">{cfg.texto}</p>
+            <p className="m-0 text-body leading-[1.55]">{cfg.texto}</p>
             <button
               type="button"
               onClick={confirmar}
-              className="w-full min-h-[56px] flex items-center justify-between px-4.5 mt-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-base cursor-pointer text-left hover:bg-[var(--color-accent-hover)] active:bg-[var(--color-accent-active)]"
+              className="w-full min-h-[56px] flex items-center justify-between px-4.5 mt-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)] active:bg-[var(--color-accent-active)]"
             >
               <span>{cfg.cta}</span>
               {basurero(19)}
@@ -87,7 +86,7 @@ export default function Confirmar({
             <button
               type="button"
               onClick={onCerrar}
-              className="w-full min-h-[50px] mt-2.5 px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-sm cursor-pointer text-left hover:bg-black/[.07]"
+              className="w-full min-h-[50px] mt-2.5 px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
             >
               Cancelar
             </button>
@@ -101,7 +100,7 @@ export default function Confirmar({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-[70] bg-[rgba(45,43,43,.55)] grid place-items-center p-3 sm:p-6"
+      className="fixed inset-0 z-[70] bg-[rgba(31,28,33,.55)] grid place-items-center p-3 sm:p-6"
       onClick={onCerrar}
     >
       <div
@@ -109,11 +108,10 @@ export default function Confirmar({
         className="w-full max-w-[460px] bg-[var(--color-bg)] border-2 border-[var(--color-text)] animate-up-dlg"
       >
         <div className="px-5 py-4.5 border-b border-[var(--color-divider-soft)]">
-          <div className="text-[10px] tracking-[.15em] uppercase text-[var(--color-accent-active)]">Confirmar</div>
-          <div className="font-extrabold text-[19px] leading-[1.2] mt-1.5">{cfg.titulo}</div>
+          <div className="font-extrabold text-h3 leading-[1.2]">{cfg.titulo}</div>
         </div>
         <div className="px-5 pt-4.5 pb-5">
-          <p className="m-0 text-sm leading-[1.6]">{cfg.texto}</p>
+          <p className="m-0 text-ui leading-[1.6]">{cfg.texto}</p>
           <div className="flex gap-2.5 justify-end mt-5">
             <button type="button" className="btn btn-secondary min-h-11 px-4.5" onClick={onCerrar}>
               Cancelar

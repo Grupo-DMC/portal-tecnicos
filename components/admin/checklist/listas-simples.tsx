@@ -12,9 +12,18 @@ export function Introduccion({ fv }: { fv: ChecklistEditorApi }) {
   const { busqueda, setBusqueda, sucio, filtro, total } = fv;
   return (
     <>
-      <p className="mb-4 text-[13px] leading-[1.65] opacity-72 max-w-[74ch]">
+      <p className="mb-4 text-meta leading-[1.65] opacity-72 max-w-[74ch]">
         Acá vive todo lo que el técnico elige desde listas en su celular. Cada bloque es una lista distinta. Para
-        cambiar el orden, agarra una fila de su manilla (⣿) y suéltala donde va; también puedes clonar una entrada con
+        cambiar el orden, agarra una fila de su manilla{" "}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-label="(manilla)" role="img" className="inline align-[-1px]">
+          <circle cx="9" cy="6" r="1.7" />
+          <circle cx="15" cy="6" r="1.7" />
+          <circle cx="9" cy="12" r="1.7" />
+          <circle cx="15" cy="12" r="1.7" />
+          <circle cx="9" cy="18" r="1.7" />
+          <circle cx="15" cy="18" r="1.7" />
+        </svg>{" "}
+        y suéltala donde va; también puedes clonar una entrada con
         todos sus subdetalles y decidir si cada subdetalle se marca a secas o lleva cantidad.
       </p>
 
@@ -44,12 +53,12 @@ export function Introduccion({ fv }: { fv: ChecklistEditorApi }) {
         {filtro ? (
           <button
             onClick={() => setBusqueda("")}
-            className="min-h-8 px-1 bg-transparent border-0 text-[var(--color-accent-active)] text-xs underline underline-offset-[3px] cursor-pointer"
+            className="min-h-8 px-1 bg-transparent border-0 text-[var(--color-accent-active)] text-cap underline underline-offset-[3px] cursor-pointer"
           >
             Quitar la búsqueda
           </button>
         ) : null}
-        <div className="ml-auto text-[11px] tracking-[.08em] uppercase opacity-62 tabular-nums">
+        <div className="ml-auto text-cap opacity-62 tabular-nums">
           {sucio ? "Cambios sin guardar" : `${total} entradas guardadas`}
         </div>
       </div>
@@ -274,11 +283,10 @@ export function PlantillaPropia({ fv }: { fv: ChecklistEditorApi }) {
     <>
       {/* Plantilla propia */}
       <div className="border-t-2 border-[var(--color-divider)] pt-4.5 mt-2">
-        <div className="text-[10px] tracking-[.15em] uppercase text-[var(--color-accent-active)]">Tu plantilla</div>
-        <h2 className="font-extrabold text-[19px] leading-[1.15] tracking-[-.02em] mt-1.5 mb-1">
+        <h2 className="font-extrabold text-h3 leading-[1.15] tracking-[-.02em] mb-1">
           La lista a la que vuelve «Reiniciar»
         </h2>
-        <p className="m-0 mb-3.5 text-[13px] opacity-68 max-w-[70ch]">
+        <p className="m-0 mb-3.5 text-meta opacity-68 max-w-[70ch]">
           {plantilla
             ? `Guardada con ${plantilla.motivos} motivos, ${plantilla.problemas} tipos de problema, ${plantilla.trabajos} trabajos, ${plantilla.internos} ítems internos y ${plantilla.pendientes + plantilla.gestionProblemas} pasos de gestión. Vuelve a fijarla cuando cambies las listas y quieras que ese sea el nuevo punto de partida.`
             : "Todavía no has fijado ninguna. Arma las listas como las quieres y fíjalas: desde ahí, «Reiniciar» siempre las devuelve a ese estado."}
@@ -312,7 +320,7 @@ export function PieGuardar({ fv }: { fv: ChecklistEditorApi }) {
           </svg>
           <span>{guardando ? "Guardando…" : "Guardar cambios"}</span>
         </button>
-        <span className="text-xs opacity-62">
+        <span className="text-cap opacity-62">
           {sucio
             ? "Hay cambios en pantalla que todavía no están en la base."
             : "Todo lo que ves está guardado y es lo que ve el técnico."}

@@ -12,7 +12,7 @@ import VisitasMasivasDialogo from "@/components/admin/VisitasMasivasDialogo";
 import VisitasLoteDialogo, { type AccionLote } from "@/components/admin/VisitasLoteDialogo";
 import { Toast, useToast } from "@/components/ui/Toast";
 import { ESTADO_VISITA_LABEL, ESTADO_VISITA_TAG, textoMotivos } from "@/lib/ui/estado";
-import { textoFechaVisita } from "@/lib/ui/fecha";
+import { textoFechaVisita, fechaCL } from "@/lib/ui/fecha";
 import {
   ELIMINADAS,
   ESTADOS_FILTRO,
@@ -34,7 +34,6 @@ import type { Visita, EstadoVisita } from "@/lib/types";
  * filtros viven en la URL y cambiarlos es navegar (ver lib/ui/filtros-visitas).
  */
 export default function VisitasTable({
-  kicker,
   title,
   filtros: f,
   pagina,
@@ -45,7 +44,6 @@ export default function VisitasTable({
   /** La vista de reagendas no crea visitas nuevas. */
   permiteCrear = true,
 }: {
-  kicker: string;
   title: string;
   /** Los filtros de la URL, ya validados por el servidor. */
   filtros: FiltrosVisitas;
@@ -204,8 +202,8 @@ export default function VisitasTable({
     const t = tiendas.find(([id]) => String(id) === sid);
     chips.push({ label: `Tienda: ${t?.[1] ?? ""}`, onQuitar: () => setF((p) => ({ sucursalIds: sinEste(p.sucursalIds, sid) })) });
   }
-  if (f.desde) chips.push({ label: `Desde: ${f.desde}`, onQuitar: () => setF(() => ({ desde: "" })) });
-  if (f.hasta) chips.push({ label: `Hasta: ${f.hasta}`, onQuitar: () => setF(() => ({ hasta: "" })) });
+  if (f.desde) chips.push({ label: `Desde: ${fechaCL(f.desde)}`, onQuitar: () => setF(() => ({ desde: "" })) });
+  if (f.hasta) chips.push({ label: `Hasta: ${fechaCL(f.hasta)}`, onQuitar: () => setF(() => ({ hasta: "" })) });
   if (f.tecnicoId) {
     const t = tecnicos.find((x) => String(x.id) === f.tecnicoId);
     chips.push({ label: `Técnico: ${t?.nombreCompleto ?? ""}`, onQuitar: () => setF(() => ({ tecnicoId: "" })) });
@@ -217,7 +215,7 @@ export default function VisitasTable({
 
   return (
     <>
-      <AdminHeader kicker={kicker} title={title}>
+      <AdminHeader title={title}>
         {accionesLote.length ? (
           <button
             onClick={() => (seleccionando ? salirDeSeleccion() : setSeleccionando(true))}
@@ -272,7 +270,7 @@ export default function VisitasTable({
             ir({ ...SIN_FILTROS, limite: f.limite });
           }}
           acciones={
-            <label className="flex items-center gap-2 text-[11px] tracking-[.08em] uppercase opacity-80">
+            <label className="flex items-center gap-2 text-cap opacity-80">
               <span>Mostrar</span>
               <select
                 value={f.limite}
@@ -418,7 +416,7 @@ export default function VisitasTable({
           className={`px-4 md:px-7 overflow-x-auto transition-opacity ${cargando ? "opacity-50" : ""}`}
           aria-busy={cargando}
         >
-          <table className="table table-fixed min-w-[980px]">
+          <table className="table table-fixed min-w-[980px] max-md:min-w-0 tabla-apilable">
             <colgroup>
               {conCasillas ? <col style={{ width: 44 }} /> : null}
               <col style={{ width: 124 }} />
@@ -463,7 +461,7 @@ export default function VisitasTable({
                   className={`cursor-pointer hover:bg-black/5 ${conCasillas && esMarcada(v.folio) ? "bg-black/[.07]" : ""}`}
                 >
                   {conCasillas ? (
-                    <td>
+                    <td data-c="sel">
                       <Casilla
                         marcada={esMarcada(v.folio)}
                         onAlternar={() => alternar(v)}
@@ -471,12 +469,12 @@ export default function VisitasTable({
                       />
                     </td>
                   ) : null}
-                  <td className="font-semibold tabular-nums whitespace-nowrap">{v.folio}</td>
-                  <td className="tabular-nums opacity-65 whitespace-nowrap">{textoFechaVisita(v)}</td>
-                  <td className={`tabular-nums whitespace-nowrap ${v.horaProgramada ? "opacity-90" : "opacity-45"}`}>
+                  <td data-c="folio" className="font-semibold tabular-nums whitespace-nowrap">{v.folio}</td>
+                  <td data-c="fecha" className="tabular-nums opacity-65 whitespace-nowrap">{textoFechaVisita(v)}</td>
+                  <td data-c="hora" className={`tabular-nums whitespace-nowrap ${v.horaProgramada ? "opacity-90" : "opacity-45"}`}>
                     {v.horaProgramada ?? "Sin hora"}
                   </td>
-                  <td>
+                  <td data-c="cliente">
                     <Recorte
                       texto={
                         v.marca && v.marca.nombre !== v.cliente?.nombreFantasia
@@ -485,10 +483,10 @@ export default function VisitasTable({
                       }
                     />
                   </td>
-                  <td className="opacity-70">
+                  <td data-c="sucursal" className="opacity-70">
                     <Recorte texto={v.sucursal?.nombre} />
                   </td>
-                  <td className="opacity-70">
+                  <td data-c="tecnico" className="opacity-70">
                     <Recorte
                       texto={
                         v.tecnicoAyudante
@@ -497,10 +495,10 @@ export default function VisitasTable({
                       }
                     />
                   </td>
-                  <td className="opacity-70">
+                  <td data-c="motivo" className="opacity-70">
                     <Recorte texto={textoMotivos(v)} />
                   </td>
-                  <td>
+                  <td data-c="estado">
                     {v.eliminacion ? (
                       <Tag variant="dark">Eliminada</Tag>
                     ) : (
@@ -517,13 +515,13 @@ export default function VisitasTable({
                     ) : null}
                   </td>
                   {mostrarMotivo ? (
-                    <td className="opacity-70">
+                    <td data-c="motivo-tecnico" className="opacity-70">
                       <Recorte
                         texto={v.motivoPendiente ?? v.reagendamientos?.[0]?.motivo ?? "Sin motivo registrado"}
                       />
                     </td>
                   ) : null}
-                  <td className="text-right whitespace-nowrap max-lg:sticky max-lg:right-0 max-lg:bg-[var(--color-bg)]">
+                  <td data-c="ver" className="text-right whitespace-nowrap md:max-lg:sticky md:max-lg:right-0 md:max-lg:z-[1] md:max-lg:bg-[var(--color-bg)] md:max-lg:border-l md:max-lg:border-l-[var(--color-line)] md:max-lg:shadow-[28px_0_0_var(--color-bg)]">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -545,8 +543,8 @@ export default function VisitasTable({
 
           {visitas.length === 0 ? (
             <div className="py-14 text-center">
-              <div className="font-extrabold text-[17px] mb-1.5">Nada que mostrar</div>
-              <div className="text-[13px] opacity-66">Ajusta la búsqueda o los filtros.</div>
+              <div className="font-extrabold text-lead mb-1.5">Nada que mostrar</div>
+              <div className="text-meta opacity-66">Ajusta la búsqueda o los filtros.</div>
             </div>
           ) : null}
         </div>
@@ -566,7 +564,7 @@ export default function VisitasTable({
         {/* La barra de las acciones: pegada abajo mientras se va marcando. */}
         {conCasillas ? (
           <div className="sticky bottom-0 z-10 mt-4 flex items-center gap-2.5 flex-wrap px-4 md:px-7 py-3 bg-[var(--color-bg)] border-t-2 border-[var(--color-divider)]">
-            <div className="font-extrabold text-[13px] tabular-nums">
+            <div className="font-extrabold text-meta tabular-nums">
               {marcadas.length === 0
                 ? "Marca las visitas en la tabla"
                 : `${seleccionadas.length} ${seleccionadas.length === 1 ? "visita marcada" : "visitas marcadas"}`}
@@ -575,7 +573,7 @@ export default function VisitasTable({
               <button
                 type="button"
                 onClick={() => setMarcadas([])}
-                className="min-h-8 px-1 bg-transparent border-0 text-[var(--color-accent-active)] text-xs underline underline-offset-[3px] cursor-pointer"
+                className="min-h-8 px-1 bg-transparent border-0 text-[var(--color-accent-active)] text-cap underline underline-offset-[3px] cursor-pointer"
               >
                 Desmarcar todas
               </button>
@@ -681,7 +679,7 @@ function Paginas({
       >
         Anterior
       </button>
-      <span className="text-[11px] tracking-[.08em] uppercase opacity-62 tabular-nums">
+      <span className="text-cap opacity-62 tabular-nums">
         Página {pagina} de {paginas}
       </span>
       <button

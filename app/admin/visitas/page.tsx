@@ -29,7 +29,6 @@ export default async function VisitasPage({
   const pagina = await buscarVisitas(filtros);
   return (
     <VisitasTable
-      kicker="Operación"
       title="Visitas"
       filtros={{ ...filtros, pagina: pagina.pagina }}
       pagina={pagina}

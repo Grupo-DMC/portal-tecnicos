@@ -157,7 +157,7 @@ export default function SelectBuscable({
                 aria-selected={activo}
                 onMouseEnter={() => setResaltado(i)}
                 onClick={() => elegir(o)}
-                className="w-full flex items-center gap-2 min-h-10 px-3 text-left text-[14px] leading-[1.25] cursor-pointer border-0"
+                className="w-full flex items-center gap-2 min-h-10 px-3 text-left text-ui leading-[1.25] cursor-pointer border-0"
                 style={{
                   background: i === resaltado ? "var(--color-surface)" : "transparent",
                   color: "var(--color-text)",
@@ -176,7 +176,7 @@ export default function SelectBuscable({
             );
           })}
           {filtradas.length === 0 ? (
-            <div className="px-3 py-3 text-[13px] opacity-66">
+            <div className="px-3 py-3 text-meta opacity-66">
               {texto.trim() ? `Nada coincide con «${texto}».` : "No hay opciones."}
             </div>
           ) : null}
@@ -188,7 +188,7 @@ export default function SelectBuscable({
                 cerrar();
                 onAgregar(escrito);
               }}
-              className="sticky bottom-0 w-full flex items-center gap-2 min-h-11 px-3 text-left text-[14px] font-extrabold cursor-pointer border-0 border-t border-[var(--color-divider)] bg-[var(--color-surface)] text-[var(--color-accent-800)] hover:brightness-95"
+              className="sticky bottom-0 w-full flex items-center gap-2 min-h-11 px-3 text-left text-ui font-extrabold cursor-pointer border-0 border-t border-[var(--color-divider)] bg-[var(--color-surface)] text-[var(--color-accent-800)] hover:brightness-95"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                 <path d="M12 5v14M5 12h14" />

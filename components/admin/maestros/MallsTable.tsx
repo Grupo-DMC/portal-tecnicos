@@ -33,12 +33,10 @@ export default function MallsTable({
   return (
     <>
       <MaestroTable<Mall>
-        kicker="Maestros"
         title="Malls"
         modulo="malls"
         addLabel="Nuevo mall"
         editLabel="Editar mall"
-        dialogoKicker="Maestro · mall"
         nota="Las tiendas del mall se agregan desde el botón de la fila, una vez creado."
         phBusqueda="Buscar mall, dirección o comuna…"
         rows={malls}
@@ -217,7 +215,6 @@ function TiendasDialogo({
 
   return (
     <Dialogo
-      kicker="Maestro · tiendas del mall"
       titulo={mall.nombre}
       cta="Guardar tiendas"
       nota="Cada tienda es una sucursal de un cliente. Si todavía no existe, créala primero en Maestros › Sucursales. Una sucursal está en un solo mall: si ya está en otro, hay que quitarla de ese antes de agregarla acá."
@@ -231,10 +228,10 @@ function TiendasDialogo({
       {/* Dos bloques separados: arriba se busca y agrega, abajo queda lo que ya está en el mall. */}
       <div className="border border-black/[.3]">
         <div className="px-4 py-3 bg-[var(--color-surface)] border-b border-[var(--color-divider-soft)]">
-          <div className="font-extrabold text-[11px] tracking-[.11em] uppercase">Agregar tiendas</div>
+          <div className="font-extrabold text-cap ">Agregar tiendas</div>
         </div>
 
-        <label className="flex items-center gap-2.5 px-4 py-3 text-[13px] cursor-pointer border-b border-[var(--color-divider-soft)]">
+        <label className="flex items-center gap-2.5 px-4 py-3 text-meta cursor-pointer border-b border-[var(--color-divider-soft)]">
           <input type="checkbox" checked={porPalabra} onChange={(e) => setPorPalabra(e.target.checked)} />
           Buscar por palabra en todas las sucursales
         </label>
@@ -253,11 +250,11 @@ function TiendasDialogo({
               />
             </div>
             {palabra && encontradas.length === 0 ? (
-              <div className="px-4 pb-4 text-[13px] opacity-66">Ninguna sucursal por agregar con esa palabra.</div>
+              <div className="px-4 pb-4 text-meta opacity-66">Ninguna sucursal por agregar con esa palabra.</div>
             ) : null}
             {encontradas.length ? (
               <div className="px-4 pb-4">
-                <div className="mb-2 text-[11px] tracking-[.06em] uppercase opacity-66 tabular-nums">
+                <div className="mb-2 text-cap opacity-66 tabular-nums">
                   {encontradas.length} {encontradas.length === 1 ? "resultado" : "resultados"}
                 </div>
                 <div className="max-h-60 overflow-y-auto border border-black/[.18]">
@@ -266,10 +263,10 @@ function TiendasDialogo({
                     return (
                       <div key={s.id} className="flex items-center gap-3 px-4 py-3 border-b border-black/[.18] last:border-b-0">
                         <div className="flex-1 min-w-0">
-                          <div className="text-[14px] truncate">
+                          <div className="text-ui truncate">
                             {nombreCliente(s.clienteId)} · {s.nombre}
                           </div>
-                          <div className="mt-0.5 text-[11px] opacity-66 truncate">{otro ? `Ya en ${otro} · ${s.direccion}` : s.direccion}</div>
+                          <div className="mt-0.5 text-cap opacity-66 truncate">{otro ? `Ya en ${otro} · ${s.direccion}` : s.direccion}</div>
                         </div>
                         <button
                           type="button"
@@ -320,14 +317,14 @@ function TiendasDialogo({
 
       <div className="mt-6 border border-black/[.3]">
         <div className="flex items-center gap-2.5 px-4 py-3 bg-[var(--color-surface)] border-b border-[var(--color-divider-soft)]">
-          <div className="font-extrabold text-[11px] tracking-[.11em] uppercase">Tiendas del mall</div>
-          <div className="ml-auto text-[11px] tracking-[.06em] uppercase opacity-66 tabular-nums">
+          <div className="font-extrabold text-cap ">Tiendas del mall</div>
+          <div className="ml-auto text-cap opacity-66 tabular-nums">
             {tiendas.length} {tiendas.length === 1 ? "tienda" : "tiendas"}
           </div>
         </div>
 
         {tiendas.length === 0 ? (
-          <div className="px-4 py-5 text-[13px] opacity-66">
+          <div className="px-4 py-5 text-meta opacity-66">
             Este mall todavía no tiene tiendas. Elige el cliente y ve agregando sus sucursales.
           </div>
         ) : null}
@@ -335,10 +332,10 @@ function TiendasDialogo({
         {tiendas.map((s) => (
           <div key={s.id} className="flex items-center gap-3 px-4 py-3 border-b border-black/[.18] last:border-b-0">
             <div className="flex-1 min-w-0">
-              <div className="text-[14px] truncate">
+              <div className="text-ui truncate">
                 {nombreCliente(s.clienteId)} · {s.nombre}
               </div>
-              <div className="mt-0.5 text-[11px] opacity-66 truncate">{s.direccion}</div>
+              <div className="mt-0.5 text-cap opacity-66 truncate">{s.direccion}</div>
             </div>
             {!s.activo ? <span className="tag tag-neutral flex-none">Inactiva</span> : null}
             <button

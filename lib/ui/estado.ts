@@ -43,13 +43,13 @@ export function nombreDeQuienLaTomo(visita: VisitaConEquipo): string | null {
   return quien?.nombreCompleto ?? null;
 }
 
-export type TagVariant ="accent" | "neutral" | "outline" | "dark";
+export type TagVariant = "accent" | "danger" | "neutral" | "outline" | "dark";
 
 export const ESTADO_VISITA_TAG: Record<EstadoVisita, TagVariant> = {
   PROGRAMADA: "neutral",
   EN_CURSO: "accent",
   COMPLETADA: "dark",
-  PENDIENTE: "outline",
+  PENDIENTE: "danger",
   REAGENDADA: "outline",
   CANCELADA: "neutral",
   CANCELADA_ADMIN: "neutral",
@@ -59,8 +59,8 @@ export const ESTADO_VISITA_COLOR: Record<EstadoVisita, string> = {
   PROGRAMADA: "var(--color-neutral-500)",
   EN_CURSO: "var(--color-accent)",
   COMPLETADA: "var(--color-text)",
-  PENDIENTE: "var(--color-accent-400)",
-  REAGENDADA: "var(--color-accent-400)",
+  PENDIENTE: "var(--color-danger)",
+  REAGENDADA: "var(--color-accent-500)",
   CANCELADA: "var(--color-neutral-400)",
   CANCELADA_ADMIN: "var(--color-neutral-500)",
 };
@@ -70,8 +70,8 @@ export const ESTADO_VISITA_BARRA: Record<EstadoVisita, string> = {
   PROGRAMADA: "var(--color-neutral-400)",
   EN_CURSO: "var(--color-accent)",
   COMPLETADA: "var(--color-text)",
-  PENDIENTE: "var(--color-accent-400)",
-  REAGENDADA: "var(--color-accent-400)",
+  PENDIENTE: "var(--color-danger)",
+  REAGENDADA: "var(--color-accent-500)",
   CANCELADA: "var(--color-neutral-400)",
   CANCELADA_ADMIN: "var(--color-neutral-500)",
 };
@@ -102,16 +102,16 @@ export function etiquetaEstadoProblema(codigo: string, catalogo: CatalogoEstadoP
   );
 }
 
-/** Abierto resalta, resuelto va oscuro y todo estado intermedio va en contorno. */
+/** Abierto va en rojo de alarma, resuelto oscuro y todo estado intermedio en contorno. */
 export function tagEstadoProblema(codigo: string): TagVariant {
-  if (codigo === ESTADO_PROBLEMA_INICIAL) return "accent";
+  if (codigo === ESTADO_PROBLEMA_INICIAL) return "danger";
   return codigo === ESTADO_PROBLEMA_CIERRE ? "dark" : "outline";
 }
 
 export const ESTADO_PROBLEMA_COLOR: Record<EstadoProblema, string> = {
-  ABIERTO: "var(--color-accent)",
-  AGENDADO: "var(--color-accent-400)",
-  PENDIENTE: "var(--color-accent-400)",
+  ABIERTO: "var(--color-danger)",
+  AGENDADO: "var(--color-accent-500)",
+  PENDIENTE: "var(--color-accent-500)",
   RESUELTO: "var(--color-text)",
 };
 

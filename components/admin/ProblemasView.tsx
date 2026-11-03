@@ -17,7 +17,7 @@ import {
   ESTADO_VISITA_TAG,
   etiquetaEstadoProblema,
 } from "@/lib/ui/estado";
-import { fechaHoraLegible } from "@/lib/ui/fecha";
+import { fechaHoraLegible, fechaCL } from "@/lib/ui/fecha";
 import { sinTildes } from "@/lib/ui/formato";
 import { puede, useReferencias } from "@/lib/ui/referencias";
 import type { DatosProblemas, GestionMarca, GrupoProblemas, ProblemaPanel } from "@/lib/contratos/panel";
@@ -267,7 +267,7 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
 
   return (
     <>
-      <AdminHeader kicker="Operación · análisis" title="Tiendas con problemas">
+      <AdminHeader title="Tiendas con problemas">
         <button
           onClick={() => setVerAnalisis((v) => !v)}
           aria-pressed={verAnalisis}
@@ -384,7 +384,7 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
 
         <div ref={lista} className="px-4 md:px-7 scroll-mt-28">
           {pasos.length === 0 && puedeEditar ? (
-            <div className="mt-6 px-3.5 py-3 border border-dashed border-black/[.4] text-[13px] opacity-75 max-w-[90ch]">
+            <div className="mt-6 px-3.5 py-3 border border-dashed border-black/[.4] text-meta opacity-75 max-w-[90ch]">
               Todavía no hay checklist de gestión. Agrega los pasos en Maestros › Checklist › Lista 6 «Gestión de
               problemas» y aparecen en cada problema para ir marcándolos.
             </div>
@@ -400,18 +400,18 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
             return (
               <div
                 key={g.sucursalId}
-                className="border-2 border-[var(--color-text)] mt-7 shadow-[3px_3px_0_rgba(32,30,29,.1)]"
+                className="border-2 border-[var(--color-text)] mt-7"
               >
                 <div className="flex items-center gap-3 flex-wrap px-5 py-4 bg-[var(--color-surface-2)] border-b-2 border-[var(--color-text)]">
                   <div className="min-w-0">
-                    <div className="font-extrabold text-lg">{g.nombre}</div>
-                    <div className="text-[13px] opacity-60 mt-0.5">
+                    <div className="font-extrabold text-lead">{g.nombre}</div>
+                    <div className="text-meta opacity-60 mt-0.5">
                       {g.cliente} · {g.comuna}
                     </div>
                   </div>
                   <div className="ml-auto flex items-center gap-2.5 flex-wrap">
                     <span className="tag tag-outline">{original.abiertos} sin cerrar</span>
-                    <span className="text-xs opacity-62">de {original.total} en total</span>
+                    <span className="text-cap opacity-62">de {original.total} en total</span>
                     {original.abiertos > 0 ? (
                       <span className={`tag ${masViejo > DIAS_ATRASO ? "tag-accent" : "tag-neutral border border-black/[.2]"}`}>
                         El más antiguo: {plural(masViejo, "día", "días")}
@@ -420,7 +420,7 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
                     <button
                       onClick={() => alternar(setHistoriales, g.sucursalId)}
                       aria-expanded={historialAbierto}
-                      className="min-h-[34px] flex items-center gap-2 px-3 bg-transparent border border-black/[.35] text-xs cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
+                      className="min-h-[34px] flex items-center gap-2 px-3 bg-transparent border border-black/[.35] text-cap cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
                     >
                       <span>
                         {historialAbierto ? "Ocultar historial del local" : "Historial del local"} ·{" "}
@@ -440,12 +440,12 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
                     const estadoSel = abierto && pendiente ? pendiente.estado : p.estado;
                     const tipoSel = abierto && pendiente ? pendiente.tipo : p.tipoCodigo;
                     const hayCambio = estadoSel !== p.estado || tipoSel !== p.tipoCodigo;
-                    // Resuelto en gris, abierto en el acento y todo estado intermedio un tono más suave.
+                    // Resuelto en gris, abierto en rojo de alarma y los intermedios (planificados) en morado medio.
                     const color = resuelto
-                      ? "#7a7676"
+                      ? "var(--color-neutral-600)"
                       : p.estado === ESTADO_PROBLEMA_INICIAL
-                        ? "var(--color-accent)"
-                        : "#e15b47";
+                        ? "var(--color-danger)"
+                        : "var(--color-accent-500)";
                     const marcasP = marcas[p.id] ?? [];
                     const bitacoraAbierta = bitacoras.includes(p.id);
                     const eventos = p.cambios.length + marcasP.length + (p.agenda ? 1 : 0) + 1;
@@ -455,8 +455,8 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
                         key={p.id}
                         className="flex gap-3.5 px-5 py-4 border-b border-black/[.15]"
                         style={{
-                          borderLeft: `5px solid ${color}`,
-                          background: resuelto ? "var(--color-surface-3)" : "var(--color-accent-100)",
+                          borderLeft: `4px solid ${color}`,
+                          background: resuelto ? "var(--color-surface-3)" : "var(--color-danger-100)",
                         }}
                       >
                         <div
@@ -470,7 +470,7 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2.5 flex-wrap">
-                            <div className="font-extrabold text-base leading-[1.25]">{nombreTipo(p.tipoCodigo)}</div>
+                            <div className="font-extrabold text-lead leading-[1.25]">{nombreTipo(p.tipoCodigo)}</div>
                             <EstadoProblemaTag estado={p.estado} />
                             <span
                               className={`tag tabular-nums ${
@@ -480,7 +480,7 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
                               {textoAntiguedad(p)}
                             </span>
                             {p.agenda && !resuelto ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-[11px] leading-[1.2] tracking-[.06em] uppercase">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap leading-[1.2] ">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
                                   <circle cx="12" cy="12" r="9" />
                                   <path d="M12 7.5V12l3 2" />
@@ -490,13 +490,13 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
                             ) : null}
                             <button
                               onClick={() => router.push(`/admin/visitas/${p.visita.folio}`)}
-                              className="ml-auto min-h-8 px-2.5 bg-transparent border border-black/[.3] text-[11px] leading-none tracking-[.07em] uppercase cursor-pointer hover:bg-black/[.07]"
+                              className="ml-auto min-h-8 px-2.5 bg-transparent border border-black/[.3] text-cap leading-none cursor-pointer hover:bg-black/[.07]"
                             >
                               {p.visita.folio}
                             </button>
                           </div>
 
-                          <div className="text-xs opacity-62 mt-1.5 tabular-nums">
+                          <div className="text-cap opacity-62 mt-1.5 tabular-nums">
                             Levantado el {fechaHoraLegible(p.creadoEn)} · {p.visita.tecnico}
                             {p.visita.motivo ? ` · ${p.visita.motivo}` : ""}
                           </div>
@@ -506,7 +506,7 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
                               {p.items.map((it) => (
                                 <span
                                   key={it.id}
-                                  className="px-2.5 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-xs leading-[1.2] tabular-nums"
+                                  className="px-2.5 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap leading-[1.2] tabular-nums"
                                 >
                                   {it.etiqueta} × {it.cantidad}
                                 </span>
@@ -514,16 +514,16 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
                             </div>
                           ) : null}
 
-                          {p.descripcion ? <div className="text-sm mt-2 max-w-[76ch]">{p.descripcion}</div> : null}
+                          {p.descripcion ? <div className="text-ui mt-2 max-w-[76ch]">{p.descripcion}</div> : null}
                           {p.solucion ? (
-                            <div className="text-sm mt-1.5 max-w-[76ch]">
+                            <div className="text-ui mt-1.5 max-w-[76ch]">
                               <strong className="font-extrabold">{resuelto ? "Se realizó:" : "Sugerencia:"}</strong>{" "}
                               {p.solucion}
                             </div>
                           ) : null}
 
                           {p.agenda ? (
-                            <div className="flex gap-2.5 items-center flex-wrap mt-3 px-3.5 py-2.5 bg-[var(--color-surface)] border-l-4 border-[var(--color-text)]">
+                            <div className="flex gap-2.5 items-center flex-wrap mt-3 px-3.5 py-2.5 bg-[var(--color-surface)] border border-[var(--color-line-control)]">
                               <svg
                                 width="17"
                                 height="17"
@@ -536,13 +536,13 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
                                 <rect x="3" y="5" width="18" height="16" />
                                 <path d="M8 3v4M16 3v4M3 11h18" />
                               </svg>
-                              <div className="text-[13px] tabular-nums">
-                                Visita para resolverlo: {p.agenda.fecha} · {p.agenda.tecnico}
+                              <div className="text-meta tabular-nums">
+                                Visita para resolverlo: {fechaCL(p.agenda.fecha)} · {p.agenda.tecnico}
                               </div>
                               <Tag variant={ESTADO_VISITA_TAG[p.agenda.estado]}>{ESTADO_VISITA_LABEL[p.agenda.estado]}</Tag>
                               <button
                                 onClick={() => router.push(`/admin/visitas/${p.agenda!.folio}`)}
-                                className="ml-auto min-h-7 px-2 bg-transparent border border-black/[.3] text-[10px] leading-none tracking-[.07em] uppercase cursor-pointer hover:bg-black/[.07]"
+                                className="ml-auto min-h-7 px-2 bg-transparent border border-black/[.3] text-cap leading-none cursor-pointer hover:bg-black/[.07]"
                               >
                                 {p.agenda.folio}
                               </button>
@@ -576,7 +576,7 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
                                     solucion: p.solucion,
                                   })
                                 }
-                                className="btn btn-primary min-h-[34px] px-3 gap-2 text-[13px]"
+                                className="btn btn-primary min-h-[34px] px-3 gap-2 text-meta"
                               >
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                                   <rect x="3" y="5" width="18" height="16" />
@@ -589,7 +589,7 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
                             <button
                               onClick={() => alternar(setBitacoras, p.id)}
                               aria-expanded={bitacoraAbierta}
-                              className="min-h-[34px] flex items-center gap-2 px-3 bg-transparent border border-black/[.35] text-xs cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
+                              className="min-h-[34px] flex items-center gap-2 px-3 bg-transparent border border-black/[.35] text-cap cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
                             >
                               <span>
                                 {bitacoraAbierta ? "Ocultar bitácora" : "Bitácora"} · {plural(eventos, "registro", "registros")}
@@ -608,7 +608,7 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
                                   setPendiente(abrir ? { estado: p.estado, tipo: p.tipoCodigo, nota: "" } : null);
                                 }}
                                 aria-expanded={abierto}
-                                className="ml-auto min-h-[34px] flex items-center gap-2 px-3 bg-transparent border border-black/[.35] text-xs cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
+                                className="ml-auto min-h-[34px] flex items-center gap-2 px-3 bg-transparent border border-black/[.35] text-cap cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
                               >
                                 <span>{abierto ? "Ocultar" : "Cambiar estado o tipo"}</span>
                                 <Flecha abierta={abierto} />
@@ -629,7 +629,7 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
                           {abierto && pendiente ? (
                             <div className="mt-2.5 px-3.5 py-3 bg-[var(--color-surface)] border border-black/[.25]">
                               <div className="flex items-center gap-2.5 flex-wrap">
-                                <span className="text-[10px] tracking-[.12em] uppercase opacity-60">Estado</span>
+                                <span className="text-cap opacity-60">Estado</span>
                                 <div className="flex gap-1.5 flex-wrap">
                                   {/* El estado actual va siempre, aunque ya no esté en el checklist. */}
                                   {(estados.some((e) => e.codigo === p.estado)
@@ -640,7 +640,7 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
                                       key={a.codigo}
                                       onClick={() => setPendiente({ ...pendiente, estado: a.codigo })}
                                       aria-pressed={estadoSel === a.codigo}
-                                      className="min-h-[34px] px-3 border border-black/[.35] font-extrabold text-xs cursor-pointer hover:bg-black/[.1]"
+                                      className="min-h-[34px] px-3 border border-black/[.35] font-extrabold text-cap cursor-pointer hover:bg-black/[.1]"
                                       style={{
                                         background: estadoSel === a.codigo ? "var(--color-text)" : "transparent",
                                         color: estadoSel === a.codigo ? "var(--color-bg)" : "var(--color-text)",
@@ -652,7 +652,7 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
                                 </div>
 
                                 <div className="ml-auto flex items-center gap-2.5">
-                                  <label htmlFor={`ft-${p.id}`} className="text-[10px] tracking-[.12em] uppercase opacity-60">
+                                  <label htmlFor={`ft-${p.id}`} className="text-cap opacity-60">
                                     Reclasificar
                                   </label>
                                   <div className="relative">
@@ -660,7 +660,7 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
                                       id={`ft-${p.id}`}
                                       value={tipoSel}
                                       onChange={(e) => setPendiente({ ...pendiente, tipo: e.target.value })}
-                                      className="input min-h-[34px] pl-2.5 pr-8.5 text-[13px] appearance-none"
+                                      className="input min-h-[34px] pl-2.5 pr-8.5 text-meta appearance-none"
                                     >
                                       {/* El tipo actual puede estar ya fuera del checklist. */}
                                       {OPC_TIPOS.some((o) => o.v === p.tipoCodigo) ? null : (
@@ -689,7 +689,7 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
 
                               <label
                                 htmlFor={`fn-${p.id}`}
-                                className="block text-[10px] tracking-[.12em] uppercase opacity-60 mt-3 mb-1.5"
+                                className="block text-cap opacity-60 mt-3 mb-1.5"
                               >
                                 Nota del cambio <span className="normal-case tracking-normal">(opcional · queda en la bitácora)</span>
                               </label>
@@ -707,8 +707,8 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
                                 <button
                                   onClick={() => confirmarCambio(p)}
                                   disabled={guardando}
-                                  className="min-h-[38px] flex items-center gap-2 px-3.5 text-[var(--color-bg)] border-0 font-extrabold text-[13px] cursor-pointer hover:brightness-95 disabled:opacity-60"
-                                  style={{ background: hayCambio ? "var(--color-accent)" : "#8f8b8b" }}
+                                  className="min-h-[38px] flex items-center gap-2 px-3.5 text-[var(--color-bg)] border-0 font-extrabold text-meta cursor-pointer hover:brightness-95 disabled:opacity-60"
+                                  style={{ background: hayCambio ? "var(--color-accent)" : "var(--color-neutral-500)" }}
                                 >
                                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
                                     <path d="M4 12l5 5L20 6" />
@@ -720,11 +720,11 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
                                     setEditando(null);
                                     setPendiente(null);
                                   }}
-                                  className="min-h-[38px] px-3.5 bg-transparent border border-black/[.35] text-[13px] cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
+                                  className="min-h-[38px] px-3.5 bg-transparent border border-black/[.35] text-meta cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
                                 >
                                   Cancelar
                                 </button>
-                                <span className="text-xs opacity-66 max-w-[46ch]">
+                                <span className="text-cap opacity-66 max-w-[46ch]">
                                   Nada cambia hasta que confirmes. El cambio queda en la bitácora con tu usuario.
                                 </span>
                               </div>
@@ -741,8 +741,8 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
 
           {filtrados.length === 0 ? (
             <div className="py-14 text-center">
-              <div className="font-extrabold text-[17px] mb-1.5">Nada que mostrar</div>
-              <div className="text-[13px] opacity-66">
+              <div className="font-extrabold text-lead mb-1.5">Nada que mostrar</div>
+              <div className="text-meta opacity-66">
                 {grupos.length === 0
                   ? "Todavía no se ha levantado ningún problema en terreno."
                   : "Ajusta la búsqueda o los filtros. Por defecto solo se ven los problemas sin cerrar."}
@@ -804,8 +804,8 @@ function Gestion({
   return (
     <div className="mt-3.5">
       <div className="flex items-baseline gap-2.5 mb-2">
-        <div className="font-extrabold text-[12px] tracking-[.08em] uppercase">Gestión</div>
-        <div className="text-xs opacity-62 tabular-nums">
+        <div className="font-extrabold text-cap ">Gestión</div>
+        <div className="text-cap opacity-62 tabular-nums">
           {marcas.length} de {pasos.length} {pasos.length === 1 ? "paso" : "pasos"}
         </div>
       </div>
@@ -830,11 +830,11 @@ function Gestion({
                     ? "Marcar como hecho"
                     : undefined
               }
-              className="min-h-[34px] inline-flex items-center gap-2 px-3 border text-[13px] leading-[1.2] cursor-pointer disabled:cursor-default"
+              className="min-h-[34px] inline-flex items-center gap-2 px-3 border text-meta leading-[1.2] cursor-pointer disabled:cursor-default"
               style={{
                 background: hecho ? "var(--color-text)" : "var(--color-bg)",
                 color: hecho ? "var(--color-bg)" : "var(--color-text)",
-                borderColor: hecho ? "var(--color-text)" : "rgba(32,30,29,.35)",
+                borderColor: hecho ? "var(--color-text)" : "rgba(31,28,33,.35)",
                 fontWeight: hecho ? 800 : 400,
               }}
             >
@@ -901,7 +901,7 @@ function Bitacora({
 
   return (
     <div className="mt-2.5 px-3.5 py-3 bg-[var(--color-surface)] border border-black/[.25]">
-      <div className="text-[10px] tracking-[.12em] uppercase opacity-62 mb-2.5">Bitácora del problema</div>
+      <div className="text-cap opacity-62 mb-2.5">Bitácora del problema</div>
       <ol className="m-0 p-0 list-none border-l-2 border-black/[.3] ml-1.5">
         {filas.map((fila, i) => (
           <li key={`${fila.en}-${i}`} className="relative pl-4 pb-3 last:pb-0">
@@ -910,29 +910,29 @@ function Bitacora({
               style={{ background: fila.fuerte ? "var(--color-text)" : "var(--color-neutral-500)" }}
               aria-hidden="true"
             />
-            <div className="text-[13px] leading-[1.35]">
+            <div className="text-meta leading-[1.35]">
               <strong className="font-extrabold">{fila.titulo}</strong>
             </div>
-            <div className="text-xs opacity-62 mt-0.5 tabular-nums">
+            <div className="text-cap opacity-62 mt-0.5 tabular-nums">
               {fechaHoraLegible(fila.en)} · {fila.detalle}
             </div>
-            {fila.nota ? <div className="text-[13px] leading-[1.45] mt-1 max-w-[70ch]">«{fila.nota}»</div> : null}
+            {fila.nota ? <div className="text-meta leading-[1.45] mt-1 max-w-[70ch]">«{fila.nota}»</div> : null}
           </li>
         ))}
         {p.agenda ? (
           <li className="relative pl-4 pt-0 pb-0 mt-3">
             <span className="absolute -left-[6px] top-1 w-2.5 h-2.5 bg-[var(--color-neutral-500)]" aria-hidden="true" />
-            <div className="text-[13px] leading-[1.35]">
+            <div className="text-meta leading-[1.35]">
               <strong className="font-extrabold">Visita agendada para resolverlo</strong>
             </div>
-            <div className="text-xs opacity-62 mt-0.5 tabular-nums">
-              {p.agenda.folio} · {p.agenda.fecha} · {p.agenda.tecnico} · {ESTADO_VISITA_LABEL[p.agenda.estado].toLowerCase()}
+            <div className="text-cap opacity-62 mt-0.5 tabular-nums">
+              {p.agenda.folio} · {fechaCL(p.agenda.fecha)} · {p.agenda.tecnico} · {ESTADO_VISITA_LABEL[p.agenda.estado].toLowerCase()}
             </div>
           </li>
         ) : null}
       </ol>
       {p.estado !== "RESUELTO" ? (
-        <div className="text-xs opacity-62 mt-3">Sigue sin cerrar: lleva {plural(p.dias, "día", "días")} abierto.</div>
+        <div className="text-cap opacity-62 mt-3">Sigue sin cerrar: lleva {plural(p.dias, "día", "días")} abierto.</div>
       ) : null}
     </div>
   );
@@ -973,52 +973,52 @@ function HistorialLocal({ grupo, nombreTipo }: { grupo: GrupoProblemas; nombreTi
       <div className="grid grid-cols-2 md:grid-cols-5 gap-x-5 gap-y-3">
         {resumen.map((r) => (
           <div key={r.k} className="min-w-0">
-            <div className="text-[10px] tracking-[.11em] uppercase opacity-62">{r.k}</div>
-            <div className="font-extrabold text-sm mt-1">{r.v}</div>
+            <div className="text-cap opacity-62">{r.k}</div>
+            <div className="font-extrabold text-ui mt-1">{r.v}</div>
           </div>
         ))}
       </div>
 
-      <div className="text-[10px] tracking-[.12em] uppercase opacity-62 mt-4 mb-2">
+      <div className="text-cap opacity-62 mt-4 mb-2">
         Visitas al local, de la más reciente a la más antigua
       </div>
       <div className="flex flex-col gap-2 max-h-[420px] overflow-y-auto pr-1">
         {grupo.visitas.map((v) => {
           const problemas = porFolio.get(v.folio) ?? [];
           return (
-            <div key={v.folio} className="px-3 py-2.5 bg-white border-l-4 border-black/[.35]">
+            <div key={v.folio} className="px-3 py-2.5 bg-white border border-[var(--color-line)]">
               <div className="flex items-center gap-2 flex-wrap">
-                <div className="font-extrabold text-sm tabular-nums">{v.fecha}</div>
+                <div className="font-extrabold text-ui tabular-nums">{fechaCL(v.fecha)}</div>
                 <Tag variant={ESTADO_VISITA_TAG[v.estado]}>{ESTADO_VISITA_LABEL[v.estado]}</Tag>
-                <span className="text-xs opacity-62">
+                <span className="text-cap opacity-62">
                   {v.tecnico}
                   {v.motivo ? ` · ${v.motivo}` : ""}
                 </span>
                 <button
                   onClick={() => router.push(`/admin/visitas/${v.folio}`)}
-                  className="ml-auto min-h-7 px-2 bg-transparent border border-black/[.3] text-[10px] leading-none tracking-[.07em] uppercase cursor-pointer hover:bg-black/[.07]"
+                  className="ml-auto min-h-7 px-2 bg-transparent border border-black/[.3] text-cap leading-none cursor-pointer hover:bg-black/[.07]"
                 >
                   {v.folio}
                 </button>
               </div>
               {v.trabajos ? (
-                <div className="text-[13px] leading-[1.45] mt-1.5">
+                <div className="text-meta leading-[1.45] mt-1.5">
                   <strong className="font-extrabold">Trabajo:</strong> {v.trabajos}
                 </div>
               ) : null}
-              {v.observaciones ? <div className="text-[13px] leading-[1.45] mt-1 max-w-[90ch]">{v.observaciones}</div> : null}
+              {v.observaciones ? <div className="text-meta leading-[1.45] mt-1 max-w-[90ch]">{v.observaciones}</div> : null}
               {problemas.length > 0 ? (
                 <div className="flex flex-col gap-1 mt-2">
                   {problemas.map((p) => (
-                    <div key={p.id} className="flex items-center gap-2 flex-wrap text-[13px]">
+                    <div key={p.id} className="flex items-center gap-2 flex-wrap text-meta">
                       <span
                         className="w-2 h-2 flex-none"
-                        style={{ background: p.estado === "RESUELTO" ? "#7a7676" : "var(--color-accent)" }}
+                        style={{ background: p.estado === "RESUELTO" ? "var(--color-neutral-600)" : "var(--color-danger)" }}
                         aria-hidden="true"
                       />
                       <span className="font-extrabold">{nombreTipo(p.tipoCodigo)}</span>
                       <EstadoProblemaTag estado={p.estado} />
-                      <span className="text-xs opacity-62 tabular-nums">{textoAntiguedad(p).toLowerCase()}</span>
+                      <span className="text-cap opacity-62 tabular-nums">{textoAntiguedad(p).toLowerCase()}</span>
                     </div>
                   ))}
                 </div>

@@ -33,11 +33,11 @@ export default function ActaConservada({ folio, cerroNombre }: { folio: string; 
   }
 
   return (
-    <div className="mt-3 p-3.5 bg-[var(--color-accent-200)] border-l-4 border-[var(--color-accent)]">
-      <div className="text-[10px] tracking-[.12em] uppercase text-[var(--color-accent-800)] mb-1.5">
+    <div className="mt-3 p-3.5 bg-[var(--color-accent-200)] border border-[var(--color-accent-300)]">
+      <div className="text-cap text-[var(--color-accent-800)] mb-1.5">
         {guardado.tipo === "acta" ? "Tu acta no se envió" : "Tu borrador no se envió"}
       </div>
-      <div className="text-sm leading-[1.5] text-[var(--color-accent-800)]">
+      <div className="text-ui leading-[1.5] text-[var(--color-accent-800)]">
         {cerroNombre} ya cerró esta visita. {guardado.tipo === "acta" ? "El acta que dejaste" : "El borrador que dejaste"}{" "}
         {haceCuanto(guardado.desde)} sigue guardado en este celular, sin enviarse. Si hace falta algo de lo que
         escribiste, coordinación puede corregir el acta desde el panel.
@@ -45,7 +45,7 @@ export default function ActaConservada({ folio, cerroNombre }: { folio: string; 
       <button
         type="button"
         onClick={descartar}
-        className="mt-2.5 min-h-11 px-1 bg-transparent border-0 text-[var(--color-accent-active)] text-[13px] underline underline-offset-4 cursor-pointer"
+        className="mt-2.5 min-h-11 px-1 bg-transparent border-0 text-[var(--color-accent-active)] text-meta underline underline-offset-4 cursor-pointer"
       >
         Descartar lo guardado en este celular
       </button>

@@ -113,7 +113,6 @@ function anchoDe(fuente: PDFFont, texto: string, tam: number, espaciado = 0): nu
 }
 
 // ── Fechas: vienen de SQL como texto local ('YYYY-MM-DD' y 'YYYY-MM-DDTHH:mm:ss') ──
-const MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
 function partesFecha(iso: string | null | undefined) {
@@ -123,10 +122,11 @@ function partesFecha(iso: string | null | undefined) {
   return { a, me, d, hh, mm, dia: new Date(Date.UTC(a, me - 1, d)).getUTCDay() };
 }
 
-/** '2026-10-13' → '13 oct 2026'. */
+/** '2026-10-13' → '13/10/2026'. */
 function fechaCorta(iso: string | null | undefined): string {
   const p = partesFecha(iso);
-  return p ? `${p.d} ${MESES_CORTOS[p.me - 1]} ${p.a}` : iso || "—";
+  const dos = (n: number) => String(n).padStart(2, "0");
+  return p ? `${dos(p.d)}/${dos(p.me)}/${p.a}` : iso || "—";
 }
 
 /** '2026-09-28' → 'Lunes'. */
@@ -140,7 +140,7 @@ function fechaHora(iso: string | null | undefined): string {
   const p = partesFecha(iso);
   if (!p) return "";
   const dos = (n: number) => String(n).padStart(2, "0");
-  return `${dos(p.d)}-${dos(p.me)}-${p.a} · ${dos(p.hh)}:${dos(p.mm)}`;
+  return `${dos(p.d)}/${dos(p.me)}/${p.a} · ${dos(p.hh)}:${dos(p.mm)}`;
 }
 
 function hhmm(iso: string | null | undefined): string {

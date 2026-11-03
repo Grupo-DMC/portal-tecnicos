@@ -95,12 +95,10 @@ export default function ClientesTable({ clientes, sucursales }: { clientes: Clie
 
   return (
     <MaestroTable<Cliente>
-      kicker="Maestros"
       title="Clientes"
       modulo="clientes"
       addLabel="Nuevo cliente"
       editLabel="Editar cliente"
-      dialogoKicker="Maestro · cliente"
       nota="El RUT no se puede repetir."
       phBusqueda="Buscar cliente o RUT…"
       rows={ordenados}
@@ -138,8 +136,8 @@ export default function ClientesTable({ clientes, sucursales }: { clientes: Clie
           label: "Cliente",
           render: (c) => (
             <div className="min-w-[200px]">
-              <div className="font-extrabold text-[15px] leading-[1.25]">{c.nombreFantasia}</div>
-              <div className="text-xs opacity-66 mt-0.5">
+              <div className="font-extrabold text-body leading-[1.25]">{c.nombreFantasia}</div>
+              <div className="text-cap opacity-66 mt-0.5">
                 {c.razonSocial !== c.nombreFantasia ? `${c.razonSocial} · ` : ""}
                 <span className="tabular-nums">{c.rut}</span>
               </div>
@@ -159,7 +157,7 @@ export default function ClientesTable({ clientes, sucursales }: { clientes: Clie
             return (
               <div className="flex items-center gap-3 min-w-[220px]">
                 <div
-                  className={`font-extrabold text-[26px] leading-none tracking-[-.03em] tabular-nums w-[52px] text-right flex-none ${
+                  className={`num font-bold text-h2 leading-none tracking-[-.03em] tabular-nums w-[52px] text-right flex-none ${
                     l.activos ? "" : "opacity-40"
                   }`}
                 >
@@ -172,7 +170,7 @@ export default function ClientesTable({ clientes, sucursales }: { clientes: Clie
                       style={{ width: `${(l.activos / maxLocales) * 100}%` }}
                     />
                   </div>
-                  <div className="text-[11px] opacity-66 mt-1.5">
+                  <div className="text-cap opacity-66 mt-1.5">
                     {l.activos === 1 ? "local activo" : "locales activos"}
                     {detalle.length ? ` · ${detalle.join(" · ")}` : ""}
                   </div>
@@ -192,7 +190,7 @@ export default function ClientesTable({ clientes, sucursales }: { clientes: Clie
                 {c.planCalibracion === false ? <Tag variant="outline">Sin plan</Tag> : <span className="opacity-50">—</span>}
                 {/* Sin el cliente en plan, alguna tienda puede estarlo por su cuenta. */}
                 {de(c).conCalibracion ? (
-                  <div className="text-[11px] opacity-66 mt-1">
+                  <div className="text-cap opacity-66 mt-1">
                     {de(c).conCalibracion} {de(c).conCalibracion === 1 ? "local en plan" : "locales en plan"}
                   </div>
                 ) : null}
@@ -206,7 +204,7 @@ export default function ClientesTable({ clientes, sucursales }: { clientes: Clie
             <>
               <Tag variant={c.activo ? "accent" : "neutral"}>{c.activo ? "Activo" : "Inactivo"}</Tag>
               {!c.activo && c.motivoInactivo ? (
-                <div className="text-[11px] leading-[1.4] opacity-66 mt-1 max-w-[260px]">{c.motivoInactivo}</div>
+                <div className="text-cap leading-[1.4] opacity-66 mt-1 max-w-[260px]">{c.motivoInactivo}</div>
               ) : null}
             </>
           ),
@@ -316,9 +314,9 @@ export default function ClientesTable({ clientes, sucursales }: { clientes: Clie
 function Cifra({ label, n, sub }: { label: string; n: number; sub: string }) {
   return (
     <div className="px-4 md:px-6 pt-4 md:pt-[22px] pb-4.5 border-r max-lg:border-b border-black/[.2]">
-      <div className="text-[10px] tracking-[.12em] uppercase opacity-66">{label}</div>
-      <div className="font-extrabold text-[32px] md:text-[40px] leading-none tracking-[-.03em] tabular-nums mt-3">{n}</div>
-      <div className="text-xs opacity-66 mt-2.5">{sub}</div>
+      <div className="text-cap opacity-66">{label}</div>
+      <div className="num font-bold text-h1 md:text-display leading-none tracking-[-.03em] tabular-nums mt-3">{n}</div>
+      <div className="text-cap opacity-66 mt-2.5">{sub}</div>
     </div>
   );
 }

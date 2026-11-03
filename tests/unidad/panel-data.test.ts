@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // de KPIs y gráficos, no el SQL.
 const q = vi.hoisted(() => ({
   contarProblemasAbiertos: vi.fn(),
+  contarPorReagendar: vi.fn(),
   getCargaTecnico: vi.fn(),
   getCumplimientoRango: vi.fn(),
   getEstadoHoyDistribucion: vi.fn(),
@@ -23,6 +24,7 @@ const visita = (estado: string, tecnicoId: number) => ({ estado, tecnicoId });
 beforeEach(() => {
   vi.clearAllMocks();
   q.contarProblemasAbiertos.mockResolvedValue(7);
+  q.contarPorReagendar.mockResolvedValue(4);
   q.getEstadoHoyDistribucion.mockResolvedValue([{ estado: "COMPLETADA", n: 3, pct: 75 }]);
   q.getProblemasPorTipo.mockResolvedValue([]);
   q.getCargaTecnico.mockResolvedValue([
@@ -49,9 +51,9 @@ describe("buildPanelData", () => {
     ]);
     const d = await buildPanelData("Hoy", "2026-10-28");
 
-    expect(d.kpis).toEqual({ programadas: 4, cerradas: 2, pctCumpl: 50, reagendas: 2, tecnicosHoy: 3, problemasAbiertosTotal: 7 });
+    expect(d.kpis).toEqual({ programadas: 4, cerradas: 2, pctCumpl: 50, reagendas: 2, porReagendar: 4, tecnicosHoy: 3, problemasAbiertosTotal: 7 });
     expect(d.cumplimiento.detalle).toBe("2 de 4 visitas cerradas dentro de la fecha programada.");
-    expect(d.cumplimiento.rangoTexto).toBe("Hoy · 2026-10-28");
+    expect(d.cumplimiento.rangoTexto).toBe("Hoy · 28/10/2026");
     expect(d.cumplimiento.meta).toBe(92);
     // En «Hoy» no se pide dos veces el mismo rango.
     expect(q.getVisitasRango).toHaveBeenCalledTimes(1);

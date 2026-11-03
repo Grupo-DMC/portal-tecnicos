@@ -26,7 +26,7 @@ export default function ChecklistEditor(props: Parameters<typeof useChecklistEdi
   const { toast, confirmar, setConfirmar, guardando, soloLectura, sucio, pedirGuardar } = fv;
   return (
     <>
-      <AdminHeader kicker="Maestros · listas que ve el técnico en terreno" title="Checklist">
+      <AdminHeader title="Checklist">
         <button className="btn btn-primary" onClick={pedirGuardar} disabled={guardando || !sucio || soloLectura}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
             <path d="M4 12l5 5L20 6" />

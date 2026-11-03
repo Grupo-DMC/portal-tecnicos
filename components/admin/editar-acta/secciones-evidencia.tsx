@@ -159,18 +159,18 @@ export function SeccionFirma({ fv }: { fv: EditarActaApi }) {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={firma.imagen} alt={`Firma de ${firma.nombre}`} className="h-[78px] w-full object-contain object-left-bottom" />
               <div className="h-px bg-[var(--color-text)] mt-1.5" />
-              <div className="text-sm font-extrabold mt-1.5">{firma.nombre}</div>
-              <div className="text-[10px] tracking-[.09em] uppercase opacity-62">
+              <div className="text-ui font-extrabold mt-1.5">{firma.nombre}</div>
+              <div className="text-cap opacity-62">
                 Responsable de tienda · {firma.rut || "—"}
               </div>
             </div>
-            <p className="m-0 flex-1 min-w-[220px] text-[13px] leading-[1.55] opacity-70">
+            <p className="m-0 flex-1 min-w-[220px] text-meta leading-[1.55] opacity-70">
               Es la firma que dejó la tienda al cerrar el acta, con su hora. Si corriges el nombre o el RUT del
               responsable y eran los mismos que van bajo la firma, ese texto se corrige también; la firma no.
             </p>
           </div>
         ) : (
-          <div className="text-[13px] opacity-66">Esta acta se cerró sin firma.</div>
+          <div className="text-meta opacity-66">Esta acta se cerró sin firma.</div>
         )}
       </Seccion>
     </>
@@ -185,9 +185,8 @@ export function SeccionGuardar({ fv }: { fv: EditarActaApi }) {
       {/* ── Guardar ── */}
       <section id="ea-sec-guardar" className="scroll-mt-[120px] border-2 border-[var(--color-text)] bg-white">
         <div className="px-5 pt-5 pb-1">
-          <div className="text-[10px] tracking-[.15em] uppercase text-[var(--color-accent-active)]">Para terminar</div>
-          <div className="font-extrabold text-[20px] leading-[1.2] tracking-[-.02em] mt-1.5">¿Por qué se edita el acta?</div>
-          <p className="m-0 mt-1 text-[13px] opacity-66">
+          <div className="font-extrabold text-h3 leading-[1.2] tracking-[-.02em]">¿Por qué se edita el acta?</div>
+          <p className="m-0 mt-1 text-meta opacity-66">
             Es obligatorio y queda en el registro de la visita junto con lo que cambiaste.
           </p>
         </div>
@@ -202,7 +201,7 @@ export function SeccionGuardar({ fv }: { fv: EditarActaApi }) {
             placeholder="Ej: el técnico anotó mal el RUT del encargado; faltaba registrar el cambio de la antena 2"
           />
 
-          <div className="mt-4 text-[10px] tracking-[.11em] uppercase opacity-62 mb-2">Lo que cambiaste</div>
+          <div className="mt-4 text-cap opacity-62 mb-2">Lo que cambiaste</div>
           {hayCambios ? (
             <div className="flex flex-wrap gap-1.5">
               {conCambios.map((x) => (
@@ -218,13 +217,13 @@ export function SeccionGuardar({ fv }: { fv: EditarActaApi }) {
               ))}
             </div>
           ) : (
-            <div className="text-[13px] opacity-66">Todavía nada: el acta está como quedó guardada.</div>
+            <div className="text-meta opacity-66">Todavía nada: el acta está como quedó guardada.</div>
           )}
 
           {error ? (
             <div
               role="alert"
-              className="mt-4 px-3.5 py-3 bg-[var(--color-accent-200)] border-l-4 border-[var(--color-accent)] text-[13px] leading-[1.45] text-[var(--color-accent-800)]"
+              className="mt-4 px-3.5 py-3 bg-[var(--color-danger-100)] border border-[var(--color-danger-400)] text-meta leading-[1.45] text-[var(--color-danger-800)]"
             >
               {error}
             </div>
@@ -258,7 +257,7 @@ export function Indice({ fv }: { fv: EditarActaApi }) {
     <>
       <aside className="hidden xl:block sticky top-[112px]">
         <div className="border border-[var(--color-divider-soft)] bg-[var(--color-surface-3)]">
-          <div className="px-4 py-3 border-b border-[var(--color-divider-faint)] text-[10px] tracking-[.14em] uppercase opacity-66">
+          <div className="px-4 py-3 border-b border-[var(--color-divider-faint)] text-cap opacity-66">
             Secciones del acta
           </div>
           {[...SECCIONES, { clave: "firma", titulo: "Firma de la tienda" } as const].map((x, i) => {
@@ -268,9 +267,9 @@ export function Indice({ fv }: { fv: EditarActaApi }) {
                 key={x.clave}
                 type="button"
                 onClick={() => irA(x.clave)}
-                className="w-full flex items-center gap-2.5 px-4 min-h-10 bg-transparent border-0 border-b border-[var(--color-divider-faint)] text-left text-[13px] text-[var(--color-text)] cursor-pointer hover:bg-black/[.05]"
+                className="w-full flex items-center gap-2.5 px-4 min-h-10 bg-transparent border-0 border-b border-[var(--color-divider-faint)] text-left text-meta text-[var(--color-text)] cursor-pointer hover:bg-black/[.05]"
               >
-                <span className="w-4 text-[11px] tabular-nums opacity-55 flex-none">{i + 1}</span>
+                <span className="w-4 text-cap tabular-nums opacity-55 flex-none">{i + 1}</span>
                 <span className={`flex-1 min-w-0 truncate ${tocada ? "font-extrabold" : ""}`}>{x.titulo}</span>
                 {tocada ? (
                   <span className="w-2 h-2 flex-none bg-[var(--color-accent)]" title="Con cambios" />
@@ -283,7 +282,7 @@ export function Indice({ fv }: { fv: EditarActaApi }) {
           <button
             type="button"
             onClick={() => irA("guardar")}
-            className="w-full flex items-center gap-2.5 px-4 min-h-11 bg-transparent border-0 text-left text-[13px] font-extrabold text-[var(--color-accent-active)] cursor-pointer hover:bg-black/[.05]"
+            className="w-full flex items-center gap-2.5 px-4 min-h-11 bg-transparent border-0 text-left text-meta font-extrabold text-[var(--color-accent-active)] cursor-pointer hover:bg-black/[.05]"
           >
             <span className="flex-1">Motivo y guardar</span>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
@@ -291,8 +290,8 @@ export function Indice({ fv }: { fv: EditarActaApi }) {
             </svg>
           </button>
         </div>
-        <p className="m-0 mt-3 text-xs leading-[1.5] opacity-62">
-          El punto rojo marca las secciones que llevan cambios sin guardar.
+        <p className="m-0 mt-3 text-cap leading-[1.5] opacity-62">
+          El punto morado marca las secciones que llevan cambios sin guardar.
         </p>
       </aside>
     </>

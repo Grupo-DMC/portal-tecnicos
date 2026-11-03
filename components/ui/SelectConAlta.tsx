@@ -296,7 +296,6 @@ function AltaRapidaDialogo({
   return (
     <>
       <Dialogo
-        kicker="Alta rápida"
         titulo={`Nuevo ${nombreTipo}`}
         cta={`Crear ${nombreTipo}`}
         nota="Se crea ahora y queda elegido en el formulario donde estabas: lo que habías escrito sigue ahí."
@@ -308,7 +307,7 @@ function AltaRapidaDialogo({
         guardando={guardando}
       >
         {error ? (
-          <p role="alert" className="mt-4 mb-0 text-[13px] font-extrabold text-[var(--color-accent-800)]">
+          <p role="alert" className="mt-4 mb-0 text-meta font-extrabold text-[var(--color-danger-800)]">
             {error}
           </p>
         ) : null}

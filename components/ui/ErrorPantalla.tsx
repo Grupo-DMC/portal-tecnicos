@@ -22,7 +22,6 @@ export default function ErrorPantalla({
   return (
     <PantallaEstado
       compacta={compacta}
-      etiqueta="Algo salió mal"
       titulo={
         <>
           No pudimos

@@ -29,14 +29,14 @@ export function Encabezado({ fv }: { fv: EditarActaApi }) {
             { k: "Acta cerrada", v: ejec?.horaTermino ? fechaHoraCorta(ejec.horaTermino) : "—" },
           ].map((d) => (
             <div key={d.k} className="px-4 py-3 min-w-0 border-r border-b border-[var(--color-divider-faint)]">
-              <div className="text-[10px] tracking-[.11em] uppercase opacity-62">{d.k}</div>
-              <div className="text-[14px] font-extrabold leading-[1.3] mt-1 truncate" title={d.v}>
+              <div className="text-cap opacity-62">{d.k}</div>
+              <div className="text-ui font-extrabold leading-[1.3] mt-1 truncate" title={d.v}>
                 {d.v}
               </div>
             </div>
           ))}
         </div>
-        <div className="flex gap-3 items-start px-4 py-3 text-[13px] leading-[1.5]">
+        <div className="flex gap-3 items-start px-4 py-3 text-meta leading-[1.5]">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-none mt-0.5 opacity-70">
             <circle cx="12" cy="12" r="9" />
             <path d="M12 11v5M12 7.5v.5" />
@@ -98,9 +98,9 @@ export function SeccionResponsable({ fv }: { fv: EditarActaApi }) {
               placeholder="11.111.111-1"
               autoComplete="off"
               aria-invalid={!!errorRut}
-              style={errorRut ? { borderColor: "var(--color-accent)" } : undefined}
+              style={errorRut ? { borderColor: "var(--color-danger)" } : undefined}
             />
-            {errorRut ? <div className="mt-1.5 text-xs text-[var(--color-accent-800)]">{errorRut}</div> : null}
+            {errorRut ? <div className="mt-1.5 text-cap text-[var(--color-danger-800)]">{errorRut}</div> : null}
           </div>
           <div className="field min-w-0">
             <label htmlFor="ea-tel">Teléfono</label>
@@ -174,11 +174,10 @@ export function SeccionTrabajo({ fv }: { fv: EditarActaApi }) {
               (t) => !suyos.some((x) => x.codigo === t.codigo)
             );
             return (
-              <div key={codigo} className="border border-[var(--color-divider-soft)] border-l-4 border-l-[var(--color-accent)] bg-white">
+              <div key={codigo} className="border border-[var(--color-divider-soft)] bg-white">
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--color-divider-faint)]">
                   <div className="min-w-0 flex-1">
-                    <div className="text-[10px] tracking-[.12em] uppercase text-[var(--color-accent-active)]">Motivo</div>
-                    <div className="font-extrabold text-[16px] leading-[1.25] mt-0.5">{nombreMotivo(codigo)}</div>
+                    <div className="font-extrabold text-lead leading-[1.25]">{nombreMotivo(codigo)}</div>
                   </div>
                   {agendados.includes(codigo) ? (
                     <span className="tag tag-neutral flex-none" title="Lo agendó coordinación">
@@ -205,9 +204,9 @@ export function SeccionTrabajo({ fv }: { fv: EditarActaApi }) {
                     return (
                       <div key={t.id} className="border border-[var(--color-divider-faint)] bg-[var(--color-surface-3)]">
                         <div className="flex items-center gap-3 pl-4 pr-2 py-2">
-                          <div className="font-extrabold text-[15px] leading-[1.3] flex-1 min-w-0">{nombreTrabajo(t.codigo)}</div>
+                          <div className="font-extrabold text-body leading-[1.3] flex-1 min-w-0">{nombreTrabajo(t.codigo)}</div>
                           {t.subs.length > 0 ? (
-                            <span className="text-[11px] opacity-62 tabular-nums flex-none">
+                            <span className="text-cap opacity-62 tabular-nums flex-none">
                               {t.subs.length} {t.subs.length === 1 ? "marcado" : "marcados"}
                             </span>
                           ) : null}
@@ -218,18 +217,18 @@ export function SeccionTrabajo({ fv }: { fv: EditarActaApi }) {
                         </div>
                         {opciones.length > 0 ? (
                           <div className="px-4 pb-4">
-                            <div className="text-[10px] tracking-[.11em] uppercase opacity-62 mb-2">
+                            <div className="text-cap opacity-62 mb-2">
                               {cat?.grupoLabel ?? "Subtrabajos"}
                             </div>
                             <ListaMarcable opciones={opciones} marcados={t.subs} onCambiar={(fn) => cambiarSubs(t.id, fn)} />
                           </div>
                         ) : null}
-                        {t.detalle ? <div className="px-4 pb-3.5 text-[13px] opacity-70">{t.detalle}</div> : null}
+                        {t.detalle ? <div className="px-4 pb-3.5 text-meta opacity-70">{t.detalle}</div> : null}
                       </div>
                     );
                   })}
                   {suyos.length === 0 ? (
-                    <div className="px-3.5 py-3 border border-dashed border-[var(--color-divider)] text-[13px] opacity-70">
+                    <div className="px-3.5 py-3 border border-dashed border-[var(--color-divider)] text-meta opacity-70">
                       Este motivo todavía no tiene trabajos. Agrega al menos uno o quita el motivo.
                     </div>
                   ) : null}
@@ -258,7 +257,7 @@ export function SeccionTrabajo({ fv }: { fv: EditarActaApi }) {
 
           {motivos.some((m) => !motivosCodigos.includes(m.codigo)) ? (
             <div>
-              <div className="text-[11px] tracking-[.09em] uppercase opacity-62 mb-2">
+              <div className="text-cap opacity-62 mb-2">
                 ¿La visita fue también por otro motivo?
               </div>
               {(() => {
@@ -268,7 +267,7 @@ export function SeccionTrabajo({ fv }: { fv: EditarActaApi }) {
         key={m.codigo}
         type="button"
         onClick={() => setMotivosCodigos((prev) => [...prev, m.codigo])}
-        className="inline-flex items-center gap-1.5 min-h-9 px-3 bg-transparent border border-dashed border-[var(--color-divider)] text-[13px] text-[var(--color-text)] cursor-pointer hover:bg-black/[.06] hover:border-solid"
+        className="inline-flex items-center gap-1.5 min-h-9 px-3 bg-transparent border border-dashed border-[var(--color-divider)] text-meta text-[var(--color-text)] cursor-pointer hover:bg-black/[.06] hover:border-solid"
       >
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
           <path d="M12 5v14M5 12h14" />
@@ -334,10 +333,10 @@ export function SeccionProblemas({ fv }: { fv: EditarActaApi }) {
             return (
               <div key={p.id} className="border border-[var(--color-divider-soft)] bg-white">
                 <div className="flex items-center gap-2.5 pl-4 pr-2 py-2 border-b border-[var(--color-divider-faint)]">
-                  <span className="w-6 h-6 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-[11px] tabular-nums">
+                  <span className="w-6 h-6 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap tabular-nums">
                     {i + 1}
                   </span>
-                  <div className="font-extrabold text-[15px] leading-[1.3] flex-1 min-w-0 truncate">
+                  <div className="font-extrabold text-body leading-[1.3] flex-1 min-w-0 truncate">
                     {nombreProblema(p.codigo)}
                   </div>
                   {p.dbId ? (
@@ -369,7 +368,7 @@ export function SeccionProblemas({ fv }: { fv: EditarActaApi }) {
                   </div>
                   {opciones.length > 0 ? (
                     <div>
-                      <div className="text-[10px] tracking-[.11em] uppercase opacity-62 mb-2">
+                      <div className="text-cap opacity-62 mb-2">
                         {cat?.grupoLabel ?? "Detalle"}
                       </div>
                       <ListaMarcable
@@ -395,7 +394,7 @@ export function SeccionProblemas({ fv }: { fv: EditarActaApi }) {
             );
           })}
           {problemas.length === 0 ? (
-            <div className="text-[13px] opacity-66">Esta acta no tiene problemas registrados.</div>
+            <div className="text-meta opacity-66">Esta acta no tiene problemas registrados.</div>
           ) : null}
           {catalogoProblema.length > 0 ? (
             <BotonAgregar

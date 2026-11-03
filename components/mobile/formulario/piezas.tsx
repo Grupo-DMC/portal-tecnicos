@@ -10,10 +10,10 @@ import { haceCuanto, type FotoForm, type VideoForm } from "@/lib/ui/borrador";
 // ─────────────────────────────── piezas locales ───────────────────────────────
 
 export const entrada =
-  "w-full min-h-[52px] px-3.5 py-3 text-base bg-[var(--color-surface-3)] border border-[var(--color-divider)] text-[var(--color-text)] caret-[var(--color-accent)] focus-visible:border-[var(--color-accent)] focus-visible:outline-none";
+  "w-full min-h-[52px] px-3.5 py-3 text-lead bg-[var(--color-surface-3)] border border-[var(--color-divider)] text-[var(--color-text)] caret-[var(--color-accent)] focus-visible:border-[var(--color-accent)] focus-visible:outline-none";
 
 export const entradaSheet =
-  "w-full min-h-[52px] px-3.5 py-3 text-base bg-[var(--color-surface)] border border-[var(--color-divider)] text-[var(--color-text)] caret-[var(--color-accent)] focus-visible:border-[var(--color-accent)] focus-visible:outline-none";
+  "w-full min-h-[52px] px-3.5 py-3 text-lead bg-[var(--color-surface)] border border-[var(--color-divider)] text-[var(--color-text)] caret-[var(--color-accent)] focus-visible:border-[var(--color-accent)] focus-visible:outline-none";
 
 export function ahora(): string {
   const d = new Date();
@@ -39,7 +39,7 @@ export function Cabecera({
       className="w-full flex items-center gap-2.5 min-h-[60px] px-4 bg-transparent border-0 border-b border-black/[.25] cursor-pointer text-left text-[var(--color-text)] hover:bg-black/[.04]"
     >
       <span
-        className="w-6.5 h-6.5 flex-none grid place-items-center font-extrabold text-xs tabular-nums"
+        className="w-6.5 h-6.5 flex-none grid place-items-center font-extrabold text-cap tabular-nums"
         style={{
           background: ok ? "var(--color-accent)" : "transparent",
           color: ok ? "var(--color-bg)" : "var(--color-text)",
@@ -47,7 +47,7 @@ export function Cabecera({
       >
         {n}
       </span>
-      <span className="font-extrabold text-[15px] leading-[1.2] flex-1">{titulo}</span>
+      <span className="font-extrabold text-body leading-[1.2] flex-1">{titulo}</span>
       <span className={`tag tag-${chip.variante}`}>{chip.texto}</span>
     </button>
   );
@@ -84,18 +84,18 @@ export function EstadoBorrador({
   return (
     <div className="flex flex-col gap-2 mt-3">
       {pendiente ? (
-        <div className="px-3.5 py-3 bg-[var(--color-accent-200)] border-l-4 border-[var(--color-accent)]">
-          <div className="text-[10px] tracking-[.12em] uppercase text-[var(--color-accent-800)]">
+        <div className="px-3.5 py-3 bg-[var(--color-accent-200)] border border-[var(--color-accent-300)]">
+          <div className="text-cap text-[var(--color-accent-800)]">
             Acta terminada · falta enviarla
           </div>
-          <div className="text-[13px] leading-[1.45] text-[var(--color-accent-800)] mt-1.5">
+          <div className="text-meta leading-[1.45] text-[var(--color-accent-800)] mt-1.5">
             Quedó guardada en el celular a las {pendiente.capturadaEn.slice(11, 16)} y se manda sola cuando haya señal.
             No la vuelvas a llenar.
           </div>
           <button
             onClick={onEnviarPendiente}
             disabled={enviando}
-            className="w-full min-h-[46px] flex items-center justify-between px-3.5 mt-2.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-[13px] cursor-pointer text-left disabled:opacity-60"
+            className="w-full min-h-[46px] flex items-center justify-between px-3.5 mt-2.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-meta cursor-pointer text-left disabled:opacity-60"
           >
             <span>{enviando ? "Enviando…" : "Enviar ahora"}</span>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -107,22 +107,22 @@ export function EstadoBorrador({
       ) : null}
 
       {recuperado ? (
-        <div className="px-3.5 py-3 bg-[var(--color-surface)] border-l-4 border-[var(--color-text)]">
-          <div className="text-[10px] tracking-[.12em] uppercase opacity-66">Recuperamos lo que llevabas</div>
-          <div className="text-[13px] leading-[1.45] mt-1.5">
+        <div className="px-3.5 py-3 bg-[var(--color-surface)] border border-[var(--color-line-control)]">
+          <div className="text-cap opacity-66">Recuperamos lo que llevabas</div>
+          <div className="text-meta leading-[1.45] mt-1.5">
             Esta acta quedó a medias {haceCuanto(recuperado.guardadoEn)} y se volvió a cargar tal cual.
             {recuperado.sinFotos ? " Las fotos no alcanzaron a guardarse: hay que tomarlas de nuevo." : ""}
           </div>
           <div className="flex gap-3.5 items-center mt-2">
             <button
               onClick={onOcultarRecuperado}
-              className="min-h-10 px-1 bg-transparent border-0 font-extrabold text-[13px] cursor-pointer text-[var(--color-text)] underline underline-offset-4"
+              className="min-h-10 px-1 bg-transparent border-0 font-extrabold text-meta cursor-pointer text-[var(--color-text)] underline underline-offset-4"
             >
               Seguir con esto
             </button>
             <button
               onClick={onEmpezarDeNuevo}
-              className="min-h-10 px-1 bg-transparent border-0 text-[13px] cursor-pointer text-[var(--color-accent-active)] underline underline-offset-4"
+              className="min-h-10 px-1 bg-transparent border-0 text-meta cursor-pointer text-[var(--color-accent-active)] underline underline-offset-4"
             >
               Empezar de nuevo
             </button>
@@ -130,10 +130,10 @@ export function EstadoBorrador({
         </div>
       ) : null}
 
-      <div className="flex items-center gap-2 text-[11px] leading-[1.3] opacity-70">
+      <div className="flex items-center gap-2 text-cap leading-[1.3] opacity-70">
         <span
           className="w-2 h-2 flex-none rounded-full"
-          style={{ background: conSenal ? "var(--color-accent)" : "#8f8b8b" }}
+          style={{ background: conSenal ? "var(--color-accent)" : "var(--color-neutral-500)" }}
           aria-hidden="true"
         />
         <span>
@@ -146,7 +146,7 @@ export function EstadoBorrador({
       </div>
 
       {otrasPendientes > 0 ? (
-        <div className="text-[11px] leading-[1.3] text-[var(--color-accent-800)]">
+        <div className="text-cap leading-[1.3] text-[var(--color-accent-800)]">
           Tienes {otrasPendientes} acta{otrasPendientes > 1 ? "s" : ""} de otra visita esperando señal. Se envía
           {otrasPendientes > 1 ? "n" : ""} al abrir esa visita.
         </div>
@@ -178,7 +178,7 @@ export function Campo({
 }) {
   return (
     <div className={className}>
-      <label htmlFor={htmlFor} className="block text-[11px] tracking-[.09em] uppercase opacity-60 mb-1.5">
+      <label htmlFor={htmlFor} className="block text-cap opacity-60 mb-1.5">
         {label}
         {extra ? <span className="opacity-66 normal-case tracking-normal"> {extra}</span> : null}
       </label>
@@ -190,10 +190,10 @@ export function Campo({
 export function PasoTitulo({ n, texto }: { n: string; texto: string }) {
   return (
     <div className="flex items-center gap-2.5 mb-2.5">
-      <span className="w-6 h-6 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-xs leading-none tabular-nums">
+      <span className="w-6 h-6 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap leading-none tabular-nums">
         {n}
       </span>
-      <span className="font-extrabold text-base leading-[1.2]">{texto}</span>
+      <span className="font-extrabold text-lead leading-[1.2]">{texto}</span>
     </div>
   );
 }
@@ -215,16 +215,16 @@ export function Contador({
         type="button"
         onClick={() => onCambiar(-1)}
         aria-label="Quitar uno"
-        className={`w-[44px] ${altura} bg-transparent border-0 cursor-pointer text-[var(--color-text)] font-extrabold text-[22px] leading-none`}
+        className={`w-[44px] ${altura} bg-transparent border-0 cursor-pointer text-[var(--color-text)] font-extrabold text-h2 leading-none`}
       >
         −
       </button>
-      <div className="min-w-[28px] text-center font-extrabold text-[19px] leading-none tabular-nums">{valor}</div>
+      <div className="min-w-[28px] text-center font-extrabold text-h3 leading-none tabular-nums">{valor}</div>
       <button
         type="button"
         onClick={() => onCambiar(1)}
         aria-label="Agregar uno"
-        className={`w-[44px] ${altura} bg-transparent border-0 cursor-pointer text-[var(--color-text)] font-extrabold text-[22px] leading-none`}
+        className={`w-[44px] ${altura} bg-transparent border-0 cursor-pointer text-[var(--color-text)] font-extrabold text-h2 leading-none`}
       >
         +
       </button>
@@ -237,9 +237,9 @@ export function BotonGuardar({ texto, onClick, habilitado }: { texto: string; on
     <button
       onClick={onClick}
       aria-disabled={!habilitado}
-      className="w-full min-h-[54px] flex items-center justify-between px-4 border-0 font-extrabold text-[15px] cursor-pointer text-left hover:brightness-95"
+      className="w-full min-h-[54px] flex items-center justify-between px-4 border-0 font-extrabold text-body cursor-pointer text-left hover:brightness-95"
       style={{
-        background: habilitado ? "var(--color-accent)" : "#8f8b8b",
+        background: habilitado ? "var(--color-accent)" : "var(--color-neutral-500)",
         color: habilitado ? "var(--color-bg)" : "var(--color-surface-3)",
       }}
     >
@@ -288,15 +288,15 @@ export function GaleriaFotos({
           <path d="M3 8h3l2-3h8l2 3h3v12H3z" />
           <circle cx="12" cy="13" r="3.4" />
         </svg>
-        <span className="font-extrabold text-[10px] tracking-[.08em] uppercase">Cámara</span>
+        <span className="font-extrabold text-cap ">Cámara</span>
       </button>
-      <label className="relative aspect-square flex flex-col items-center justify-center gap-1.5 border border-dashed border-black/[.5] cursor-pointer bg-[var(--color-surface-3)] overflow-hidden hover:bg-[#eeeaea]">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#201e1d" strokeWidth="1.8">
+      <label className="relative aspect-square flex flex-col items-center justify-center gap-1.5 border border-dashed border-black/[.5] cursor-pointer bg-[var(--color-surface-3)] overflow-hidden hover:bg-[var(--color-surface-2)]">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1f1c21" strokeWidth="1.8">
           <path d="M4 5h16v14H4z" />
           <path d="M4 16l5-5 4 4 3-3 4 4" />
           <circle cx="9" cy="9" r="1.4" />
         </svg>
-        <span className="font-extrabold text-[10px] tracking-[.08em] uppercase">Galería</span>
+        <span className="font-extrabold text-cap ">Galería</span>
         <input type="file" accept="image/*" multiple onChange={onArchivos} className="absolute w-px h-px opacity-0 pointer-events-none" />
       </label>
     </div>
@@ -330,7 +330,7 @@ export function ListaVideos({
             className="w-full aspect-video bg-black object-contain"
           />
           <div className="flex items-center gap-2 px-2.5 py-2">
-            <span className="text-[11px] tabular-nums opacity-70">
+            <span className="text-cap tabular-nums opacity-70">
               {reloj(v.duracionSeg)} · {v.ancho}x{v.alto} · {mb(v.bytes)}
             </span>
             <button
@@ -353,21 +353,21 @@ export function ListaVideos({
                   style={{ width: `${v.progreso}%` }}
                 />
               </div>
-              <div className="mt-1 text-[11px] opacity-62 tabular-nums">Subiendo… {v.progreso}%</div>
+              <div className="mt-1 text-cap opacity-62 tabular-nums">Subiendo… {v.progreso}%</div>
             </div>
           ) : null}
           {v.error ? (
             <div className="px-2.5 pb-2.5">
-              <div className="text-[11px] text-[var(--color-accent-active)] leading-[1.45]">{v.error}</div>
+              <div className="text-cap text-[var(--color-danger-800)] leading-[1.45]">{v.error}</div>
               {clips.has(v.id) ? (
                 <button
                   onClick={() => onReintentar(v)}
-                  className="mt-2 min-h-[38px] w-full px-3 bg-[var(--color-text)] text-[var(--color-bg)] border-0 font-extrabold text-[12px] cursor-pointer text-left hover:bg-[var(--color-neutral-900)]"
+                  className="mt-2 min-h-[38px] w-full px-3 bg-[var(--color-text)] text-[var(--color-bg)] border-0 font-extrabold text-cap cursor-pointer text-left hover:bg-[var(--color-neutral-900)]"
                 >
                   Reintentar la subida
                 </button>
               ) : (
-                <div className="mt-1 text-[11px] opacity-62">El acta se puede guardar igual; el video no va a quedar.</div>
+                <div className="mt-1 text-cap opacity-62">El acta se puede guardar igual; el video no va a quedar.</div>
               )}
             </div>
           ) : null}

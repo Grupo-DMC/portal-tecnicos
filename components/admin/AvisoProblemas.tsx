@@ -90,12 +90,12 @@ export default function AvisoProblemas({ aviso, deshabilitado }: { aviso: AvisoP
   return (
     <section
       role="alert"
-      className="mt-4 border-2 border-[var(--color-accent)] bg-[var(--color-surface)] px-4 py-3.5"
+      className="mt-4 border-2 border-[var(--color-danger)] bg-[var(--color-surface)] px-4 py-3.5"
     >
-      <div className="text-[11px] tracking-[.1em] uppercase font-extrabold text-[var(--color-accent-active)]">
+      <div className="text-cap font-extrabold text-[var(--color-danger)]">
         Atención
       </div>
-      <p className="m-0 mt-1 font-extrabold text-[15px] leading-[1.3]">
+      <p className="m-0 mt-1 font-extrabold text-body leading-[1.3]">
         {problemas.length === 1
           ? "Esta sucursal tiene un problema sin resolver"
           : `Esta sucursal tiene ${problemas.length} problemas sin resolver`}
@@ -117,16 +117,16 @@ export default function AvisoProblemas({ aviso, deshabilitado }: { aviso: AvisoP
               ) : null}
               <span className="min-w-0 flex-1">
                 <span className="flex flex-wrap items-baseline gap-x-2">
-                  <b className="text-sm">{p.tipo}</b>
-                  <span className="text-[11px] tracking-[.06em] uppercase px-1.5 border border-current">
+                  <b className="text-ui">{p.tipo}</b>
+                  <span className="text-cap px-1.5 border border-current">
                     {p.estadoNombre}
                   </span>
                 </span>
-                <span className="block text-xs opacity-70 mt-0.5">
+                <span className="block text-cap opacity-70 mt-0.5">
                   Levantado el {fecha(p.creadoEn)} en {p.folio}
                   {p.agendadoEn ? ` · ya agendado en ${p.agendadoEn}` : ""}
                 </span>
-                {p.descripcion ? <span className="block text-[13px] mt-1 line-clamp-2">{p.descripcion}</span> : null}
+                {p.descripcion ? <span className="block text-meta mt-1 line-clamp-2">{p.descripcion}</span> : null}
               </span>
             </>
           );
@@ -156,7 +156,7 @@ export default function AvisoProblemas({ aviso, deshabilitado }: { aviso: AvisoP
       </ul>
 
       <fieldset className="m-0 mt-3.5 p-0 border-0" disabled={deshabilitado}>
-        <legend className="p-0 font-extrabold text-sm">¿Esta visita es para resolver alguno de estos problemas?</legend>
+        <legend className="p-0 font-extrabold text-ui">¿Esta visita es para resolver alguno de estos problemas?</legend>
         <div className="flex flex-wrap gap-2 mt-2">
           {(
             [
@@ -172,10 +172,10 @@ export default function AvisoProblemas({ aviso, deshabilitado }: { aviso: AvisoP
                 role="radio"
                 aria-checked={activo}
                 onClick={() => setRespuesta(valor)}
-                className="min-h-10 px-3.5 border border-black/[.35] text-[13px] cursor-pointer"
+                className="min-h-10 px-3.5 border border-black/[.35] text-meta cursor-pointer"
                 style={{
-                  background: activo ? "var(--color-text)" : "var(--color-bg)",
-                  color: activo ? "var(--color-bg)" : "var(--color-text)",
+                  background: activo ? "var(--color-accent)" : "var(--color-bg)",
+                  color: activo ? "#fff" : "var(--color-text)",
                   fontWeight: activo ? 800 : 400,
                 }}
               >
@@ -184,7 +184,7 @@ export default function AvisoProblemas({ aviso, deshabilitado }: { aviso: AvisoP
             );
           })}
         </div>
-        <p className="m-0 mt-2 text-xs opacity-70">
+        <p className="m-0 mt-2 text-cap opacity-70">
           {resuelve
             ? "Marca arriba los que va a resolver: quedan como «Agendado» y el técnico confirma en el acta si quedaron solucionados."
             : respuesta === "OTRA_COSA"

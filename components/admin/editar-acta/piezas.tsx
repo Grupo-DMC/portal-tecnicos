@@ -45,7 +45,7 @@ export function Seccion({
     >
       <div className="flex items-start gap-3.5 px-5 py-4 border-b border-[var(--color-divider-soft)]">
         <span
-          className="w-7 h-7 flex-none grid place-items-center font-extrabold text-xs tabular-nums mt-0.5"
+          className="w-7 h-7 flex-none grid place-items-center font-extrabold text-cap tabular-nums mt-0.5"
           style={{
             background: cambio ? "var(--color-accent)" : "var(--color-text)",
             color: "var(--color-bg)",
@@ -54,11 +54,11 @@ export function Seccion({
           {n}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="font-extrabold text-[17px] leading-[1.25] tracking-[-.01em]">
+          <div className="font-extrabold text-lead leading-[1.25] tracking-[-.01em]">
             {titulo}
             {cuenta !== undefined ? <span className="font-normal opacity-55 tabular-nums"> · {cuenta}</span> : null}
           </div>
-          {ayuda ? <div className="text-[13px] leading-[1.45] opacity-66 mt-0.5">{ayuda}</div> : null}
+          {ayuda ? <div className="text-meta leading-[1.45] opacity-66 mt-0.5">{ayuda}</div> : null}
         </div>
         {cambio ? (
           <span className="tag tag-accent flex-none mt-0.5">Con cambios</span>
@@ -97,7 +97,7 @@ export function BotonAgregar({ texto, onClick }: { texto: string; onClick: () =>
     <button
       type="button"
       onClick={onClick}
-      className="w-full min-h-12 flex items-center justify-center gap-2 bg-transparent border border-dashed border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-sm cursor-pointer hover:bg-black/[.05] hover:border-solid"
+      className="w-full min-h-12 flex items-center justify-center gap-2 bg-transparent border border-dashed border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer hover:bg-black/[.05] hover:border-solid"
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
         <path d="M12 5v14M5 12h14" />
@@ -133,7 +133,7 @@ export function Marca({
         role="checkbox"
         aria-checked={activo}
         onClick={onClick}
-        className="flex-1 min-w-0 flex items-center gap-2.5 px-3 py-2 bg-transparent border-0 cursor-pointer text-left text-[14px] leading-[1.3] text-[var(--color-text)]"
+        className="flex-1 min-w-0 flex items-center gap-2.5 px-3 py-2 bg-transparent border-0 cursor-pointer text-left text-ui leading-[1.3] text-[var(--color-text)]"
         style={{ fontWeight: activo ? 800 : 400 }}
       >
         <span
@@ -192,11 +192,11 @@ export function ListaMarcable({
                   onClick={() => sumar(o.etiqueta, -1)}
                   disabled={marcado.cantidad <= 1}
                   aria-label={`Uno menos de ${o.etiqueta}`}
-                  className="w-8 self-stretch bg-transparent border-0 cursor-pointer font-extrabold text-[17px] leading-none text-[var(--color-text)] hover:bg-[var(--color-accent-200)] disabled:opacity-30 disabled:cursor-default"
+                  className="w-8 self-stretch bg-transparent border-0 cursor-pointer font-extrabold text-lead leading-none text-[var(--color-text)] hover:bg-[var(--color-accent-200)] disabled:opacity-30 disabled:cursor-default"
                 >
                   −
                 </button>
-                <span className="min-w-[26px] text-center font-extrabold text-[14px] tabular-nums" aria-live="polite">
+                <span className="min-w-[26px] text-center font-extrabold text-ui tabular-nums" aria-live="polite">
                   {marcado.cantidad}
                 </span>
                 <button
@@ -204,7 +204,7 @@ export function ListaMarcable({
                   onClick={() => sumar(o.etiqueta, 1)}
                   disabled={marcado.cantidad >= 99}
                   aria-label={`Uno más de ${o.etiqueta}`}
-                  className="w-8 self-stretch bg-transparent border-0 cursor-pointer font-extrabold text-[17px] leading-none text-[var(--color-text)] hover:bg-[var(--color-accent-200)] disabled:opacity-30 disabled:cursor-default"
+                  className="w-8 self-stretch bg-transparent border-0 cursor-pointer font-extrabold text-lead leading-none text-[var(--color-text)] hover:bg-[var(--color-accent-200)] disabled:opacity-30 disabled:cursor-default"
                 >
                   +
                 </button>
@@ -220,8 +220,8 @@ export function ListaMarcable({
 export function Subtitulo({ texto, cuenta }: { texto: string; cuenta: number }) {
   return (
     <div className="flex items-baseline gap-2 mb-2.5">
-      <div className="text-[11px] tracking-[.09em] uppercase opacity-62">{texto}</div>
-      <div className="text-[11px] tabular-nums opacity-45">{cuenta}</div>
+      <div className="text-cap opacity-62">{texto}</div>
+      <div className="text-cap tabular-nums opacity-45">{cuenta}</div>
     </div>
   );
 }
@@ -254,7 +254,7 @@ export function Fotos({
           type="button"
           onClick={onPegar}
           title="Pega la imagen que tengas copiada (también funciona Ctrl+V sobre esta sección)"
-          className="ml-auto -mt-1.5 px-2.5 min-h-8 bg-transparent border border-[var(--color-divider)] cursor-pointer text-[11px] font-extrabold uppercase tracking-[.07em] text-[var(--color-text)] hover:bg-black/[.05]"
+          className="ml-auto -mt-1.5 px-2.5 min-h-8 bg-transparent border border-[var(--color-divider)] cursor-pointer text-cap font-extrabold text-[var(--color-text)] hover:bg-black/[.05]"
         >
           Pegar imagen
         </button>
@@ -269,7 +269,7 @@ export function Fotos({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={f.src} alt="" className="w-full h-full object-cover" loading="lazy" />
             {!f.dbId ? (
-              <span className="absolute left-0 bottom-0 px-1.5 py-0.5 bg-[var(--color-accent)] text-white text-[10px] font-extrabold uppercase tracking-[.06em]">
+              <span className="absolute left-0 bottom-0 px-1.5 py-0.5 bg-[var(--color-accent)] text-white text-cap font-extrabold ">
                 Nueva
               </span>
             ) : null}
@@ -278,7 +278,7 @@ export function Fotos({
               onClick={() => onCopiar(f.id)}
               aria-label={`Copiar la foto a ${copiarA}`}
               title={`Copiar a ${copiarA}`}
-              className="absolute top-1.5 left-1.5 w-7 h-7 grid place-items-center bg-[rgba(32,30,29,.78)] text-white border-0 cursor-pointer opacity-80 group-hover:opacity-100 hover:bg-[var(--color-accent)] focus-visible:opacity-100"
+              className="absolute top-1.5 left-1.5 w-7 h-7 grid place-items-center bg-[rgba(31,28,33,.78)] text-white border-0 cursor-pointer opacity-80 group-hover:opacity-100 hover:bg-[var(--color-accent)] focus-visible:opacity-100"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
                 <rect x="8" y="8" width="12" height="12" />
@@ -290,7 +290,7 @@ export function Fotos({
               onClick={() => onQuitar(f.id)}
               aria-label="Quitar la foto del acta"
               title="Quitar del acta"
-              className="absolute top-1.5 right-1.5 w-7 h-7 grid place-items-center bg-[rgba(32,30,29,.78)] text-white border-0 cursor-pointer opacity-80 group-hover:opacity-100 hover:bg-[var(--color-accent)] focus-visible:opacity-100"
+              className="absolute top-1.5 right-1.5 w-7 h-7 grid place-items-center bg-[rgba(31,28,33,.78)] text-white border-0 cursor-pointer opacity-80 group-hover:opacity-100 hover:bg-[var(--color-accent)] focus-visible:opacity-100"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8">
                 <path d="M6 6l12 12M18 6L6 18" />
@@ -303,7 +303,7 @@ export function Fotos({
             <path d="M3 8h3l2-3h8l2 3h3v12H3z" />
             <path d="M12 10.5v6M9 13.5h6" />
           </svg>
-          <span className="font-extrabold text-[10px] tracking-[.08em] uppercase">Agregar fotos</span>
+          <span className="font-extrabold text-cap ">Agregar fotos</span>
           <input type="file" accept="image/*" multiple onChange={onAgregar} className="absolute w-px h-px opacity-0" />
         </label>
       </div>
@@ -342,9 +342,9 @@ export function Videos({
             style={{ border: `1px solid ${nuevos.has(v.id) ? "var(--color-accent)" : "var(--color-divider-soft)"}` }}
           >
             <video src={v.archivoUrl} controls preload="metadata" playsInline className="w-full aspect-video bg-black object-contain block" />
-            <figcaption className="flex items-center gap-2 pl-3 pr-1 text-[12px] tabular-nums">
+            <figcaption className="flex items-center gap-2 pl-3 pr-1 text-cap tabular-nums">
               {nuevos.has(v.id) ? (
-                <span className="px-1.5 py-0.5 bg-[var(--color-accent)] text-white text-[10px] font-extrabold uppercase tracking-[.06em]">
+                <span className="px-1.5 py-0.5 bg-[var(--color-accent)] text-white text-cap font-extrabold ">
                   Nuevo
                 </span>
               ) : null}
@@ -361,11 +361,11 @@ export function Videos({
 
         {subida ? (
           <div className="aspect-video sm:aspect-auto sm:min-h-[120px] flex flex-col justify-center gap-2 px-4 border border-[var(--color-accent)] bg-[var(--color-accent-100)]">
-            <div className="font-extrabold text-[13px]">{subida.paso}</div>
+            <div className="font-extrabold text-meta">{subida.paso}</div>
             <div className="h-1.5 bg-[var(--color-accent-300)] overflow-hidden">
               <div className="h-full bg-[var(--color-accent)] transition-[width] duration-300" style={{ width: `${subida.pct}%` }} />
             </div>
-            <div className="text-xs opacity-70 tabular-nums">{subida.pct}% · no cierres esta página</div>
+            <div className="text-cap opacity-70 tabular-nums">{subida.pct}% · no cierres esta página</div>
           </div>
         ) : (
           <label
@@ -377,8 +377,8 @@ export function Videos({
               <path d="M3 7h11v10H3z" />
               <path d="M14 11l7-4v10l-7-4z" />
             </svg>
-            <span className="font-extrabold text-[10px] tracking-[.08em] uppercase">Agregar un video</span>
-            <span className="text-[11px] opacity-62">Desde un archivo · hasta 1 minuto</span>
+            <span className="font-extrabold text-cap ">Agregar un video</span>
+            <span className="text-cap opacity-62">Desde un archivo · hasta 1 minuto</span>
             <input type="file" accept="video/*" disabled={ocupado} onChange={onAgregar} className="absolute w-px h-px opacity-0" />
           </label>
         )}

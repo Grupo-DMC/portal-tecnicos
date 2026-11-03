@@ -61,6 +61,17 @@ export async function getVisitasRango(rango: Rango, hoy: string): Promise<Visita
   }));
 }
 
+/**
+ * Cuántas visitas esperan hoy una nueva fecha (reagendadas o pendientes), sin
+ * importar para cuándo estaban programadas. Es el mismo número del menú.
+ */
+export async function contarPorReagendar(): Promise<number> {
+  const [f] = await consulta<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM dmc.visita WHERE estado IN ('REAGENDADA', 'PENDIENTE') AND activo = 1`
+  );
+  return num(f?.n ?? 0);
+}
+
 /** Los números del menú lateral del panel. */
 export interface ConteosMenu {
   visitas: number;

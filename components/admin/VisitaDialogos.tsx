@@ -18,7 +18,7 @@ import {
 } from "@/app/actions/admin";
 import { ESTADO_VISITA_LABEL, nombreDeQuienLaTomo } from "@/lib/ui/estado";
 import { mensajeRut } from "@/lib/ui/formato";
-import { hoyISO } from "@/lib/ui/fecha";
+import { hoyISO, fechaCL } from "@/lib/ui/fecha";
 import { algunoPideHora } from "@/lib/ui/motivos";
 import { cargoVigente } from "@/lib/ui/cargos";
 import { etiquetaPersona, usePersonasLocal } from "@/lib/ui/personas-local";
@@ -448,15 +448,8 @@ export default function VisitaDialogo({
 
   return (
     <Dialogo
-      kicker={
-        visita
-          ? "Operación · corregir visita"
-          : origen
-            ? `Operación · agendar por problema ${origen.folio}`
-            : "Operación · visita"
-      }
       titulo={
-        visita ? `Editar visita ${visita.folio}` : origen ? "Agendar visita para resolver" : "Nueva visita"
+        visita ? `Editar visita ${visita.folio}` : origen ? `Agendar visita para resolver el problema de ${origen.folio}` : "Nueva visita"
       }
       cta={visita ? "Guardar cambios" : origen ? "Agendar y asignar" : "Programar visita"}
       nota={
@@ -550,13 +543,12 @@ export function ReprogramarDialogo({
       return;
     }
     const tecnico = ref.tecnicos.find((t) => String(t.id) === String(form.tecnicoId))?.nombreCompleto ?? "";
-    onHecho(`Reprogramada para el ${form.fecha} · ${tecnico}`);
+    onHecho(`Reprogramada para el ${fechaCL(String(form.fecha))} · ${tecnico}`);
     onCerrar();
   }
 
   return (
     <Dialogo
-      kicker="Operación · reprogramar"
       titulo={`Reprogramar ${visita.folio}`}
       cta="Reprogramar visita"
       nota="La visita vuelve a estado PROGRAMADA con la nueva fecha y le aparece al técnico asignado en su celular."
@@ -604,7 +596,6 @@ export function LiberarDialogo({
 
   return (
     <Dialogo
-      kicker="Operación · liberar visita"
       titulo={`Liberar ${visita.folio}`}
       cta="Liberar la visita"
       nota={`La visita está en curso y la tiene ${quien}. Al liberarla se anula ese inicio y vuelve a quedar «Programada»: ${
@@ -669,7 +660,6 @@ export function CancelarAdminDialogo({
 
   return (
     <Dialogo
-      kicker="Operación · cierre administrativo"
       titulo={`Cancelar por admin ${visita.folio}`}
       cta="Cerrar la visita"
       nota={`La visita está ${ESTADO_VISITA_LABEL[visita.estado].toLowerCase()} y va a quedar «Cancelada por admin». Deja de aparecerle al técnico en el celular y no se puede volver atrás desde el panel: si hay que rehacerla, se agenda una visita nueva.`}
@@ -736,7 +726,6 @@ export function EliminarVisitaDialogo({
 
   return (
     <Dialogo
-      kicker="Operación · eliminar visita"
       titulo={`Eliminar ${visita.folio}`}
       cta="Eliminar visita"
       nota="No se borra de la base: queda inactiva y registrada en la auditoría de eliminaciones, con tu usuario y la fecha. Pero desaparece del panel, del celular del técnico, de los problemas y de los gráficos de coordinación —solo el administrador la sigue viendo, con el filtro «Eliminadas»—, y no hay forma de deshacerlo desde acá — si hace falta recuperarla, hay que pedirlo directo en la base de datos."

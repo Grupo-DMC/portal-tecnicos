@@ -15,7 +15,7 @@ export function EncabezadoPapel({ fv }: { fv: VisitasPapelApi }) {
   const { anio, setAnio, guardados, tecnicosLibres, agregarTecnico, anios } = fv;
   return (
     <>
-      <p className="text-[13px] leading-[1.55] opacity-75 max-w-[760px]">
+      <p className="text-meta leading-[1.55] opacity-75 max-w-[760px]">
         Para pasar al sistema los informes que se hicieron a mano. Cada informe entra como visita{" "}
         <strong>completada</strong>, con el folio del año del informe, sin fotos, video ni firma dibujada. Lo que
         escribes se guarda en este navegador hasta que lo guardes en el sistema.
@@ -54,11 +54,11 @@ export function EncabezadoPapel({ fv }: { fv: VisitasPapelApi }) {
 
       {guardados.length ? (
         <details className="mt-5 border border-[var(--color-divider-soft)] bg-[var(--color-surface)]">
-          <summary className="px-3.5 py-2.5 cursor-pointer text-[13px]">
+          <summary className="px-3.5 py-2.5 cursor-pointer text-meta">
             <strong>{guardados.length}</strong> {guardados.length === 1 ? "informe guardado" : "informes guardados"} en
             esta sesión
           </summary>
-          <ul className="px-3.5 pb-3 m-0 list-none grid gap-1 text-[13px] max-h-60 overflow-y-auto">
+          <ul className="px-3.5 pb-3 m-0 list-none grid gap-1 text-meta max-h-60 overflow-y-auto">
             {guardados.map((g) => (
               <li key={g.folio} className="flex gap-2">
                 <Link href={`/admin/visitas/${encodeURIComponent(g.folio)}`} className="font-extrabold tabular-nums underline">
@@ -108,7 +108,7 @@ export function RecuadrosTecnicos({ fv }: { fv: VisitasPapelApi }) {
   return (
     <>
       {bloques.length === 0 ? (
-        <div className="mt-5 px-3.5 py-6 border border-dashed border-[var(--color-divider)] text-[13px] opacity-70">
+        <div className="mt-5 px-3.5 py-6 border border-dashed border-[var(--color-divider)] text-meta opacity-70">
           Elige el año y agrega un técnico: dentro de su recuadro van sus clientes, sus tiendas y los informes.
         </div>
       ) : null}
@@ -132,9 +132,9 @@ export function RecuadrosTecnicos({ fv }: { fv: VisitasPapelApi }) {
                 className="flex-1 min-w-0 flex items-center gap-2.5 min-h-10 bg-transparent border-0 cursor-pointer text-inherit text-left"
               >
                 <Flecha abierto={b.abierto} />
-                <span className="text-[10px] tracking-[.14em] uppercase opacity-70 flex-none">Técnico</span>
-                <span className="font-extrabold text-[17px] truncate">{nombreTec}</span>
-                <span className="text-[11px] tracking-[.06em] uppercase opacity-70 tabular-nums flex-none">
+                <span className="text-cap opacity-70 flex-none">Técnico</span>
+                <span className="font-extrabold text-lead truncate">{nombreTec}</span>
+                <span className="text-cap opacity-70 tabular-nums flex-none">
                   {gruposDelTecnico.length} {gruposDelTecnico.length === 1 ? "cliente" : "clientes"} · {delTecnico.length}{" "}
                   {delTecnico.length === 1 ? "informe" : "informes"}
                 </span>
@@ -176,7 +176,7 @@ export function RecuadrosTecnicos({ fv }: { fv: VisitasPapelApi }) {
                 </div>
 
                 {gruposDelTecnico.length === 0 ? (
-                  <div className="mt-3.5 px-3.5 py-4 border border-dashed border-[var(--color-divider)] text-[13px] opacity-70">
+                  <div className="mt-3.5 px-3.5 py-4 border border-dashed border-[var(--color-divider)] text-meta opacity-70">
                     Agrega un cliente de {nombreTec} para empezar con sus tiendas.
                   </div>
                 ) : null}
@@ -209,8 +209,8 @@ export function RecuadrosTecnicos({ fv }: { fv: VisitasPapelApi }) {
                           className="flex-1 min-w-0 flex items-center gap-2.5 min-h-10 bg-transparent border-0 cursor-pointer text-[var(--color-text)] text-left"
                         >
                           <Flecha abierto={g.abierto} />
-                          <span className="font-extrabold text-[16px] truncate">{nombre}</span>
-                          <span className="text-[11px] tracking-[.06em] uppercase opacity-66 tabular-nums flex-none">
+                          <span className="font-extrabold text-lead truncate">{nombre}</span>
+                          <span className="text-cap opacity-66 tabular-nums flex-none">
                             {tiendasDelGrupo.length} {tiendasDelGrupo.length === 1 ? "tienda" : "tiendas"} · {delGrupo.length}{" "}
                             {delGrupo.length === 1 ? "informe" : "informes"}
                           </span>
@@ -258,7 +258,7 @@ export function RecuadrosTecnicos({ fv }: { fv: VisitasPapelApi }) {
                                 <button
                                   type="button"
                                   onClick={() => agregarTiendas(g.key, libres.map((s) => s.v))}
-                                  className="btn btn-secondary min-h-9 px-3 text-[13px]"
+                                  className="btn btn-secondary min-h-9 px-3 text-meta"
                                 >
                                   Agregar las {libres.length} tiendas del mall
                                 </button>
@@ -319,7 +319,7 @@ export function BarraGuardar({ fv }: { fv: VisitasPapelApi }) {
       {/* Barra fija para guardar */}
       {informes.length || guardando ? (
         <div className="fixed bottom-0 right-0 left-0 lg:left-[248px] z-20 bg-[var(--color-bg)] border-t-2 border-[var(--color-divider)] px-4 md:px-7 py-3 flex items-center gap-3 flex-wrap">
-          <div className="text-[13px] tabular-nums">
+          <div className="text-meta tabular-nums">
             <strong>{completos}</strong> de {informes.length} {informes.length === 1 ? "informe completo" : "informes completos"}
             {" · "}
             {anio}
@@ -367,7 +367,6 @@ export function DialogosPapel({ fv }: { fv: VisitasPapelApi }) {
     <>
       {confirmando ? (
         <Dialogo
-          kicker="Visitas en papel · confirmar"
           titulo={`¿Guardar ${completos} ${completos === 1 ? "informe" : "informes"} de ${anio}?`}
           cta={`Sí, guardar ${completos}`}
           nota="Cada informe entra como visita completada, con su folio. Después se corrige desde «Editar acta»."
@@ -377,7 +376,7 @@ export function DialogosPapel({ fv }: { fv: VisitasPapelApi }) {
           onCerrar={() => setConfirmando(false)}
           onGuardar={guardar}
         >
-          <ul className="m-0 p-0 list-none grid gap-1.5 text-[14px]">
+          <ul className="m-0 p-0 list-none grid gap-1.5 text-ui">
             {bloques.map((b) => {
               const del = informesDe({ tecnicoId: b.tecnicoId });
               const listos = del.filter((i) => !faltante(i, anio, hoy)).length;
@@ -393,7 +392,7 @@ export function DialogosPapel({ fv }: { fv: VisitasPapelApi }) {
             })}
           </ul>
           {informes.length > completos ? (
-            <p className="mt-3.5 mb-0 text-[13px] text-[var(--color-accent-800)]">
+            <p className="mt-3.5 mb-0 text-meta text-[var(--color-accent-800)]">
               {informes.length - completos} {informes.length - completos === 1 ? "informe incompleto queda" : "informes incompletos quedan"}{" "}
               en la lista sin guardarse.
             </p>
@@ -403,7 +402,6 @@ export function DialogosPapel({ fv }: { fv: VisitasPapelApi }) {
 
       {porQuitar ? (
         <Dialogo
-          kicker="Visitas en papel · quitar"
           titulo={porQuitar.titulo}
           cta={porQuitar.cta}
           nota="Se pierde lo que ya está escrito ahí. No se puede deshacer."

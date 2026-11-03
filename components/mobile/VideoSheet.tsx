@@ -286,11 +286,11 @@ export default function VideoSheet({
       role="dialog"
       aria-modal="true"
       aria-label="Grabar video"
-      className="fixed inset-0 z-50 bg-[rgba(45,43,43,.7)] flex flex-col justify-end items-center"
+      className="fixed inset-0 z-50 bg-[rgba(31,28,33,.7)] flex flex-col justify-end items-center"
     >
       <div className="w-full max-w-[460px] max-h-[94vh] overflow-y-auto bg-[var(--color-bg)] border-t-2 border-[var(--color-text)] animate-up-sheet">
         <div className="flex items-center gap-2.5 px-4 py-3.5 border-b-2 border-[var(--color-divider)]">
-          <div className="font-extrabold text-[17px] leading-[1.2]">
+          <div className="font-extrabold text-lead leading-[1.2]">
             {estado === "revisando"
               ? "Revisa el video"
               : estado === "ajustando"
@@ -324,29 +324,29 @@ export default function VideoSheet({
             )}
 
             {estado === "pidiendo" ? (
-              <div className="absolute inset-0 grid place-items-center px-6 text-center text-[13px] text-[var(--color-bg)]">
+              <div className="absolute inset-0 grid place-items-center px-6 text-center text-meta text-[var(--color-bg)]">
                 Esperando que autorices la cámara y el micrófono…
               </div>
             ) : null}
             {estado === "ajustando" ? (
-              <div className="absolute inset-0 grid place-items-center px-6 text-center text-[13px] text-[var(--color-bg)] bg-[rgba(24,22,21,.82)]">
+              <div className="absolute inset-0 grid place-items-center px-6 text-center text-meta text-[var(--color-bg)] bg-[rgba(24,22,21,.82)]">
                 <div>
-                  <div className="font-extrabold text-base">Recortando y bajando a 720p…</div>
+                  <div className="font-extrabold text-lead">Recortando y bajando a 720p…</div>
                   <div className="mt-1 opacity-80 tabular-nums">{ajuste}%</div>
                 </div>
               </div>
             ) : null}
             {estado === "denegada" || estado === "sin-camara" ? (
-              <div className="absolute inset-0 grid place-items-center px-6 text-center text-[13px] text-[var(--color-bg)]">
+              <div className="absolute inset-0 grid place-items-center px-6 text-center text-meta text-[var(--color-bg)]">
                 {error}
               </div>
             ) : null}
 
             {estado === "grabando" ? (
-              <div className="absolute top-2 left-2 flex items-center gap-2 px-2.5 py-1.5 bg-[rgba(32,30,29,.78)] text-[var(--color-bg)]">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#e5484d] animate-pulse" />
-                <span className="font-extrabold text-[13px] tabular-nums">{reloj(segundos)}</span>
-                <span className="text-[11px] opacity-80 tabular-nums">
+              <div className="absolute top-2 left-2 flex items-center gap-2 px-2.5 py-1.5 bg-[rgba(31,28,33,.78)] text-[var(--color-bg)]">
+                <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-danger)] animate-pulse" />
+                <span className="font-extrabold text-meta tabular-nums">{reloj(segundos)}</span>
+                <span className="text-cap opacity-80 tabular-nums">
                   quedan {reloj(restantes)}
                 </span>
               </div>
@@ -371,7 +371,7 @@ export default function VideoSheet({
                   style={{ width: `${ajuste}%` }}
                 />
               </div>
-              <p className="mt-2.5 mb-0 text-xs opacity-66">
+              <p className="mt-2.5 mb-0 text-cap opacity-66">
                 El video venía más largo o con más calidad de la que se puede guardar. Se está
                 reajustando y demora lo mismo que dura el clip: no cierres esta ventana.
               </p>
@@ -383,7 +383,7 @@ export default function VideoSheet({
               <button
                 type="button"
                 onClick={grabar}
-                className="w-full min-h-[58px] flex items-center justify-between px-4.5 mt-3.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-base cursor-pointer text-left hover:bg-[var(--color-accent-hover)]"
+                className="w-full min-h-[58px] flex items-center justify-between px-4.5 mt-3.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)]"
               >
                 <span>Empezar a grabar</span>
                 <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
@@ -391,7 +391,7 @@ export default function VideoSheet({
                   <path d="M14 11l7-4v10l-7-4z" />
                 </svg>
               </button>
-              <p className="mt-2.5 mb-0 text-xs opacity-66">
+              <p className="mt-2.5 mb-0 text-cap opacity-66">
                 720p y hasta 1 minuto. Al llegar al minuto la grabación se corta sola.
                 {sinAudio ? " Este equipo no dio micrófono: el clip va a quedar sin sonido." : ""}
               </p>
@@ -402,7 +402,7 @@ export default function VideoSheet({
             <button
               type="button"
               onClick={parar}
-              className="w-full min-h-[58px] flex items-center justify-between px-4.5 mt-3.5 bg-[var(--color-text)] text-[var(--color-bg)] border-0 font-extrabold text-base cursor-pointer text-left hover:bg-[var(--color-neutral-900)]"
+              className="w-full min-h-[58px] flex items-center justify-between px-4.5 mt-3.5 bg-[var(--color-text)] text-[var(--color-bg)] border-0 font-extrabold text-lead cursor-pointer text-left hover:bg-[var(--color-neutral-900)]"
             >
               <span>Detener y revisar</span>
               <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
@@ -413,14 +413,14 @@ export default function VideoSheet({
 
           {estado === "revisando" && clip ? (
             <>
-              <div className="mt-3 flex items-center gap-2 text-xs opacity-66 tabular-nums">
+              <div className="mt-3 flex items-center gap-2 text-cap opacity-66 tabular-nums">
                 <span>
                   {reloj(clip.medida.duracionSeg)} · {clip.medida.ancho}x{clip.medida.alto}
                 </span>
                 <span className="ml-auto">{mb(clip.blob.size)}</span>
               </div>
               {clip.ajustes.length ? (
-                <div className="mt-2 px-3 py-2.5 bg-[var(--color-surface-3)] border-l-[3px] border-[var(--color-accent)] text-[12px] leading-[1.45]">
+                <div className="mt-2 px-3 py-2.5 bg-[var(--color-surface-3)] border border-[var(--color-accent-300)] text-cap leading-[1.45]">
                   <span className="font-extrabold">Se ajustó para poder guardarlo: </span>
                   {clip.ajustes.join("; ")}. Revísalo antes de aceptarlo.
                 </div>
@@ -428,7 +428,7 @@ export default function VideoSheet({
               <button
                 type="button"
                 onClick={aceptar}
-                className="w-full min-h-[58px] flex items-center justify-between px-4.5 mt-2.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-base cursor-pointer text-left hover:bg-[var(--color-accent-hover)]"
+                className="w-full min-h-[58px] flex items-center justify-between px-4.5 mt-2.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)]"
               >
                 <span>Usar este video</span>
                 <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -438,7 +438,7 @@ export default function VideoSheet({
               <button
                 type="button"
                 onClick={repetir}
-                className="w-full min-h-[50px] mt-2.5 px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-sm cursor-pointer text-left hover:bg-black/[.07]"
+                className="w-full min-h-[50px] mt-2.5 px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
               >
                 Grabar otro
               </button>
@@ -446,11 +446,11 @@ export default function VideoSheet({
           ) : null}
 
           {error && estado !== "denegada" && estado !== "sin-camara" ? (
-            <p className="mt-2.5 mb-0 text-xs text-[var(--color-accent-active)]">{error}</p>
+            <p className="mt-2.5 mb-0 text-cap text-[var(--color-danger-800)]">{error}</p>
           ) : null}
 
           {estado !== "grabando" && estado !== "revisando" && estado !== "ajustando" ? (
-            <label className="relative w-full min-h-[52px] flex items-center gap-2.5 px-4 mt-2.5 bg-transparent border border-dashed border-black/[.5] text-[var(--color-text)] font-extrabold text-sm cursor-pointer hover:bg-black/[.06]">
+            <label className="relative w-full min-h-[52px] flex items-center gap-2.5 px-4 mt-2.5 bg-transparent border border-dashed border-black/[.5] text-[var(--color-text)] font-extrabold text-ui cursor-pointer hover:bg-black/[.06]">
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path d="M4 5h16v14H4z" />
                 <path d="M10 9l5 3-5 3z" />
@@ -469,7 +469,7 @@ export default function VideoSheet({
             <button
               type="button"
               onClick={cerrar}
-              className="w-full min-h-[50px] mt-2.5 px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-sm cursor-pointer text-left hover:bg-black/[.07]"
+              className="w-full min-h-[50px] mt-2.5 px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
             >
               Cancelar
             </button>

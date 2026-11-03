@@ -102,7 +102,7 @@ export default function FirmaSheet({
     g.lineWidth = 5;
     g.lineCap = "round";
     g.lineJoin = "round";
-    g.strokeStyle = "#201e1d";
+    g.strokeStyle = "#1f1c21";
     return g;
   }
 
@@ -207,20 +207,20 @@ export default function FirmaSheet({
       >
         <div className="flex items-center gap-2.5 px-4 py-2.5 border-b-2 border-[var(--color-divider)] flex-none">
           <div className="min-w-0">
-            <div className="text-[10px] tracking-[.12em] uppercase opacity-62">Firma de la tienda</div>
-            <div className="font-extrabold text-[15px] leading-[1.2] truncate">{nombre || "Responsable"}</div>
+            <div className="text-cap opacity-62">Firma de la tienda</div>
+            <div className="font-extrabold text-body leading-[1.2] truncate">{nombre || "Responsable"}</div>
           </div>
           <button
             type="button"
             onClick={limpiar}
-            className="ml-auto min-h-11 px-3 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-[13px] cursor-pointer"
+            className="ml-auto min-h-11 px-3 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-meta cursor-pointer"
           >
             Limpiar
           </button>
           <button
             type="button"
             onClick={confirmar}
-            className="min-h-11 px-4 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-[13px] cursor-pointer"
+            className="min-h-11 px-4 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-meta cursor-pointer"
           >
             Confirmar firma
           </button>
@@ -269,7 +269,7 @@ export default function FirmaSheet({
               />
               <div className="absolute left-6 right-6 bottom-9 h-px bg-[var(--color-divider-soft)] pointer-events-none" />
               {vacia ? (
-                <div className="absolute inset-0 grid place-items-center pointer-events-none text-[13px] tracking-[.12em] uppercase opacity-45">
+                <div className="absolute inset-0 grid place-items-center pointer-events-none text-meta opacity-45">
                   Firma acá
                 </div>
               ) : null}
@@ -278,7 +278,7 @@ export default function FirmaSheet({
         </div>
 
         {girado ? (
-          <div className="flex-none px-4 py-2 text-center text-[11px] tracking-[.08em] uppercase opacity-62 border-t border-[var(--color-divider-soft)]">
+          <div className="flex-none px-4 py-2 text-center text-cap opacity-62 border-t border-[var(--color-divider-soft)]">
             Gira el teléfono para verlo derecho — ya puedes firmar así
           </div>
         ) : null}
@@ -292,7 +292,7 @@ export default function FirmaSheet({
       <div className="p-4">
         <div className="flex gap-3 mb-3.5">
           <div className="flex-1 min-w-0">
-            <label htmlFor="fi-nom" className="block text-[11px] tracking-[.09em] uppercase opacity-60 mb-1.5">
+            <label htmlFor="fi-nom" className="block text-cap opacity-60 mb-1.5">
               Nombre
             </label>
             <input
@@ -303,11 +303,11 @@ export default function FirmaSheet({
               autoComplete="off"
               autoCorrect="off"
               spellCheck={false}
-              className="w-full min-h-[52px] px-3.5 py-3 text-base bg-[var(--color-surface)] border border-[var(--color-divider)] text-[var(--color-text)] caret-[var(--color-accent)] focus-visible:border-[var(--color-accent)] focus-visible:outline-none"
+              className="w-full min-h-[52px] px-3.5 py-3 text-lead bg-[var(--color-surface)] border border-[var(--color-divider)] text-[var(--color-text)] caret-[var(--color-accent)] focus-visible:border-[var(--color-accent)] focus-visible:outline-none"
             />
           </div>
           <div className="flex-1 min-w-0">
-            <label htmlFor="fi-rut" className="block text-[11px] tracking-[.09em] uppercase opacity-60 mb-1.5">
+            <label htmlFor="fi-rut" className="block text-cap opacity-60 mb-1.5">
               RUT
             </label>
             <input
@@ -319,10 +319,10 @@ export default function FirmaSheet({
               onChange={(e) => setRut(fmtRut(e.target.value))}
               placeholder="11.111.111-1"
               autoComplete="off"
-              className="w-full min-h-[52px] px-3.5 py-3 text-base tabular-nums bg-[var(--color-surface)] border border-[var(--color-divider)] text-[var(--color-text)] caret-[var(--color-accent)] focus-visible:border-[var(--color-accent)] focus-visible:outline-none"
+              className="w-full min-h-[52px] px-3.5 py-3 text-lead tabular-nums bg-[var(--color-surface)] border border-[var(--color-divider)] text-[var(--color-text)] caret-[var(--color-accent)] focus-visible:border-[var(--color-accent)] focus-visible:outline-none"
             />
             {rut.trim() && rutCompleto(rut) && !rutDvCorrecto(rut) ? (
-              <div className="mt-1 text-xs text-[var(--color-accent-800)]">
+              <div className="mt-1 text-cap text-[var(--color-accent-800)]">
                 Ese RUT no es válido: revisa el dígito verificador.
               </div>
             ) : null}
@@ -332,7 +332,7 @@ export default function FirmaSheet({
         <button
           type="button"
           onClick={() => setALoAncho(true)}
-          className="w-full min-h-[54px] flex items-center justify-between px-4 mb-3 bg-[var(--color-text)] text-[var(--color-bg)] border-0 font-extrabold text-sm cursor-pointer text-left"
+          className="w-full min-h-[54px] flex items-center justify-between px-4 mb-3 bg-[var(--color-text)] text-[var(--color-bg)] border-0 font-extrabold text-ui cursor-pointer text-left"
         >
           <span>Firmar a lo ancho (más espacio)</span>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -341,7 +341,7 @@ export default function FirmaSheet({
           </svg>
         </button>
 
-        <div className="text-[10px] tracking-[.12em] uppercase opacity-66 mb-1.5">O firma dentro del recuadro</div>
+        <div className="text-cap opacity-66 mb-1.5">O firma dentro del recuadro</div>
         <div className="relative border border-[var(--color-divider)] bg-[var(--color-surface-3)]">
           <div className="h-[220px] [&>canvas]:w-full [&>canvas]:h-[220px]">{lienzo}</div>
           <div className="absolute left-3.5 right-3.5 bottom-[34px] h-px bg-[var(--color-divider-soft)] pointer-events-none" />
@@ -351,17 +351,17 @@ export default function FirmaSheet({
           <button
             type="button"
             onClick={limpiar}
-            className="min-h-11 px-1 bg-transparent border-0 text-[var(--color-accent-active)] text-[13px] underline underline-offset-4 cursor-pointer"
+            className="min-h-11 px-1 bg-transparent border-0 text-[var(--color-accent-active)] text-meta underline underline-offset-4 cursor-pointer"
           >
             Limpiar
           </button>
-          <div className="text-xs opacity-62">La pantalla no se mueve mientras firmas</div>
+          <div className="text-cap opacity-62">La pantalla no se mueve mientras firmas</div>
         </div>
 
         <button
           type="button"
           onClick={confirmar}
-          className="w-full min-h-[58px] flex items-center justify-between px-4.5 mt-2 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-base cursor-pointer text-left hover:bg-[var(--color-accent-hover)] active:bg-[var(--color-accent-active)]"
+          className="w-full min-h-[58px] flex items-center justify-between px-4.5 mt-2 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)] active:bg-[var(--color-accent-active)]"
         >
           <span>Confirmar firma</span>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">

@@ -17,7 +17,7 @@ import {
   ESTADO_VISITA_TAG,
   textoMotivos,
 } from "@/lib/ui/estado";
-import { fechaHoraLegible, textoFechaVisita } from "@/lib/ui/fecha";
+import { fechaHoraLegible, textoFechaVisita, fechaCL } from "@/lib/ui/fecha";
 import { sinTildes, urlTel } from "@/lib/ui/formato";
 import { nombreProblema, nombreTrabajo, puede, useReferencias } from "@/lib/ui/referencias";
 import type { DatosPendientes, GestionMarca, HistorialLocal, Pendiente } from "@/lib/contratos/panel";
@@ -125,8 +125,8 @@ export default function PendientesView({ datos }: { datos: DatosPendientes }) {
   );
 
   const resumen = [
-    { label: "Pendientes", n: pendientes.filter((p) => p.visita.estado === "PENDIENTE").length },
-    { label: "Reagendadas", n: pendientes.filter((p) => p.visita.estado === "REAGENDADA").length },
+    { label: ["Pendiente", "Pendientes"], n: pendientes.filter((p) => p.visita.estado === "PENDIENTE").length, alarma: true },
+    { label: ["Reagendada", "Reagendadas"], n: pendientes.filter((p) => p.visita.estado === "REAGENDADA").length },
     { label: `Más de ${DIAS_ATRASO} días esperando`, n: pendientes.filter((p) => p.dias > DIAS_ATRASO).length },
     ...(pasos.length
       ? [{ label: "Sin gestión empezada", n: pendientes.filter((p) => marcasDe(p).length === 0).length }]
@@ -190,7 +190,7 @@ export default function PendientesView({ datos }: { datos: DatosPendientes }) {
 
   return (
     <>
-      <AdminHeader kicker="Operación · visitas que no se pudieron hacer" title="Reagendas y pendientes">
+      <AdminHeader title="Reagendas y pendientes">
         {accionesLote.length ? (
           <button
             onClick={() => {
@@ -221,9 +221,14 @@ export default function PendientesView({ datos }: { datos: DatosPendientes }) {
       <div className="pb-10 animate-fade-in">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 px-4 md:px-7 pt-5">
           {resumen.map((r) => (
-            <div key={r.label} className="px-4 py-3 border border-black/[.3] bg-[var(--color-surface)]">
-              <div className="font-extrabold text-[26px] leading-none tabular-nums">{r.n}</div>
-              <div className="text-[10px] tracking-[.11em] uppercase opacity-62 mt-1.5">{r.label}</div>
+            <div key={String(r.label)} className="px-4 py-3 border border-black/[.3] bg-[var(--color-surface)]">
+              <div
+                className="num font-bold text-h2 leading-none tabular-nums"
+                style={"alarma" in r && r.alarma && r.n > 0 ? { color: "var(--color-danger)" } : undefined}
+              >
+                {r.n}
+              </div>
+              <div className="text-cap opacity-62 mt-1.5">{Array.isArray(r.label) ? r.label[r.n === 1 ? 0 : 1] : r.label}</div>
             </div>
           ))}
         </div>
@@ -315,10 +320,10 @@ export default function PendientesView({ datos }: { datos: DatosPendientes }) {
 
           {filtrados.length === 0 ? (
             <div className="py-14 text-center">
-              <div className="font-extrabold text-[17px] mb-1.5">
+              <div className="font-extrabold text-lead mb-1.5">
                 {pendientes.length === 0 ? "No hay visitas reagendadas ni pendientes" : "Nada que mostrar"}
               </div>
-              <div className="text-[13px] opacity-66">
+              <div className="text-meta opacity-66">
                 {pendientes.length === 0
                   ? "Cuando un técnico reagende una visita o la deje pendiente, aparece acá."
                   : "Ajusta la búsqueda o los filtros."}
@@ -329,7 +334,7 @@ export default function PendientesView({ datos }: { datos: DatosPendientes }) {
 
         {seleccionando ? (
           <div className="sticky bottom-0 z-10 mt-4 flex items-center gap-2.5 flex-wrap px-4 md:px-7 py-3 bg-[var(--color-bg)] border-t-2 border-[var(--color-divider)]">
-            <div className="font-extrabold text-[13px] tabular-nums">
+            <div className="font-extrabold text-meta tabular-nums">
               {seleccionadas.length === 0
                 ? "Marca las visitas con su casilla"
                 : `${seleccionadas.length} ${seleccionadas.length === 1 ? "visita marcada" : "visitas marcadas"}`}
@@ -337,7 +342,7 @@ export default function PendientesView({ datos }: { datos: DatosPendientes }) {
             <button
               type="button"
               onClick={() => setMarcadas([...new Set([...marcadas, ...filtrados.map((p) => p.visita.folio)])])}
-              className="min-h-8 px-1 bg-transparent border-0 text-[var(--color-accent-active)] text-xs underline underline-offset-[3px] cursor-pointer"
+              className="min-h-8 px-1 bg-transparent border-0 text-[var(--color-accent-active)] text-cap underline underline-offset-[3px] cursor-pointer"
             >
               Marcar las que se ven
             </button>
@@ -345,7 +350,7 @@ export default function PendientesView({ datos }: { datos: DatosPendientes }) {
               <button
                 type="button"
                 onClick={() => setMarcadas([])}
-                className="min-h-8 px-1 bg-transparent border-0 text-[var(--color-accent-active)] text-xs underline underline-offset-[3px] cursor-pointer"
+                className="min-h-8 px-1 bg-transparent border-0 text-[var(--color-accent-active)] text-cap underline underline-offset-[3px] cursor-pointer"
               >
                 Desmarcar todas
               </button>
@@ -458,7 +463,7 @@ function Tarjeta({
       v: textoFechaVisita(v) + (v.horaProgramada ? ` · ${v.horaProgramada}` : " · sin hora"),
     },
     ...(reagenda
-      ? [{ k: "Fecha anterior", v: reagenda.fechaAnterior + (reagenda.horaAnterior ? ` · ${reagenda.horaAnterior}` : "") }]
+      ? [{ k: "Fecha anterior", v: fechaCL(reagenda.fechaAnterior) + (reagenda.horaAnterior ? ` · ${reagenda.horaAnterior}` : "") }]
       : []),
     {
       k: "Técnico",
@@ -471,7 +476,7 @@ function Tarjeta({
 
   return (
     <div
-      className="border-2 border-[var(--color-text)] mt-6 shadow-[3px_3px_0_rgba(32,30,29,.1)]"
+      className="border-2 border-[var(--color-text)] mt-6"
       style={seleccion?.marcada ? { outline: "3px solid var(--color-accent)", outlineOffset: 2 } : undefined}
     >
       {/* Cabecera: qué visita es y cuánto lleva esperando */}
@@ -480,8 +485,8 @@ function Tarjeta({
           <Casilla marcada={seleccion.marcada} onAlternar={seleccion.onAlternar} label={`Marcar ${v.folio}`} />
         ) : null}
         <div className="min-w-0">
-          <div className="font-extrabold text-lg leading-[1.2]">{v.sucursal?.nombre}</div>
-          <div className="text-[13px] opacity-60 mt-0.5">
+          <div className="font-extrabold text-lead leading-[1.2]">{v.sucursal?.nombre}</div>
+          <div className="text-meta opacity-60 mt-0.5">
             {[v.cliente?.nombreFantasia, v.sucursal?.comuna, v.sucursal?.direccion].filter(Boolean).join(" · ")}
           </div>
         </div>
@@ -492,7 +497,7 @@ function Tarjeta({
           </span>
           <button
             onClick={() => router.push(`/admin/visitas/${v.folio}`)}
-            className="min-h-8 px-2.5 bg-transparent border border-black/[.3] text-[11px] leading-none tracking-[.07em] uppercase cursor-pointer hover:bg-black/[.07]"
+            className="min-h-8 px-2.5 bg-transparent border border-black/[.3] text-cap leading-none cursor-pointer hover:bg-black/[.07]"
           >
             {v.folio}
           </button>
@@ -501,15 +506,15 @@ function Tarjeta({
 
       <div className="px-5 py-4 bg-white">
         {/* Por qué no se hizo */}
-        <div className="px-3.5 py-3 bg-[var(--color-accent-200)] border-l-4 border-[var(--color-accent)]">
-          <div className="text-[10px] tracking-[.12em] uppercase text-[var(--color-accent-800)]">
+        <div className="px-3.5 py-3 bg-[var(--color-accent-200)] border border-[var(--color-accent-300)]">
+          <div className="text-cap text-[var(--color-accent-800)]">
             {v.estado === "REAGENDADA" ? "Por qué se reagendó" : "Por qué quedó pendiente"}
           </div>
-          <div className="text-sm leading-[1.5] text-[var(--color-accent-800)] mt-1.5 max-w-[80ch]">
+          <div className="text-ui leading-[1.5] text-[var(--color-accent-800)] mt-1.5 max-w-[80ch]">
             {motivoTecnico ?? "Sin motivo registrado."}
           </div>
           {desde ? (
-            <div className="text-xs text-[var(--color-accent-800)] opacity-75 mt-1.5 tabular-nums">
+            <div className="text-cap text-[var(--color-accent-800)] opacity-75 mt-1.5 tabular-nums">
               {desde.por ?? "Sin autor registrado"} · {fechaHoraLegible(desde.en)} ·{" "}
               {desde.origen === "MOVIL" ? "desde el celular" : "desde el panel"}
             </div>
@@ -520,13 +525,13 @@ function Tarjeta({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-3 mt-4">
           {filas.map((fila) => (
             <div key={fila.k} className="min-w-0">
-              <div className="text-[10px] tracking-[.11em] uppercase opacity-62">{fila.k}</div>
-              <div className="text-sm mt-1 tabular-nums">{fila.v}</div>
+              <div className="text-cap opacity-62">{fila.k}</div>
+              <div className="text-ui mt-1 tabular-nums">{fila.v}</div>
             </div>
           ))}
           <div className="min-w-0">
-            <div className="text-[10px] tracking-[.11em] uppercase opacity-62">Responsable de tienda</div>
-            <div className="text-sm mt-1">
+            <div className="text-cap opacity-62">Responsable de tienda</div>
+            <div className="text-ui mt-1">
               {v.responsableNombre ?? "Sin definir"}
               {v.responsableTelefono ? (
                 <>
@@ -540,14 +545,14 @@ function Tarjeta({
           </div>
           {v.trabajoSolicitado ? (
             <div className="min-w-0 sm:col-span-2 lg:col-span-3">
-              <div className="text-[10px] tracking-[.11em] uppercase opacity-62">Qué había que hacer</div>
-              <div className="text-sm leading-[1.5] mt-1 max-w-[80ch]">{v.trabajoSolicitado}</div>
+              <div className="text-cap opacity-62">Qué había que hacer</div>
+              <div className="text-ui leading-[1.5] mt-1 max-w-[80ch]">{v.trabajoSolicitado}</div>
             </div>
           ) : null}
           {v.indicacionesAcceso ? (
             <div className="min-w-0 sm:col-span-2 lg:col-span-4">
-              <div className="text-[10px] tracking-[.11em] uppercase opacity-62">Indicaciones de acceso</div>
-              <div className="text-sm leading-[1.5] mt-1 max-w-[80ch]">{v.indicacionesAcceso}</div>
+              <div className="text-cap opacity-62">Indicaciones de acceso</div>
+              <div className="text-ui leading-[1.5] mt-1 max-w-[80ch]">{v.indicacionesAcceso}</div>
             </div>
           ) : null}
         </div>
@@ -555,9 +560,9 @@ function Tarjeta({
         {/* Checklist de gestión */}
         <div className="mt-4 pt-3.5 border-t border-black/[.18]">
           <div className="flex items-baseline gap-2.5 flex-wrap mb-2">
-            <div className="font-extrabold text-[13px] tracking-[.08em] uppercase">Gestión</div>
+            <div className="font-extrabold text-meta ">Gestión</div>
             {pasos.length ? (
-              <div className="text-xs opacity-62 tabular-nums">
+              <div className="text-cap opacity-62 tabular-nums">
                 {marcas.length} de {pasos.length} {pasos.length === 1 ? "paso" : "pasos"}
               </div>
             ) : null}
@@ -584,11 +589,11 @@ function Tarjeta({
                           ? "Marcar como hecho"
                           : undefined
                     }
-                    className="min-h-[34px] inline-flex items-center gap-2 px-3 border text-[13px] leading-[1.2] cursor-pointer disabled:cursor-default"
+                    className="min-h-[34px] inline-flex items-center gap-2 px-3 border text-meta leading-[1.2] cursor-pointer disabled:cursor-default"
                     style={{
                       background: hecho ? "var(--color-text)" : "transparent",
                       color: hecho ? "var(--color-bg)" : "var(--color-text)",
-                      borderColor: hecho ? "var(--color-text)" : "rgba(32,30,29,.35)",
+                      borderColor: hecho ? "var(--color-text)" : "rgba(31,28,33,.35)",
                       fontWeight: hecho ? 800 : 400,
                     }}
                   >
@@ -608,7 +613,7 @@ function Tarjeta({
               })}
             </div>
           ) : (
-            <div className="px-3.5 py-2.5 border border-dashed border-black/[.35] text-[13px] opacity-70 max-w-[80ch]">
+            <div className="px-3.5 py-2.5 border border-dashed border-black/[.35] text-meta opacity-70 max-w-[80ch]">
               Todavía no hay pasos de gestión. Agrégalos en Maestros › Checklist › Lista 5 «Gestión de pendientes» y
               aparecen acá para marcarlos en cada visita.
             </div>
@@ -618,7 +623,7 @@ function Tarjeta({
         {/* Acciones */}
         <div className="flex items-center gap-2.5 flex-wrap mt-4 pt-3 border-t border-black/[.18]">
           {puede(ref, "visitas.reprogramar") ? (
-            <button onClick={onReprogramar} className="btn btn-primary min-h-[34px] px-3 gap-2 text-[13px]">
+            <button onClick={onReprogramar} className="btn btn-primary min-h-[34px] px-3 gap-2 text-meta">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                 <rect x="3" y="5" width="18" height="16" />
                 <path d="M8 3v4M16 3v4M3 11h18M12 15l2 2-2 2" />
@@ -627,7 +632,7 @@ function Tarjeta({
             </button>
           ) : null}
           {puede(ref, "visitas.editar") ? (
-            <button onClick={onEditar} className="btn btn-secondary min-h-[34px] px-3 gap-2 text-[13px]">
+            <button onClick={onEditar} className="btn btn-secondary min-h-[34px] px-3 gap-2 text-meta">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                 <path d="M4 20h4l10-10-4-4L4 16v4z" />
                 <path d="M14 6l4 4" />
@@ -637,7 +642,7 @@ function Tarjeta({
           ) : null}
           <button
             onClick={() => router.push(`/admin/visitas/${v.folio}`)}
-            className="btn btn-secondary min-h-[34px] px-3 text-[13px]"
+            className="btn btn-secondary min-h-[34px] px-3 text-meta"
           >
             Ver ficha
           </button>
@@ -645,7 +650,7 @@ function Tarjeta({
           <button
             onClick={onHistorial}
             aria-expanded={historialAbierto}
-            className="ml-auto min-h-[34px] flex items-center gap-2 px-3 bg-transparent border border-black/[.35] text-xs cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
+            className="ml-auto min-h-[34px] flex items-center gap-2 px-3 bg-transparent border border-black/[.35] text-cap cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
           >
             <span>
               {historialAbierto ? "Ocultar historial del local" : "Historial del local"}
@@ -673,11 +678,11 @@ function Tarjeta({
         {historialAbierto ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-3 px-3.5 py-3.5 bg-[var(--color-surface)] border border-black/[.25]">
             <div className="min-w-0">
-              <div className="text-[10px] tracking-[.12em] uppercase opacity-62 mb-2">
+              <div className="text-cap opacity-62 mb-2">
                 Problemas levantados en el local ({problemas.length})
               </div>
               {problemas.length === 0 ? (
-                <div className="text-[13px] opacity-70">Nunca se ha levantado un problema en este local.</div>
+                <div className="text-meta opacity-70">Nunca se ha levantado un problema en este local.</div>
               ) : (
                 <div className="flex flex-col gap-2">
                   {problemas.map((pr) => {
@@ -686,39 +691,39 @@ function Tarjeta({
                       <div
                         key={pr.id}
                         className="px-3 py-2.5 bg-white"
-                        style={{ borderLeft: `4px solid ${resuelto ? "#7a7676" : "var(--color-accent)"}` }}
+                        style={{ borderLeft: `4px solid ${resuelto ? "var(--color-neutral-600)" : "var(--color-danger)"}` }}
                       >
                         <div className="flex items-center gap-2 flex-wrap">
-                          <div className="font-extrabold text-sm leading-[1.25]">
+                          <div className="font-extrabold text-ui leading-[1.25]">
                             {nombreProblema(ref.problemas, pr.tipoCodigo)}
                           </div>
                           <EstadoProblemaTag estado={pr.estado} />
                           <button
                             onClick={() => router.push(`/admin/visitas/${pr.folio}`)}
-                            className="ml-auto min-h-7 px-2 bg-transparent border border-black/[.3] text-[10px] leading-none tracking-[.07em] uppercase cursor-pointer hover:bg-black/[.07]"
+                            className="ml-auto min-h-7 px-2 bg-transparent border border-black/[.3] text-cap leading-none cursor-pointer hover:bg-black/[.07]"
                           >
                             {pr.folio}
                           </button>
                         </div>
-                        <div className="text-xs opacity-62 mt-1 tabular-nums">
-                          Levantado el {pr.fecha}
-                          {pr.resueltoEn ? ` · resuelto el ${pr.resueltoEn.slice(0, 10)}` : ""}
+                        <div className="text-cap opacity-62 mt-1 tabular-nums">
+                          Levantado el {fechaCL(pr.fecha)}
+                          {pr.resueltoEn ? ` · resuelto el ${fechaCL(pr.resueltoEn)}` : ""}
                         </div>
                         {pr.items.length > 0 ? (
                           <div className="flex flex-wrap gap-1.5 mt-1.5">
                             {pr.items.map((it) => (
                               <span
                                 key={it.etiqueta}
-                                className="px-2 py-0.5 bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-[11px] leading-[1.3] tabular-nums"
+                                className="px-2 py-0.5 bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap leading-[1.3] tabular-nums"
                               >
                                 {it.etiqueta} × {it.cantidad}
                               </span>
                             ))}
                           </div>
                         ) : null}
-                        {pr.descripcion ? <div className="text-[13px] leading-[1.45] mt-1.5">{pr.descripcion}</div> : null}
+                        {pr.descripcion ? <div className="text-meta leading-[1.45] mt-1.5">{pr.descripcion}</div> : null}
                         {pr.solucion ? (
-                          <div className="text-[13px] leading-[1.45] mt-1">
+                          <div className="text-meta leading-[1.45] mt-1">
                             <strong className="font-extrabold">{resuelto ? "Se realizó:" : "Sugerencia:"}</strong>{" "}
                             {pr.solucion}
                           </div>
@@ -731,44 +736,44 @@ function Tarjeta({
             </div>
 
             <div className="min-w-0">
-              <div className="text-[10px] tracking-[.12em] uppercase opacity-62 mb-2">
+              <div className="text-cap opacity-62 mb-2">
                 Otras visitas al local ({otrasVisitas.length})
               </div>
               {otrasVisitas.length === 0 ? (
-                <div className="text-[13px] opacity-70">Es la única visita registrada en este local.</div>
+                <div className="text-meta opacity-70">Es la única visita registrada en este local.</div>
               ) : (
                 <div className="flex flex-col gap-2">
                   {otrasVisitas.slice(0, VISITAS_VISIBLES).map((x) => (
-                    <div key={x.folio} className="px-3 py-2.5 bg-white border-l-4 border-black/[.35]">
+                    <div key={x.folio} className="px-3 py-2.5 bg-white border border-[var(--color-line)]">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <div className="font-extrabold text-sm tabular-nums">{x.fecha}</div>
+                        <div className="font-extrabold text-ui tabular-nums">{fechaCL(x.fecha)}</div>
                         <Tag variant={ESTADO_VISITA_TAG[x.estado]}>{ESTADO_VISITA_LABEL[x.estado]}</Tag>
                         <button
                           onClick={() => router.push(`/admin/visitas/${x.folio}`)}
-                          className="ml-auto min-h-7 px-2 bg-transparent border border-black/[.3] text-[10px] leading-none tracking-[.07em] uppercase cursor-pointer hover:bg-black/[.07]"
+                          className="ml-auto min-h-7 px-2 bg-transparent border border-black/[.3] text-cap leading-none cursor-pointer hover:bg-black/[.07]"
                         >
                           {x.folio}
                         </button>
                       </div>
-                      <div className="text-xs opacity-62 mt-1">
+                      <div className="text-cap opacity-62 mt-1">
                         {x.tecnico} · {x.motivos.join(" · ") || "Sin motivo"}
                       </div>
                       {x.trabajosCodigos.length > 0 ? (
-                        <div className="text-[13px] leading-[1.45] mt-1.5">
+                        <div className="text-meta leading-[1.45] mt-1.5">
                           <strong className="font-extrabold">Trabajo:</strong>{" "}
                           {x.trabajosCodigos.map((c) => nombreTrabajo(ref.trabajos, c)).join(" · ")}
                         </div>
                       ) : null}
-                      {x.observaciones ? <div className="text-[13px] leading-[1.45] mt-1">{x.observaciones}</div> : null}
+                      {x.observaciones ? <div className="text-meta leading-[1.45] mt-1">{x.observaciones}</div> : null}
                       {x.motivoTecnico ? (
-                        <div className="text-[13px] leading-[1.45] mt-1">
+                        <div className="text-meta leading-[1.45] mt-1">
                           <strong className="font-extrabold">No se hizo:</strong> {x.motivoTecnico}
                         </div>
                       ) : null}
                     </div>
                   ))}
                   {otrasVisitas.length > VISITAS_VISIBLES ? (
-                    <div className="text-xs opacity-62">
+                    <div className="text-cap opacity-62">
                       Y {otrasVisitas.length - VISITAS_VISIBLES} más antiguas: búscalas por sucursal en Visitas.
                     </div>
                   ) : null}

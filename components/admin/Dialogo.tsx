@@ -98,11 +98,10 @@ export type FormValores = Record<string, string | boolean>;
 
 /**
  * Diálogo de formulario del panel — el `dialogoAbierto` del mockup: 720 px,
- * cabecera con kicker y título, campos en dos columnas, nota al pie y el par
+ * cabecera con el título, campos en dos columnas, nota al pie y el par
  * Cancelar / acción principal.
  */
 export default function Dialogo({
-  kicker,
   titulo,
   cta,
   nota,
@@ -116,7 +115,6 @@ export default function Dialogo({
   onToggleAdjunto,
   children,
 }: {
-  kicker: string;
   titulo: string;
   cta: string;
   nota?: string;
@@ -153,15 +151,14 @@ export default function Dialogo({
       role="dialog"
       aria-modal="true"
       aria-label={titulo}
-      className="fixed inset-0 z-[60] bg-[rgba(45,43,43,.5)] grid place-items-center sm:p-6"
+      className="fixed inset-0 z-[60] bg-[rgba(31,28,33,.5)] grid place-items-center sm:p-6"
     >
       <div
         className="w-full max-w-[720px] h-dvh sm:h-auto sm:max-h-[88vh] flex flex-col overflow-hidden bg-[var(--color-bg)] border-2 border-[var(--color-text)] animate-up-dlg"
       >
         <div className="flex-none flex items-center gap-3 px-4 sm:px-5.5 py-3.5 sm:py-4.5 border-b-2 border-[var(--color-divider)]">
           <div className="min-w-0">
-            <div className="text-[10px] tracking-[.14em] uppercase text-[var(--color-accent-active)]">{kicker}</div>
-            <div className="font-extrabold text-[21px] leading-[1.15] mt-1">{titulo}</div>
+            <div className="font-extrabold text-h3 leading-[1.15]">{titulo}</div>
           </div>
           <button
             type="button"
@@ -191,7 +188,7 @@ export default function Dialogo({
                   }
                   className="w-full flex items-center gap-2.5 min-h-10 px-3.5 bg-transparent border border-[var(--color-divider)] cursor-pointer text-[var(--color-text)] text-left hover:bg-black/5"
                 >
-                  <span className="text-[11px] tracking-[.11em] uppercase opacity-72">{c.label}</span>
+                  <span className="text-cap opacity-72">{c.label}</span>
                   <svg
                     width="16"
                     height="16"
@@ -225,7 +222,7 @@ export default function Dialogo({
                         role="checkbox"
                         aria-checked={form[c.casilla.k] === true}
                         onClick={() => onCampo(c.casilla!.k, form[c.casilla!.k] !== true)}
-                        className="ml-auto flex-none flex items-center gap-1.5 p-0 bg-transparent border-0 cursor-pointer text-[var(--color-text)] text-[11px] tracking-[.06em] uppercase"
+                        className="ml-auto flex-none flex items-center gap-1.5 p-0 bg-transparent border-0 cursor-pointer text-[var(--color-text)] text-cap "
                         style={{ opacity: form[c.casilla.k] === true ? 1 : 0.72 }}
                       >
                         <span className="w-3.5 h-3.5 flex-none border-2 border-current grid place-items-center">
@@ -335,14 +332,14 @@ export default function Dialogo({
                       <button
                         type="button"
                         onClick={() => onCampo(c.k, true)}
-                        className={`tag ${valor === false ? "tag-neutral" : "tag-accent"} min-h-[42px] flex-1 border border-[var(--color-divider)] cursor-pointer font-extrabold text-[13px] justify-center`}
+                        className={`tag ${valor === false ? "tag-neutral" : "tag-accent"} min-h-[42px] flex-1 border border-[var(--color-divider)] cursor-pointer font-extrabold text-meta justify-center`}
                       >
                         Activo
                       </button>
                       <button
                         type="button"
                         onClick={() => onCampo(c.k, false)}
-                        className={`tag ${valor === false ? "tag-accent" : "tag-neutral"} min-h-[42px] flex-1 border border-[var(--color-divider)] cursor-pointer font-extrabold text-[13px] justify-center`}
+                        className={`tag ${valor === false ? "tag-accent" : "tag-neutral"} min-h-[42px] flex-1 border border-[var(--color-divider)] cursor-pointer font-extrabold text-meta justify-center`}
                       >
                         Inactivo
                       </button>
@@ -365,7 +362,7 @@ export default function Dialogo({
                       onChange={(e) => onCampo(c.k, e.target.value)}
                       placeholder={c.ph}
                       autoComplete="off"
-                      className="input min-h-[260px] p-3.5 resize-y text-sm leading-[1.6] bg-[var(--color-surface-3)]"
+                      className="input min-h-[260px] p-3.5 resize-y text-ui leading-[1.6] bg-[var(--color-surface-3)]"
                     />
                   ) : (
                     <input
@@ -398,11 +395,11 @@ export default function Dialogo({
                   )}
 
                   {c.tipo === "rut" && mensajeRut(texto) ? (
-                    <div className="text-[11px] leading-[1.4] mt-1.5 text-[var(--color-accent-800)]">
+                    <div className="text-cap leading-[1.4] mt-1.5 text-[var(--color-danger-800)]">
                       {mensajeRut(texto)}
                     </div>
                   ) : null}
-                  {c.ayuda ? <div className="text-[11px] leading-[1.4] opacity-66 mt-1.5">{c.ayuda}</div> : null}
+                  {c.ayuda ? <div className="text-cap leading-[1.4] opacity-66 mt-1.5">{c.ayuda}</div> : null}
                 </div>
               );
             })}
@@ -413,8 +410,8 @@ export default function Dialogo({
           {adjuntos && adjuntos.length > 0 ? (
             <div className="mt-5 border border-black/[.3]">
               <div className="flex items-center gap-2.5 px-3.5 py-2.5 bg-[var(--color-surface)] border-b border-[var(--color-divider-soft)]">
-                <div className="font-extrabold text-[11px] tracking-[.11em] uppercase">Adjuntos</div>
-                <div className="ml-auto text-[11px] tracking-[.06em] uppercase opacity-66 tabular-nums">
+                <div className="font-extrabold text-cap ">Adjuntos</div>
+                <div className="ml-auto text-cap opacity-66 tabular-nums">
                   {nIncluidos} de {adjuntos.length} seleccionados
                 </div>
               </div>
@@ -424,7 +421,7 @@ export default function Dialogo({
                     key={a.label}
                     type="button"
                     onClick={() => onToggleAdjunto?.(i)}
-                    className="flex items-center gap-2.5 min-h-[38px] px-3 border border-black/[.35] text-[13px] leading-[1.2] cursor-pointer text-left"
+                    className="flex items-center gap-2.5 min-h-[38px] px-3 border border-black/[.35] text-meta leading-[1.2] cursor-pointer text-left"
                     style={{
                       background: a.incluido ? "var(--color-text)" : "transparent",
                       color: a.incluido ? "var(--color-bg)" : "var(--color-text)",
@@ -444,7 +441,7 @@ export default function Dialogo({
             </div>
           ) : null}
 
-          {nota ? <p className="mt-4.5 mb-0 text-xs opacity-66">{nota}</p> : null}
+          {nota ? <p className="mt-4.5 mb-0 text-cap opacity-66">{nota}</p> : null}
 
           <div className="flex gap-2.5 justify-end flex-wrap mt-5.5 pt-4.5 border-t border-[var(--color-divider-soft)]">
             <button type="button" className="btn btn-secondary min-h-11 px-4.5" onClick={onCerrar}>
@@ -499,10 +496,10 @@ export function CasillasMultiples({
         role="checkbox"
         aria-checked={activo}
         onClick={() => alternar(o.v)}
-        className="flex items-center gap-2 min-h-9 px-2.5 border border-black/[.35] text-[13px] leading-[1.2] cursor-pointer text-left"
+        className="flex items-center gap-2 min-h-9 px-2.5 border border-black/[.35] text-meta leading-[1.2] cursor-pointer text-left"
         style={{
-          background: activo ? "var(--color-text)" : "var(--color-bg)",
-          color: activo ? "var(--color-bg)" : "var(--color-text)",
+          background: activo ? "var(--color-accent)" : "var(--color-bg)",
+          color: activo ? "#fff" : "var(--color-text)",
           fontWeight: activo ? 800 : 400,
         }}
       >
@@ -527,7 +524,7 @@ export function CasillasMultiples({
           placeholder="Filtrar…"
           aria-label="Filtrar opciones"
           autoComplete="off"
-          className="w-full min-h-9 px-3 text-[13px] bg-[var(--color-bg)] border-0 border-b border-[var(--color-divider)] text-[var(--color-text)] focus-visible:outline-none"
+          className="w-full min-h-9 px-3 text-meta bg-[var(--color-bg)] border-0 border-b border-[var(--color-divider)] text-[var(--color-text)] focus-visible:outline-none"
         />
       ) : null}
       {grupos ? (
@@ -548,18 +545,18 @@ export function CasillasMultiples({
             );
           })}
           {visibles.length === 0 ? (
-            <div className="px-1 py-1.5 text-[13px] opacity-66">Nada coincide con «{busqueda}».</div>
+            <div className="px-1 py-1.5 text-meta opacity-66">Nada coincide con «{busqueda}».</div>
           ) : null}
         </div>
       ) : (
         <div className="max-h-[190px] overflow-y-auto p-2 flex flex-wrap gap-1.5">
           {visibles.map(casilla)}
           {visibles.length === 0 ? (
-            <div className="px-1 py-1.5 text-[13px] opacity-66">Nada coincide con «{busqueda}».</div>
+            <div className="px-1 py-1.5 text-meta opacity-66">Nada coincide con «{busqueda}».</div>
           ) : null}
         </div>
       )}
-      <div className="px-3 py-1.5 border-t border-[var(--color-divider)] text-[11px] tracking-[.06em] uppercase opacity-62 tabular-nums">
+      <div className="px-3 py-1.5 border-t border-[var(--color-divider)] text-cap opacity-62 tabular-nums">
         {marcados.length} {marcados.length === 1 ? "marcado" : "marcados"}
       </div>
     </div>

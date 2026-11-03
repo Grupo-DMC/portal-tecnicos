@@ -897,11 +897,11 @@ export function useFormularioVisita({
         key={t.codigo}
         disabled={agregado}
         onClick={() => setNt((p) => ({ ...p, codigo: t.codigo, subs: [] }))}
-        className="w-full min-h-[54px] flex items-center gap-3 px-3.5 font-extrabold text-[15px] leading-[1.2] cursor-pointer text-left hover:brightness-95 disabled:cursor-default disabled:opacity-55"
+        className="w-full min-h-[54px] flex items-center gap-3 px-3.5 font-extrabold text-body leading-[1.2] cursor-pointer text-left hover:brightness-95 disabled:cursor-default disabled:opacity-55"
         style={{
-          background: activo ? "var(--color-text)" : "var(--color-surface-3)",
-          color: activo ? "var(--color-bg)" : "var(--color-text)",
-          border: `1px solid ${activo ? "var(--color-text)" : "rgba(32,30,29,.35)"}`,
+          background: activo ? "var(--color-accent)" : "var(--color-surface-3)",
+          color: activo ? "#fff" : "var(--color-text)",
+          border: `1px solid ${activo ? "var(--color-accent)" : "rgba(31,28,33,.35)"}`,
         }}
       >
         <span className="w-[18px] h-[18px] flex-none border-2 border-current grid place-items-center">
@@ -909,7 +909,7 @@ export function useFormularioVisita({
         </span>
         <span className="flex-1 min-w-0">{t.nombre}</span>
         {agregado ? (
-          <span className="text-[10px] tracking-[.08em] uppercase font-normal flex-none">Agregado</span>
+          <span className="text-cap font-normal flex-none">Agregado</span>
         ) : null}
       </button>
     );

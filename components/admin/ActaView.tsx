@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Tag from "@/components/Tag";
+import MenuAcciones from "@/components/ui/MenuAcciones";
 import Dialogo, { type Adjunto } from "@/components/admin/Dialogo";
 import VisitaDialogo, {
   CancelarAdminDialogo,
@@ -18,7 +19,7 @@ import { enviarActaAction } from "@/app/actions/admin";
 import { permitirEditarTecnicoAction } from "@/app/actions/ediciones";
 import EstadoProblemaTag from "@/components/EstadoProblemaTag";
 import { ESTADO_VISITA_LABEL, ESTADO_VISITA_TAG, nombreDeQuienLaTomo, textoMotivos, textoMotivosReales } from "@/lib/ui/estado";
-import { textoFechaVisita } from "@/lib/ui/fecha";
+import { textoFechaVisita, fechaCL } from "@/lib/ui/fecha";
 import { nombreProblema, nombreTrabajo, puede, useReferencias } from "@/lib/ui/referencias";
 import { reloj } from "@/lib/ui/video";
 import { descargarZip, extensionDe, type ArchivoADescargar } from "@/lib/ui/descarga";
@@ -47,6 +48,24 @@ function minutosEntre(a: string, b: string | null): number | null {
   if (!b) return null;
   return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 60000);
 }
+
+const ICONO_DESCARGA = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+    <path d="M12 4v11M7 11l5 5 5-5M4 20h16" />
+  </svg>
+);
+const ICONO_EDITAR = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+    <path d="M4 20h4l10-10-4-4L4 16v4z" />
+    <path d="M14 6l4 4" />
+  </svg>
+);
+const ICONO_CELULAR = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+    <rect x="7" y="2.5" width="10" height="19" rx="1.5" />
+    <path d="M11 18.5h2" />
+  </svg>
+);
 
 export default function ActaView({
   visita,
@@ -137,8 +156,8 @@ export default function ActaView({
     codigo ? ref.motivos.find((m) => m.codigo === codigo)?.nombre ?? codigo : null;
 
   const sello = ejecutada && ejec
-    ? `${visita.fechaProgramada} · ${papel ? "informe en papel" : `${hhmm(ejec.horaInicio)}–${hhmm(ejec.horaTermino)}`}`
-    : `${visita.fechaProgramada} · sin ejecutar`;
+    ? `${fechaCL(visita.fechaProgramada)} · ${papel ? "informe en papel" : `${hhmm(ejec.horaInicio)}–${hhmm(ejec.horaTermino)}`}`
+    : `${fechaCL(visita.fechaProgramada)} · sin ejecutar`;
 
   const resumen: { k: string; v: string; span?: 2; chip?: string }[] = [
     { k: visita.fechaHasta ? "Margen de días" : "Fecha programada", v: textoFechaVisita(visita) },
@@ -174,66 +193,86 @@ export default function ActaView({
 
   return (
     <div className="pb-12 animate-fade-in">
-      {/* Barra de acciones */}
-      <div className="flex items-center gap-3 flex-wrap px-4 md:px-7 py-3.5 border-b border-[var(--color-divider-soft)]">
-        <Link href="/admin/visitas" className="btn btn-secondary min-h-10 px-3.5">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+      {/* Barra de acciones: volver a la izquierda; a la derecha la acción
+          principal del estado, y lo demás agrupado en Editar y Descargar. */}
+      <div className="flex items-center gap-2 flex-wrap px-4 md:px-7 py-3 border-b border-[var(--color-divider-soft)]">
+        <Link href="/admin/visitas" className="btn btn-ghost min-h-10 no-underline">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
             <path d="M19 12H5M11 6l-6 6 6 6" />
           </svg>
-          <span>Volver a visitas</span>
+          <span>Visitas</span>
         </Link>
-        {eliminada ? <Tag variant="dark">Eliminada</Tag> : null}
-        <Tag variant={ESTADO_VISITA_TAG[visita.estado]}>{ESTADO_VISITA_LABEL[visita.estado]}</Tag>
-        {ediciones.length > 0 ? <Tag variant="outline">Acta editada</Tag> : null}
-        <div className="text-[11px] tracking-[.08em] uppercase opacity-62 tabular-nums">{sello}</div>
-        {enviada ? (
-          <span className="inline-flex items-center gap-2 px-2.5 py-1.5 bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-[11px] leading-[1.2] tracking-[.05em]">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-              <path d="M4 12l5 5L20 6" />
-            </svg>
-            <span>
-              Enviada a {enviada.para} · {enviada.adjuntos} adjuntos
-            </span>
-          </span>
-        ) : null}
 
-        <div className="ml-auto flex gap-2 flex-wrap">
-          {cerrada && permite("visitas.enviar") ? (
-            <button onClick={() => setDialogo("correo")} className="btn btn-primary min-h-10 px-3.5">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <rect x="3" y="5" width="18" height="14" />
-                <path d="M3 6l9 7 9-7" />
-              </svg>
-              <span>Enviar por correo</span>
-            </button>
-          ) : null}
+        <div className="ml-auto flex items-center gap-2 flex-wrap justify-end">
+          <button onClick={() => setTrazaAbierta(true)} className="btn btn-secondary min-h-10 px-3.5">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+              <circle cx="12" cy="12" r="8.5" />
+              <path d="M12 7.5V12l3 2" />
+            </svg>
+            <span>Trazabilidad</span>
+          </button>
+          <MenuAcciones
+            texto="Descargar"
+            icono={ICONO_DESCARGA}
+            acciones={[
+              // El PDF es el acta que va al cliente: sin comentario interno.
+              ...(cerrada && !eliminada
+                ? [
+                    {
+                      clave: "pdf",
+                      texto: "Acta en PDF",
+                      detalle: "La que recibe el cliente, sin comentarios internos",
+                      icono: ICONO_DESCARGA,
+                      href: `/api/visita/acta/${encodeURIComponent(visita.folio)}`,
+                      download: nombreArchivoActa(visita),
+                    },
+                  ]
+                : []),
+              ...(fotosCliente.length + videosCliente.length > 0
+                ? [
+                    {
+                      clave: "multimedia",
+                      texto: bajando === "multimedia" ? "Descargando…" : "Fotos y videos (.zip)",
+                      detalle: `${[
+                        fotosCliente.length ? `${fotosCliente.length} ${fotosCliente.length === 1 ? "foto" : "fotos"}` : "",
+                        videosCliente.length ? `${videosCliente.length} ${videosCliente.length === 1 ? "video" : "videos"}` : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" y ")} para el cliente`,
+                      icono: ICONO_DESCARGA,
+                      disabled: bajando !== null,
+                      onSelect: () => void bajarTodo("multimedia"),
+                    },
+                  ]
+                : []),
+            ]}
+          />
           {editableActa ? (
-            <Link href={`/admin/visitas/${encodeURIComponent(visita.folio)}/editar`} className="btn btn-secondary min-h-10 px-3.5">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <path d="M4 20h4l10-10-4-4L4 16v4z" />
-                <path d="M14 6l4 4" />
-              </svg>
-              <span>Editar acta</span>
-            </Link>
-          ) : null}
-          {editableActa ? (
-            <button
-              type="button"
-              onClick={() => void permitirEditarTecnico()}
-              disabled={habilitando}
-              className="btn btn-secondary min-h-10 px-3.5"
-              title="El técnico podrá corregir su acta desde el celular durante 5 minutos"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <rect x="7" y="2.5" width="10" height="19" rx="1.5" />
-                <path d="M11 18.5h2" />
-              </svg>
-              <span>{habilitando ? "Habilitando…" : "Permitir editar técnico"}</span>
-            </button>
+            <MenuAcciones
+              texto="Editar"
+              icono={ICONO_EDITAR}
+              acciones={[
+                {
+                  clave: "acta",
+                  texto: "Editar el acta",
+                  detalle: "Corrige lo registrado; queda en la bitácora",
+                  icono: ICONO_EDITAR,
+                  href: `/admin/visitas/${encodeURIComponent(visita.folio)}/editar`,
+                },
+                {
+                  clave: "tecnico",
+                  texto: habilitando ? "Habilitando…" : "Permitir que el técnico la corrija",
+                  detalle: "Desde su celular, durante 5 minutos",
+                  icono: ICONO_CELULAR,
+                  disabled: habilitando,
+                  onSelect: () => void permitirEditarTecnico(),
+                },
+              ]}
+            />
           ) : null}
           {reprogramable && permite("visitas.reprogramar") ? (
             <button onClick={() => setDialogo("reprogramar")} className="btn btn-primary min-h-10 px-3.5">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
                 <rect x="3" y="5" width="18" height="16" />
                 <path d="M8 3v4M16 3v4M3 11h18M12 15l2 2-2 2" />
               </svg>
@@ -242,53 +281,29 @@ export default function ActaView({
           ) : null}
           {liberable ? (
             <button onClick={() => setDialogo("liberar")} className="btn btn-primary min-h-10 px-3.5">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
                 <rect x="5" y="11" width="14" height="10" />
                 <path d="M8 11V7a4 4 0 017.5-2" />
               </svg>
               <span>Liberar</span>
             </button>
           ) : null}
-          <button onClick={() => setTrazaAbierta(true)} className="btn btn-secondary min-h-10 px-3.5">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <circle cx="12" cy="12" r="8.5" />
-              <path d="M12 7.5V12l3 2" />
-            </svg>
-            <span>Trazabilidad</span>
-          </button>
-          {fotosCliente.length + videosCliente.length > 0 ? (
-            <button
-              type="button"
-              onClick={() => bajarTodo("multimedia")}
-              disabled={bajando !== null}
-              className="btn btn-secondary min-h-10 px-3.5"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <path d="M12 4v11M7 11l5 5 5-5M4 20h16" />
+          {cerrada && permite("visitas.enviar") ? (
+            <button onClick={() => setDialogo("correo")} className="btn btn-primary min-h-10 px-3.5">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+                <rect x="3" y="5" width="18" height="14" />
+                <path d="M3 6l9 7 9-7" />
               </svg>
-              <span>{bajando === "multimedia" ? "Descargando…" : "Descargar toda la multimedia"}</span>
+              <span>Enviar por correo</span>
             </button>
-          ) : null}
-          {/* El PDF es el acta que va al cliente: sin comentario interno. */}
-          {cerrada && !eliminada ? (
-            <a
-              href={`/api/visita/acta/${encodeURIComponent(visita.folio)}`}
-              download={nombreArchivoActa(visita)}
-              className="btn btn-secondary min-h-10 px-3.5"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <path d="M12 4v11M7 11l5 5 5-5M4 20h16" />
-              </svg>
-              <span>Descargar PDF</span>
-            </a>
           ) : null}
         </div>
       </div>
 
       {eliminada ? (
-        <div className="mx-4 md:mx-7 mt-5 px-4 py-3.5 bg-[var(--color-accent-200)] border-l-4 border-[var(--color-accent)] text-[13px] text-[var(--color-accent-800)]">
+        <div className="mx-4 md:mx-7 mt-5 px-4 py-3.5 bg-[var(--color-accent-200)] border border-[var(--color-accent-300)] text-meta text-[var(--color-accent-800)]">
           Esta visita está eliminada
-          {eliminada.en ? ` desde el ${eliminada.en.slice(0, 10)} a las ${hhmm(eliminada.en)}` : ""} · la eliminó{" "}
+          {eliminada.en ? ` desde el ${fechaCL(eliminada.en)} a las ${hhmm(eliminada.en)}` : ""} · la eliminó{" "}
           {eliminada.por}. Solo la ve el administrador: para los demás roles y para el técnico no existe, y no cuenta en
           el panel, los gráficos ni los problemas.
         </div>
@@ -297,8 +312,8 @@ export default function ActaView({
       {/* El registro de cada corrección al acta: qué parte, por qué, quién y
           cuándo. Es interno: el PDF no lo menciona. */}
       {ediciones.length > 0 ? (
-        <div className="mx-4 md:mx-7 mt-5 max-w-[900px] border border-[var(--color-accent-300)] border-l-4 border-l-[var(--color-accent)] bg-[var(--color-accent-100)]">
-          <div className="px-4 py-3 font-extrabold text-[13px] tracking-[.06em] uppercase text-[var(--color-accent-800)]">
+        <div className="mx-4 md:mx-7 mt-5 max-w-[900px] border border-[var(--color-accent-300)] bg-[var(--color-accent-100)]">
+          <div className="px-4 py-3 font-extrabold text-meta text-[var(--color-accent-800)]">
             Esta acta fue editada · {ediciones.length} {ediciones.length === 1 ? "vez" : "veces"}
           </div>
           {ediciones.map((e) => (
@@ -310,16 +325,16 @@ export default function ActaView({
                   </span>
                 ))}
               </div>
-              <div className="text-[15px] leading-[1.45] mt-2.5">
-                <span className="text-[11px] tracking-[.09em] uppercase opacity-62">Por qué se cambió · </span>
+              <div className="text-body leading-[1.45] mt-2.5">
+                <span className="text-cap opacity-62">Por qué se cambió · </span>
                 {e.motivo}
               </div>
-              <div className="text-xs opacity-66 mt-1 tabular-nums">{resumenEdicion(e)}</div>
+              <div className="text-cap opacity-66 mt-1 tabular-nums">{resumenEdicion(e)}</div>
               <details className="mt-2">
-                <summary className="cursor-pointer text-[13px] underline underline-offset-[3px]">
+                <summary className="cursor-pointer text-meta underline underline-offset-[3px]">
                   Ver qué cambió ({e.detalle.length})
                 </summary>
-                <ul className="m-0 mt-2 pl-4.5 text-[13px] leading-[1.5] list-disc">
+                <ul className="m-0 mt-2 pl-4.5 text-meta leading-[1.5] list-disc">
                   {e.detalle.map((linea, i) => (
                     <li key={i}>{linea}</li>
                   ))}
@@ -331,7 +346,7 @@ export default function ActaView({
       ) : null}
 
       {sinCerrar ? (
-        <div className="mx-4 md:mx-7 mt-5 px-4 py-3.5 bg-[var(--color-accent-200)] border-l-4 border-[var(--color-accent)] text-[13px] text-[var(--color-accent-800)]">
+        <div className="mx-4 md:mx-7 mt-5 px-4 py-3.5 bg-[var(--color-accent-200)] border border-[var(--color-accent-300)] text-meta text-[var(--color-accent-800)]">
           {AVISO_ESTADO[visita.estado]}
           {tomadaPor
             ? ` La inició ${tomadaPor} y solo esa persona puede terminarla${liberable ? "; con «Liberar» vuelve a quedar programada." : "."}`
@@ -340,30 +355,50 @@ export default function ActaView({
       ) : null}
 
       <div className="px-4 md:px-7 pt-7 pb-10 max-w-[900px]">
-        <div className="text-[10px] tracking-[.15em] uppercase text-[var(--color-accent-active)]">
-          Acta de visita en terreno
+        <div className="flex items-center gap-x-3 gap-y-2 flex-wrap mb-1.5">
+          <h1 className="m-0 font-extrabold text-h1 md:text-display leading-[1.04] tracking-[-.035em] tabular-nums">
+            {visita.folio}
+          </h1>
+          {eliminada ? <Tag variant="dark">Eliminada</Tag> : null}
+          <Tag variant={ESTADO_VISITA_TAG[visita.estado]}>{ESTADO_VISITA_LABEL[visita.estado]}</Tag>
+          {ediciones.length > 0 ? <Tag variant="outline">Acta editada</Tag> : null}
         </div>
-        <h1 className="font-extrabold text-[30px] md:text-[40px] leading-[1.04] tracking-[-.035em] mt-2.5 mb-1.5 tabular-nums">
-          {visita.folio}
-        </h1>
-        <p className="m-0 mb-6 text-[15px] opacity-60">
-          {[visita.cliente?.nombreFantasia, visita.marca?.nombre, visita.sucursal?.nombre].filter(Boolean).join(" · ")} · {textoMotivos(visita)}
+        <p className="m-0 text-body text-[var(--color-muted)]">
+          {[
+            visita.cliente?.nombreFantasia,
+            visita.marca && visita.marca.nombre !== visita.cliente?.nombreFantasia ? visita.marca.nombre : null,
+            visita.sucursal?.nombre,
+          ]
+            .filter(Boolean)
+            .join(" · ")}{" "}
+          · {textoMotivos(visita)}
+        </p>
+        <p className="m-0 mt-1 mb-6 text-meta text-[var(--color-muted)] tabular-nums">
+          {sello}
+          {enviada ? (
+            <span className="ml-2 inline-flex items-center gap-1.5 text-[var(--color-text)] font-semibold">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true">
+                <path d="M4 12l5 5L20 6" />
+              </svg>
+              Enviada a {enviada.para} · {enviada.adjuntos} adjuntos
+            </span>
+          ) : null}
         </p>
 
         <div className="border border-[var(--color-divider)] bg-[var(--color-surface-3)]">
           <div className="flex items-center gap-2.5 px-5 py-4 border-b-2 border-[var(--color-divider)]">
-            <div className="font-extrabold text-[13px] tracking-[.06em] uppercase">
+            <div className="font-extrabold text-meta ">
               {ejecutada ? "Lo que registró el técnico" : "Lo que se programó"}
             </div>
-            <span className="tag tag-outline ml-auto">Vista completa</span>
+            <span className="ml-auto text-cap text-[var(--color-muted)]">Vista completa</span>
           </div>
 
           <button
             onClick={() => setResumenAbierto((v) => !v)}
-            className="w-full flex items-center gap-2.5 px-5 py-3.5 bg-transparent border-0 border-b border-black/[.2] cursor-pointer text-[var(--color-text)] text-left hover:bg-[#eeeaea]"
+            className="w-full flex items-center gap-2.5 px-5 py-3.5 bg-transparent border-0 border-b border-black/[.2] cursor-pointer text-[var(--color-text)] text-left hover:bg-[var(--color-surface-2)]"
           >
-            <span className="text-[11px] tracking-[.11em] uppercase opacity-66">Detalle de la visita</span>
-            <span className="text-[13px] opacity-62 ml-auto">
+            <span className="text-cap opacity-66">Detalle de la visita</span>
+            <span className="text-meta opacity-62 ml-auto">
               {resumenAbierto ? "" : "Fecha, cliente, sucursal y contacto"}
             </span>
             <svg
@@ -388,8 +423,8 @@ export default function ActaView({
                     key={r.k}
                     className={`px-4 sm:px-5 py-3.5 border-b border-black/[.2] border-r border-r-black/[.2] min-w-0 ${r.span === 2 ? "sm:col-span-2" : ""}`}
                   >
-                    <div className="text-[11px] tracking-[.11em] uppercase opacity-72">{r.k}</div>
-                    <div className="text-[18px] leading-[1.35] mt-1.5">
+                    <div className="text-cap opacity-72">{r.k}</div>
+                    <div className="text-lead leading-[1.35] mt-1.5">
                       {r.v}
                       {r.chip ? <Tag variant="accent" className="ml-2 align-middle">{r.chip}</Tag> : null}
                     </div>
@@ -408,7 +443,7 @@ export default function ActaView({
                   </svg>
                   <span>Corregir visita</span>
                 </button>
-                <span className="text-[13px] opacity-66">
+                <span className="text-meta opacity-66">
                   {cerrada
                     ? "El acta ya está cerrada: la corrección queda registrada en la trazabilidad."
                     : "Corrige los datos de arriba: cliente, sucursal, técnico, fecha, hora o el trabajo solicitado."}
@@ -419,8 +454,8 @@ export default function ActaView({
           ) : null}
 
           {hayInterno ? (
-            <div className="px-5 py-5 border-b border-black/[.2] border-l-4 border-l-[var(--color-accent)] bg-[var(--color-accent-100)]">
-              <div className="text-[10px] tracking-[.12em] uppercase text-[var(--color-accent-active)] mb-2">
+            <div className="px-5 py-5 border-b border-black/[.2] bg-[var(--color-accent-100)]">
+              <div className="text-cap text-[var(--color-accent-active)] mb-2">
                 Comentario interno del técnico · no va en el acta al cliente
               </div>
               {internos.length > 0 ? (
@@ -433,7 +468,7 @@ export default function ActaView({
                 </div>
               ) : null}
               {ejec?.comentarioInterno ? (
-                <div className="text-[15px] leading-[1.5] max-w-[74ch]">{ejec.comentarioInterno}</div>
+                <div className="text-body leading-[1.5] max-w-[74ch]">{ejec.comentarioInterno}</div>
               ) : null}
               {fotosInternas.length > 0 ? (
                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-3">
@@ -470,17 +505,17 @@ export default function ActaView({
 
           {visita.trabajoSolicitado ? (
             <div className="px-5 py-5 border-b border-black/[.2] bg-[var(--color-surface)]">
-              <div className="text-[10px] tracking-[.12em] uppercase opacity-62 mb-2">
+              <div className="text-cap opacity-62 mb-2">
                 Trabajo solicitado por coordinación
               </div>
-              <div className="text-base leading-[1.5] max-w-[74ch]">{visita.trabajoSolicitado}</div>
+              <div className="text-body leading-[1.5] max-w-[74ch]">{visita.trabajoSolicitado}</div>
               {visita.adjuntos?.length ? (
                 <div className="mt-3 max-w-[74ch]">
                   <AdjuntosVista adjuntos={visita.adjuntos} />
                 </div>
               ) : null}
               {visita.indicacionesAcceso ? (
-                <div className="text-[13px] leading-[1.5] opacity-60 mt-2.5 max-w-[74ch]">
+                <div className="text-meta leading-[1.5] opacity-60 mt-2.5 max-w-[74ch]">
                   Acceso: {visita.indicacionesAcceso}
                 </div>
               ) : null}
@@ -489,10 +524,10 @@ export default function ActaView({
 
           {!ejecutada ? (
             <div className="px-5 pt-8.5 pb-9.5 text-center">
-              <div className="font-extrabold text-[19px] leading-[1.25] mb-1.5">
+              <div className="font-extrabold text-h3 leading-[1.25] mb-1.5">
                 El técnico aún no registra el formulario
               </div>
-              <div className="text-sm opacity-66 max-w-[52ch] mx-auto">
+              <div className="text-ui opacity-66 max-w-[52ch] mx-auto">
                 La visita está en estado {ESTADO_VISITA_LABEL[visita.estado]}. Cuando el técnico la cierre en terreno
                 vas a ver aquí problemas, fotos, horarios y la firma de la tienda.
               </div>
@@ -501,8 +536,8 @@ export default function ActaView({
 
           {ejec?.observaciones ? (
             <div className="px-5 py-5 border-b border-black/[.2]">
-              <div className="text-[11px] tracking-[.11em] uppercase opacity-66">Observaciones del técnico</div>
-              <div className="text-[17px] leading-[1.45] mt-1.5 max-w-[74ch]">{ejec.observaciones}</div>
+              <div className="text-cap opacity-66">Observaciones del técnico</div>
+              <div className="text-lead leading-[1.45] mt-1.5 max-w-[74ch]">{ejec.observaciones}</div>
             </div>
           ) : null}
 
@@ -510,18 +545,18 @@ export default function ActaView({
             <div className="px-5 pt-5.5 pb-6">
               {visita.trabajos && visita.trabajos.length > 0 ? (
                 <>
-                  <div className="text-[11px] tracking-[.11em] uppercase opacity-66 mb-3">
+                  <div className="text-cap opacity-66 mb-3">
                     Trabajo realizado ({visita.trabajos.length})
                   </div>
                   <div className="flex flex-col gap-2.5 mb-6.5">
                     {visita.trabajos.map((t) => (
                       <div key={t.id} className="border border-black/[.35] bg-white px-4.5 py-3.5">
                         {t.motivoCodigo ? (
-                          <div className="text-[10px] tracking-[.1em] uppercase opacity-62 mb-1">
+                          <div className="text-cap opacity-62 mb-1">
                             {nombreMotivo(t.motivoCodigo)}
                           </div>
                         ) : null}
-                        <div className="font-extrabold text-base">
+                        <div className="font-extrabold text-lead">
                           {nombreTrabajo(catalogoTrabajo, t.trabajoCodigo)}
                         </div>
                         {t.subtrabajos.length > 0 ? (
@@ -534,14 +569,14 @@ export default function ActaView({
                             ))}
                           </div>
                         ) : null}
-                        {t.detalle ? <div className="text-[15px] leading-[1.45] mt-2.5 max-w-[70ch]">{t.detalle}</div> : null}
+                        {t.detalle ? <div className="text-body leading-[1.45] mt-2.5 max-w-[70ch]">{t.detalle}</div> : null}
                       </div>
                     ))}
                   </div>
                 </>
               ) : null}
 
-              <div className="text-[11px] tracking-[.11em] uppercase opacity-66 mb-3">
+              <div className="text-cap opacity-66 mb-3">
                 Problemas levantados ({visita.problemas?.length ?? 0})
               </div>
               {visita.problemas && visita.problemas.length > 0 ? (
@@ -549,31 +584,31 @@ export default function ActaView({
                   {visita.problemas.map((p, i) => (
                     <div key={p.id} className="border border-black/[.35] bg-white">
                       <div className="flex items-center gap-2.5 flex-wrap px-4.5 py-3.5 border-b border-black/[.2] bg-[var(--color-surface)]">
-                        <span className="w-6.5 h-6.5 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-xs tabular-nums">
+                        <span className="w-6.5 h-6.5 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap tabular-nums">
                           {i + 1}
                         </span>
-                        <div className="font-extrabold text-xs tracking-[.09em] uppercase">
+                        <div className="font-extrabold text-cap ">
                           Problema {i + 1} de {visita.problemas!.length}
                         </div>
                         <EstadoProblemaTag estado={p.estado} className="ml-auto" />
                       </div>
                       <div className="px-4.5 pt-4 pb-1.5">
                         <div className="pb-3.5 border-b border-black/[.18]">
-                          <div className="text-[11px] tracking-[.11em] uppercase opacity-60">Tipo de problema</div>
-                          <div className="font-extrabold text-[19px] leading-[1.3] mt-1.5">
+                          <div className="text-cap opacity-60">Tipo de problema</div>
+                          <div className="font-extrabold text-h3 leading-[1.3] mt-1.5">
                             {nombreProblema(catalogoProblema, p.tipoCodigo)}
                           </div>
                         </div>
                         {p.items.length > 0 ? (
                           <div className="py-3.5 border-b border-black/[.18]">
-                            <div className="text-[11px] tracking-[.11em] uppercase opacity-60">
+                            <div className="text-cap opacity-60">
                               {p.tipoCodigo === "PLACAS_DANADAS" ? "Modelos de placa y cantidad" : "Equipos afectados"}
                             </div>
                             <div className="flex flex-wrap gap-1.5 mt-2.5">
                               {p.items.map((it) => (
                                 <span
                                   key={it.id}
-                                  className="inline-flex items-baseline gap-2 px-2.5 py-1.5 bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-[13px] leading-[1.2]"
+                                  className="inline-flex items-baseline gap-2 px-2.5 py-1.5 bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-meta leading-[1.2]"
                                 >
                                   <span>{it.etiqueta}</span>
                                   <span className="tabular-nums opacity-75">× {it.cantidad}</span>
@@ -584,20 +619,20 @@ export default function ActaView({
                         ) : null}
                         {p.descripcion ? (
                           <div className="py-3.5 border-b border-black/[.18]">
-                            <div className="text-[11px] tracking-[.11em] uppercase opacity-60">
+                            <div className="text-cap opacity-60">
                               Qué encontró el técnico
                             </div>
-                            <div className="text-[17px] leading-[1.4] mt-1.5 max-w-[70ch]">{p.descripcion}</div>
+                            <div className="text-lead leading-[1.4] mt-1.5 max-w-[70ch]">{p.descripcion}</div>
                           </div>
                         ) : null}
                         {/* El celular ya no pide solución: solo las actas
                             anteriores la traen. */}
                         {p.solucion ? (
                           <div className="pt-3.5 pb-4">
-                            <div className="text-[11px] tracking-[.11em] uppercase opacity-60">
+                            <div className="text-cap opacity-60">
                               {p.estado === "RESUELTO" ? "Qué se realizó en terreno" : "Solución sugerida por el técnico"}
                             </div>
-                            <div className="text-[17px] leading-[1.4] mt-1.5 max-w-[70ch]">{p.solucion}</div>
+                            <div className="text-lead leading-[1.4] mt-1.5 max-w-[70ch]">{p.solucion}</div>
                           </div>
                         ) : (
                           <div className="pb-4" />
@@ -617,7 +652,7 @@ export default function ActaView({
                                   solucion: p.solucion,
                                 })
                               }
-                              className="btn btn-primary min-h-[34px] px-3 gap-2 text-[13px]"
+                              className="btn btn-primary min-h-[34px] px-3 gap-2 text-meta"
                             >
                               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                                 <rect x="3" y="5" width="18" height="16" />
@@ -632,11 +667,11 @@ export default function ActaView({
                   ))}
                 </div>
               ) : (
-                <div className="text-[15px] opacity-66">Sin problemas registrados en esta visita.</div>
+                <div className="text-body opacity-66">Sin problemas registrados en esta visita.</div>
               )}
 
               <div className="flex items-center gap-3 flex-wrap mt-6.5 mb-3">
-                <div className="text-[11px] tracking-[.11em] uppercase opacity-66">
+                <div className="text-cap opacity-66">
                   Fotos del trabajo ({fotosCliente.length})
                 </div>
                 {fotosCliente.length > 0 ? (
@@ -644,7 +679,7 @@ export default function ActaView({
                     type="button"
                     onClick={() => bajarTodo("fotos")}
                     disabled={bajando !== null}
-                    className="btn btn-secondary min-h-[34px] px-3 gap-2 text-[13px] ml-auto"
+                    className="btn btn-secondary min-h-[34px] px-3 gap-2 text-meta ml-auto"
                   >
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                       <path d="M12 4v11M7 11l5 5 5-5M4 20h16" />
@@ -672,14 +707,14 @@ export default function ActaView({
                       className="w-full h-full object-cover"
                       loading="lazy"
                     />
-                    <div className="absolute left-0 right-0 bottom-0 px-2 py-1 bg-[rgba(32,30,29,.72)] text-[var(--color-bg)] text-left">
-                      <div className="font-extrabold text-[11px] leading-[1.2] truncate">{f.etiqueta ?? "Foto"}</div>
-                      <div className="text-[10px] leading-[1.3] opacity-80 tabular-nums">{hhmm(f.tomadaEn)}</div>
+                    <div className="absolute left-0 right-0 bottom-0 px-2 py-1 bg-[rgba(31,28,33,.72)] text-[var(--color-bg)] text-left">
+                      <div className="font-extrabold text-cap leading-[1.2] truncate">{f.etiqueta ?? "Foto"}</div>
+                      <div className="text-cap leading-[1.3] opacity-80 tabular-nums">{hhmm(f.tomadaEn)}</div>
                     </div>
                   </button>
                 ))}
                 {fotosCliente.length === 0 ? (
-                  <div className="col-span-full text-[13px] opacity-66">Sin fotos registradas.</div>
+                  <div className="col-span-full text-meta opacity-66">Sin fotos registradas.</div>
                 ) : null}
               </div>
 
@@ -687,7 +722,7 @@ export default function ActaView({
                   que responde por rangos: por eso se pueden adelantar sin que
                   el navegador se baje los 11 MB completos. */}
               <div className="flex items-center gap-3 flex-wrap mt-6.5 mb-3">
-                <div className="text-[11px] tracking-[.11em] uppercase opacity-66">
+                <div className="text-cap opacity-66">
                   Videos del trabajo ({videosCliente.length})
                 </div>
                 {videosCliente.length > 0 ? (
@@ -695,7 +730,7 @@ export default function ActaView({
                     type="button"
                     onClick={() => bajarTodo("videos")}
                     disabled={bajando !== null}
-                    className="btn btn-secondary min-h-[34px] px-3 gap-2 text-[13px] ml-auto"
+                    className="btn btn-secondary min-h-[34px] px-3 gap-2 text-meta ml-auto"
                   >
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                       <path d="M12 4v11M7 11l5 5 5-5M4 20h16" />
@@ -714,7 +749,7 @@ export default function ActaView({
                       playsInline
                       className="w-full aspect-video bg-black object-contain"
                     />
-                    <figcaption className="flex items-center gap-2 px-2.5 py-1.5 text-[11px] tabular-nums opacity-70">
+                    <figcaption className="flex items-center gap-2 px-2.5 py-1.5 text-cap tabular-nums opacity-70">
                       <span className="font-extrabold truncate">{v.etiqueta ?? "Video del trabajo"}</span>
                       <span className="ml-auto flex-none">
                         {v.duracionSeg ? reloj(v.duracionSeg) : "—"}
@@ -724,7 +759,7 @@ export default function ActaView({
                   </figure>
                 ))}
                 {videosCliente.length === 0 ? (
-                  <div className="col-span-full text-[13px] opacity-66">Sin videos registrados.</div>
+                  <div className="col-span-full text-meta opacity-66">Sin videos registrados.</div>
                 ) : null}
               </div>
 
@@ -738,13 +773,13 @@ export default function ActaView({
                       className="h-[78px] w-full object-contain object-left-bottom"
                     />
                   ) : (
-                    <div className="h-[78px] border border-dashed border-[var(--color-divider)] bg-[var(--color-surface)] grid place-items-center text-[11px] leading-[1.3] tracking-[.06em] uppercase opacity-60">
+                    <div className="h-[78px] border border-dashed border-[var(--color-divider)] bg-[var(--color-surface)] grid place-items-center text-cap leading-[1.3] opacity-60">
                       {cerrada ? (papel ? "Firmado en papel" : "Firma capturada en terreno") : "Sin firma todavía"}
                     </div>
                   )}
                   <div className="h-px bg-[var(--color-text)] mt-1.5" />
-                  <div className="text-sm mt-1.5">{cerrada ? firma?.nombre ?? "—" : "—"}</div>
-                  <div className="text-[10px] tracking-[.09em] uppercase opacity-62">
+                  <div className="text-ui mt-1.5">{cerrada ? firma?.nombre ?? "—" : "—"}</div>
+                  <div className="text-cap opacity-62">
                     Responsable de tienda · {cerrada ? firma?.rut ?? "—" : "sin firmar"}
                   </div>
                 </div>
@@ -762,8 +797,8 @@ export default function ActaView({
               onClick={() => setZonaAbierta((v) => !v)}
               className="w-full flex items-center gap-2.5 px-5 py-3.5 bg-transparent border-0 cursor-pointer text-left text-[var(--color-accent-800)]"
             >
-              <span className="font-extrabold text-[13px] tracking-[.06em] uppercase">Zona de peligro</span>
-              <span className="text-[13px] opacity-70 ml-auto">
+              <span className="font-extrabold text-meta ">Zona de peligro</span>
+              <span className="text-meta opacity-70 ml-auto">
                 {zonaAbierta
                   ? ""
                   : [cerrablePorAdmin ? "Cancelar por admin" : "", eliminable ? "Eliminar visita" : ""]
@@ -785,7 +820,7 @@ export default function ActaView({
             </button>
             {zonaAbierta && cerrablePorAdmin ? (
               <div className="px-5 py-4 flex items-center gap-4 flex-wrap border-t border-[var(--color-accent-300)]">
-                <p className="m-0 flex-1 min-w-[240px] text-[13px] opacity-70">
+                <p className="m-0 flex-1 min-w-[240px] text-meta opacity-70">
                   Cierra esta visita sin que llegue a hacerse. Queda «Cancelada por admin», deja de
                   aparecerle al técnico y el motivo se guarda en la bitácora.
                 </p>
@@ -805,7 +840,7 @@ export default function ActaView({
             ) : null}
             {zonaAbierta && eliminable ? (
             <div className="px-5 py-4 flex items-center gap-4 flex-wrap border-t border-[var(--color-accent-300)]">
-              <p className="m-0 flex-1 min-w-[240px] text-[13px] opacity-70">
+              <p className="m-0 flex-1 min-w-[240px] text-meta opacity-70">
                 Elimina esta visita del panel, del celular del técnico y de los gráficos de
                 coordinación. No borra el acta de la base: pide escribir el folio para confirmar y
                 queda registrada en la auditoría de eliminaciones.
@@ -831,7 +866,7 @@ export default function ActaView({
       {/* Trazabilidad */}
       <div
         onClick={() => setTrazaAbierta(false)}
-        className="fixed inset-0 z-40 bg-[rgba(45,43,43,.35)] transition-opacity duration-200"
+        className="fixed inset-0 z-40 bg-[rgba(31,28,33,.35)] transition-opacity duration-200"
         style={{ opacity: trazaAbierta ? 1 : 0, pointerEvents: trazaAbierta ? "auto" : "none" }}
       />
       <div
@@ -841,8 +876,8 @@ export default function ActaView({
       >
         <div className="flex-none flex items-center gap-2.5 px-4.5 py-4 border-b-2 border-[var(--color-divider)]">
           <div className="min-w-0">
-            <div className="text-[10px] tracking-[.14em] uppercase text-[var(--color-accent-active)]">Trazabilidad</div>
-            <div className="font-extrabold text-[17px] leading-[1.15] mt-1 tabular-nums">{visita.folio}</div>
+            <div className="font-extrabold text-lead leading-[1.15]">Trazabilidad</div>
+            <div className="num text-meta text-[var(--color-muted)] mt-1">{visita.folio}</div>
           </div>
           <button
             onClick={() => setTrazaAbierta(false)}
@@ -855,9 +890,9 @@ export default function ActaView({
           </button>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto p-4.5">
-          <div className="px-3.5 py-3 bg-[var(--color-surface)] border-l-4 border-[var(--color-accent)]">
-            <div className="text-[10px] tracking-[.11em] uppercase opacity-66">Último movimiento</div>
-            <div className="font-extrabold text-[15px] leading-[1.3] mt-1.5">
+          <div className="px-3.5 py-3 bg-[var(--color-surface)] border border-[var(--color-accent-300)]">
+            <div className="text-cap opacity-66">Último movimiento</div>
+            <div className="font-extrabold text-body leading-[1.3] mt-1.5">
               {papel
                 ? "Informe en papel cargado"
                 : cerrada
@@ -866,20 +901,20 @@ export default function ActaView({
                   ? "Formulario en edición en el móvil"
                   : "Programada, sin registro en terreno"}
             </div>
-            <div className="text-xs leading-[1.4] opacity-60 mt-1 tabular-nums">
-              {visita.fechaProgramada} · {ejec ? (papel ? "en papel" : hhmm(cerrada ? ejec.horaTermino : ejec.horaInicio)) : "creada"} ·{" "}
+            <div className="text-cap leading-[1.4] opacity-60 mt-1 tabular-nums">
+              {fechaCL(visita.fechaProgramada)} · {ejec ? (papel ? "en papel" : hhmm(cerrada ? ejec.horaTermino : ejec.horaInicio)) : "creada"} ·{" "}
               {visita.tecnico?.nombreCompleto}
             </div>
           </div>
 
-          <div className="text-[10px] tracking-[.12em] uppercase opacity-66 mt-5 mb-2.5">Línea de tiempo</div>
+          <div className="text-cap opacity-66 mt-5 mb-2.5">Línea de tiempo</div>
           {[
-            { estado: "Programada", hora: `${visita.fechaProgramada} · creada`, quien: "Coordinación", color: "var(--color-neutral-300)" },
+            { estado: "Programada", hora: `${fechaCL(visita.fechaProgramada)} · creada`, quien: "Coordinación", color: "var(--color-neutral-300)" },
             ...(ejecutada && ejec
               ? [
                   {
                     estado: "En curso",
-                    hora: `${visita.fechaProgramada} ${papel ? "· en papel" : hhmm(ejec.horaInicio)}`,
+                    hora: `${fechaCL(visita.fechaProgramada)} ${papel ? "· en papel" : hhmm(ejec.horaInicio)}`,
                     quien: visita.tecnico?.nombreCompleto ?? "—",
                     color: "var(--color-accent)",
                   },
@@ -889,7 +924,7 @@ export default function ActaView({
               ? [
                   {
                     estado: ESTADO_VISITA_LABEL[visita.estado],
-                    hora: `${visita.fechaProgramada} ${papel ? "· en papel" : hhmm(ejec.horaTermino)}`,
+                    hora: `${fechaCL(visita.fechaProgramada)} ${papel ? "· en papel" : hhmm(ejec.horaTermino)}`,
                     quien: visita.tecnico?.nombreCompleto ?? "—",
                     color: cerrada ? "var(--color-text)" : "var(--color-accent)",
                   },
@@ -902,8 +937,8 @@ export default function ActaView({
                 <span className="flex-1 w-px bg-black/[.25] mt-1" />
               </div>
               <div className="min-w-0">
-                <div className="font-extrabold text-sm leading-[1.3]">{h.estado}</div>
-                <div className="text-xs leading-[1.4] opacity-60 tabular-nums">
+                <div className="font-extrabold text-ui leading-[1.3]">{h.estado}</div>
+                <div className="text-cap leading-[1.4] opacity-60 tabular-nums">
                   {h.hora} · {h.quien}
                 </div>
               </div>
@@ -912,18 +947,18 @@ export default function ActaView({
 
           {ediciones.length > 0 ? (
             <>
-              <div className="text-[10px] tracking-[.12em] uppercase opacity-66 mt-1.5 mb-2.5">Ediciones del acta</div>
+              <div className="text-cap opacity-66 mt-1.5 mb-2.5">Ediciones del acta</div>
               {[...ediciones].reverse().map((e) => (
                 <div key={e.id} className="pb-3.5">
-                  <div className="font-extrabold text-sm leading-[1.3]">Acta editada · {e.secciones.join(", ")}</div>
-                  <div className="text-xs leading-[1.4] opacity-60 tabular-nums">{resumenEdicion(e)}</div>
-                  <div className="text-[13px] leading-[1.4] mt-1">{e.motivo}</div>
+                  <div className="font-extrabold text-ui leading-[1.3]">Acta editada · {e.secciones.join(", ")}</div>
+                  <div className="text-cap leading-[1.4] opacity-60 tabular-nums">{resumenEdicion(e)}</div>
+                  <div className="text-meta leading-[1.4] mt-1">{e.motivo}</div>
                 </div>
               ))}
             </>
           ) : null}
 
-          <div className="text-[10px] tracking-[.12em] uppercase opacity-66 mt-3.5 mb-1">Datos del registro</div>
+          <div className="text-cap opacity-66 mt-3.5 mb-1">Datos del registro</div>
           {[
             { k: "Creada", v: visita.creadoEn.slice(0, 16).replace("T", " · ") },
             { k: "Sincronizada", v: ejec?.sincronizadoEn ? ejec.sincronizadoEn.slice(0, 16).replace("T", " · ") : "pendiente" },
@@ -934,10 +969,10 @@ export default function ActaView({
             { k: "Folio", v: visita.folio },
           ].map((t) => (
             <div key={t.k} className="flex gap-3 py-2.5 border-b border-black/[.18]">
-              <div className="text-[10px] leading-[1.5] tracking-[.08em] uppercase opacity-62 min-w-[92px] flex-none">
+              <div className="text-cap leading-[1.5] opacity-62 min-w-[92px] flex-none">
                 {t.k}
               </div>
-              <div className="text-[13px] min-w-0 tabular-nums text-right ml-auto">{t.v}</div>
+              <div className="text-meta min-w-0 tabular-nums text-right ml-auto">{t.v}</div>
             </div>
           ))}
         </div>
@@ -1043,10 +1078,10 @@ function CorreoDialogo({
   const [form, setForm] = useState<Record<string, string | boolean>>({
     para: "",
     cc: "",
-    asunto: `${visita.sucursal?.nombre} · ${textoMotivos(visita)} · ${visita.fechaProgramada}`,
+    asunto: `${visita.sucursal?.nombre} · ${textoMotivos(visita)} · ${fechaCL(visita.fechaProgramada)}`,
     cuerpo:
       `Estimados,\n\n` +
-      `Informamos que la visita técnica en ${visita.sucursal?.nombre} (${visita.cliente?.nombreFantasia}) fue realizada el ${visita.fechaProgramada}.\n\n` +
+      `Informamos que la visita técnica en ${visita.sucursal?.nombre} (${visita.cliente?.nombreFantasia}) fue realizada el ${fechaCL(visita.fechaProgramada)}.\n\n` +
       `Motivo: ${textoMotivosReales(visita)}\n` +
       `Técnico: ${visita.tecnico?.nombreCompleto}\n` +
       (visita.tecnicoAyudante ? `Técnico ayudante: ${visita.tecnicoAyudante.nombreCompleto}\n` : "") +
@@ -1099,7 +1134,6 @@ function CorreoDialogo({
 
   return (
     <Dialogo
-      kicker="Acta · enviar al cliente"
       titulo={`Enviar acta ${visita.folio}`}
       cta="Enviar correo"
       nota="Puedes editar destinatarios, asunto, cuerpo y qué se adjunta antes de enviar."

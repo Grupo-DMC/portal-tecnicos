@@ -42,7 +42,7 @@ export function Toast({ texto, variante = "mobile" }: { texto: string; variante?
       className={`fixed left-1/2 -translate-x-1/2 ${posicion} z-[70] px-4 py-3 bg-[var(--color-text)] text-[var(--color-bg)] flex items-center gap-2.5 animate-up-dlg`}
     >
       <span className="w-2 h-2 flex-none bg-[var(--color-accent)]" />
-      <span className="text-[13px]">{texto}</span>
+      <span className="text-meta">{texto}</span>
     </div>
   );
 }

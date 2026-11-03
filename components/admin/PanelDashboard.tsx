@@ -14,8 +14,7 @@ export default function PanelDashboard({ data }: { data: Record<Rango, PanelData
     <>
       <div className="lg:sticky lg:top-0 z-10 bg-[var(--color-bg)] border-b-2 border-[var(--color-divider)] flex items-end gap-x-5 gap-y-3 px-4 md:px-7 pt-4 md:pt-[22px] pb-4 flex-wrap">
         <div className="min-w-0">
-          <div className="text-[10px] tracking-[.15em] uppercase text-[var(--color-accent-active)]">Coordinación</div>
-          <h1 className="font-extrabold text-[24px] md:text-[30px] leading-[1.08] tracking-[-.03em] mt-1.5">Panel de operación</h1>
+          <h1 className="font-extrabold text-h2 md:text-h1 leading-[1.08] tracking-[-.03em]">Panel de operación</h1>
         </div>
         <div className="ml-auto seg">
           {RANGOS.map((r) => (
@@ -24,7 +23,7 @@ export default function PanelDashboard({ data }: { data: Record<Rango, PanelData
               className="seg-opt"
               style={{
                 background: rango === r ? "var(--color-accent)" : "transparent",
-                color: rango === r ? "var(--color-bg)" : "var(--color-text)",
+                color: rango === r ? "#fff" : "var(--color-text)",
               }}
             >
               <input
@@ -46,7 +45,7 @@ export default function PanelDashboard({ data }: { data: Record<Rango, PanelData
             label={`Visitas · ${rango.toLowerCase()}`}
             n={d.kpis.programadas}
             unidad="programadas"
-            sub={rango === "Hoy" ? `${d.kpis.tecnicosHoy} técnicos en terreno` : `${d.kpis.programadas - d.kpis.cerradas} sin cerrar a tiempo`}
+            sub={rango === "Hoy" ? `${d.kpis.tecnicosHoy} ${d.kpis.tecnicosHoy === 1 ? "técnico" : "técnicos"} en terreno` : `${d.kpis.programadas - d.kpis.cerradas} sin cerrar a tiempo`}
             accion="Ver visitas"
             href="/admin/visitas"
           />
@@ -64,12 +63,15 @@ export default function PanelDashboard({ data }: { data: Record<Rango, PanelData
             sub="Abiertos + pendientes, en total"
             accion="Ver problemas"
             href="/admin/problemas"
-            color="var(--color-accent)"
+            color={d.kpis.problemasAbiertosTotal > 0 ? "var(--color-danger)" : undefined}
           />
           <KpiCard
-            label={`Reagendas · ${rango.toLowerCase()}`}
-            n={d.kpis.reagendas}
-            sub="Reagendadas o pendientes"
+            label="Esperan nueva fecha"
+            n={d.kpis.porReagendar}
+            unidad={d.kpis.porReagendar === 1 ? "visita" : "visitas"}
+            sub={`Reagendadas o pendientes, en total · ${d.kpis.reagendas} ${
+              rango === "Hoy" ? "eran para hoy" : rango === "Semana" ? "de esta semana" : "de este mes"
+            }`}
             accion="Ver reagendas"
             href="/admin/reagendas"
           />
@@ -78,14 +80,18 @@ export default function PanelDashboard({ data }: { data: Record<Rango, PanelData
         <div className="grid grid-cols-1 lg:grid-cols-2">
           <div className="p-4 md:p-6 lg:border-r border-b border-black/[.12]">
             <div className="flex items-baseline gap-2.5">
-              <h2 className="font-extrabold text-[17px] m-0">Visitas del día por estado</h2>
-              <span className="ml-auto text-[11px] tracking-[.08em] uppercase opacity-60">{d.totalHoy} visitas</span>
+              <h2 className="font-extrabold text-lead m-0">Visitas del día por estado</h2>
+              <span className="ml-auto text-cap opacity-60">{d.totalHoy} visitas</span>
             </div>
-            <div className="flex h-3.5 mt-4 border border-[var(--color-divider)]">
-              {d.estadoHoy.map((e) => (
-                <div key={e.estado} style={{ width: `${e.pct}%`, background: e.color }} className="border-r border-black/[.15]" />
-              ))}
-            </div>
+            {d.totalHoy > 0 ? (
+              <div className="flex h-3.5 mt-4 border border-[var(--color-divider)]">
+                {d.estadoHoy.map((e) => (
+                  <div key={e.estado} style={{ width: `${e.pct}%`, background: e.color }} className="border-r border-black/[.15]" />
+                ))}
+              </div>
+            ) : (
+              <div className="mt-4 h-3.5 bg-[var(--color-surface)]" aria-hidden="true" />
+            )}
             <div className="mt-4">
               {d.estadoHoy.map((e) => (
                 <Link
@@ -94,30 +100,30 @@ export default function PanelDashboard({ data }: { data: Record<Rango, PanelData
                   className="w-full flex items-center gap-2.5 py-2.5 border-b border-black/[.1] hover:bg-black/5"
                 >
                   <span className="w-2.5 h-2.5 shrink-0 border border-black/[.35]" style={{ background: e.color }} />
-                  <span className="text-[13px]">{e.label}</span>
-                  <span className="ml-auto font-extrabold text-sm tabular-nums">{e.n}</span>
-                  <span className="w-11 text-right text-xs opacity-62 tabular-nums">{e.pct}%</span>
+                  <span className="text-meta">{e.label}</span>
+                  <span className="ml-auto font-extrabold text-ui tabular-nums">{e.n}</span>
+                  <span className="w-11 text-right text-cap opacity-62 tabular-nums">{e.pct}%</span>
                 </Link>
               ))}
             </div>
           </div>
 
-          <CumplimientoPanel cumplimiento={d.cumplimiento} />
+          <CumplimientoPanel cumplimiento={d.cumplimiento} porTecnico={rango === "Hoy" ? d.carga : null} hoy={d.hoy} />
 
           <div className="p-4 md:p-6 lg:border-r border-b border-black/[.12]">
             <div className="flex items-baseline gap-2.5">
-              <h2 className="font-extrabold text-[17px] m-0">Problemas abiertos por tipo</h2>
-              <span className="ml-auto text-[11px] tracking-[.08em] uppercase opacity-60">
+              <h2 className="font-extrabold text-lead m-0">Problemas abiertos por tipo</h2>
+              <span className="ml-auto text-cap opacity-60">
                 {d.kpis.problemasAbiertosTotal} abiertos
               </span>
             </div>
-            <p className="mt-1.5 mb-0 text-xs opacity-62">Haz clic en un tipo para ver las visitas donde se registró.</p>
+            <p className="mt-1.5 mb-0 text-cap opacity-62">Haz clic en un tipo para ver las visitas donde se registró.</p>
             <div className="mt-2.5">
               {d.problemasTipo.map((p) => (
                 <div key={p.codigo} className="py-2.5 border-b border-black/[.1]">
                   <div className="flex items-baseline gap-2.5">
-                    <span className="text-[13px] min-w-0">{p.nombre}</span>
-                    <span className="ml-auto font-extrabold text-sm tabular-nums">{p.n}</span>
+                    <span className="text-meta min-w-0">{p.nombre}</span>
+                    <span className="ml-auto font-extrabold text-ui tabular-nums">{p.n}</span>
                   </div>
                   <div className="h-2 mt-1.5 bg-[var(--color-neutral-300)]">
                     <div className="h-2" style={{ width: `${p.pct}%`, background: "var(--color-accent)" }} />
@@ -125,14 +131,16 @@ export default function PanelDashboard({ data }: { data: Record<Rango, PanelData
                 </div>
               ))}
               {d.problemasTipo.length === 0 ? (
-                <div className="py-5 text-[13px] opacity-66">Sin problemas registrados en este período.</div>
+                <div className="py-5 text-meta opacity-66">Sin problemas registrados en este período.</div>
               ) : null}
             </div>
           </div>
 
+          {/* En «Hoy» el cumplimiento ya se lee por técnico: esta tabla repetiría lo mismo. */}
+          {rango !== "Hoy" ? (
           <div className="p-4 md:p-6 border-b border-black/[.12]">
-            <h2 className="font-extrabold text-[17px] m-0 mb-1">Carga por técnico</h2>
-            <p className="m-0 mb-2 text-xs opacity-62">Programadas vs realizadas hoy.</p>
+            <h2 className="font-extrabold text-lead m-0 mb-1">Carga por técnico</h2>
+            <p className="m-0 mb-2 text-cap opacity-62">Programadas vs realizadas hoy.</p>
             <table className="table">
               <thead>
                 <tr>
@@ -153,7 +161,7 @@ export default function PanelDashboard({ data }: { data: Record<Rango, PanelData
                         <div className="flex-1 h-2 bg-[var(--color-neutral-300)]">
                           <div className="h-2" style={{ width: `${c.pct}%`, background: "var(--color-text)" }} />
                         </div>
-                        <span className="text-[11px] opacity-66 tabular-nums">{c.pct}%</span>
+                        <span className="text-cap opacity-66 tabular-nums">{c.pct}%</span>
                       </div>
                     </td>
                   </tr>
@@ -161,28 +169,31 @@ export default function PanelDashboard({ data }: { data: Record<Rango, PanelData
               </tbody>
             </table>
           </div>
+          ) : null}
 
-          <div className="p-4 md:p-6 lg:border-r max-lg:border-b border-black/[.12]">
-            <h2 className="font-extrabold text-[17px] m-0 mb-1">Sucursales con más fallas</h2>
-            <p className="m-0 mb-2 text-xs opacity-62">Total histórico de problemas registrados.</p>
+          <div
+            className={`p-4 md:p-6 max-lg:border-b border-black/[.12] ${rango === "Hoy" ? "border-b" : "lg:border-r"}`}
+          >
+            <h2 className="font-extrabold text-lead m-0 mb-1">Sucursales con más fallas</h2>
+            <p className="m-0 mb-2 text-cap opacity-62">Total histórico de problemas registrados.</p>
             <div>
               {d.sucursalesFallas.map((s, i) => (
                 <div key={s.sucursalId} className="w-full flex items-center gap-3 py-2.5 border-b border-black/[.1]">
-                  <div className="font-extrabold text-[13px] tabular-nums opacity-52 w-5">{i + 1}</div>
+                  <div className="font-extrabold text-meta tabular-nums opacity-52 w-5">{i + 1}</div>
                   <div className="min-w-0">
-                    <div className="font-extrabold text-sm">{s.sucursal.nombre}</div>
-                    <div className="text-xs opacity-62">
+                    <div className="font-extrabold text-ui">{s.sucursal.nombre}</div>
+                    <div className="text-cap opacity-62">
                       {s.sucursal.comuna}
                     </div>
                   </div>
                   <div className="ml-auto flex items-center gap-2.5">
                     <span className="tag tag-outline">{s.sinCerrar} sin cerrar</span>
-                    <span className="font-extrabold text-lg tabular-nums">{s.total}</span>
+                    <span className="font-extrabold text-lead tabular-nums">{s.total}</span>
                   </div>
                 </div>
               ))}
               {d.sucursalesFallas.length === 0 ? (
-                <div className="py-5 text-[13px] opacity-66">Sin fallas registradas.</div>
+                <div className="py-5 text-meta opacity-66">Sin fallas registradas.</div>
               ) : null}
             </div>
           </div>
@@ -190,15 +201,15 @@ export default function PanelDashboard({ data }: { data: Record<Rango, PanelData
           <div className="p-4 md:p-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
-                <h2 className="font-extrabold text-[17px] m-0 mb-3">Tiempo en sitio</h2>
+                <h2 className="font-extrabold text-lead m-0 mb-3">Tiempo en sitio</h2>
                 <div className="flex items-baseline gap-1.5">
-                  <div className="font-extrabold text-[44px] leading-none tracking-[-.03em] tabular-nums">{d.tiempo.prom}</div>
-                  <div className="text-[13px] opacity-62">min prom.</div>
+                  <div className="num font-bold text-display leading-none tracking-[-.03em] tabular-nums">{d.tiempo.prom}</div>
+                  <div className="text-meta opacity-62">min prom.</div>
                 </div>
                 <div className="mt-3.5">
                   {d.tiempo.porMotivo.map((t) => (
                     <div key={t.label} className="py-2 border-b border-black/[.1]">
-                      <div className="flex gap-2 text-xs">
+                      <div className="flex gap-2 text-cap">
                         <span className="min-w-0 opacity-75">{t.label}</span>
                         <span className="ml-auto tabular-nums font-semibold">{t.min} min</span>
                       </div>
@@ -210,12 +221,12 @@ export default function PanelDashboard({ data }: { data: Record<Rango, PanelData
                 </div>
               </div>
               <div>
-                <h2 className="font-extrabold text-[17px] m-0 mb-3">Reagendamientos</h2>
+                <h2 className="font-extrabold text-lead m-0 mb-3">Reagendamientos</h2>
                 <div className="flex items-baseline gap-2">
-                  <div className="font-extrabold text-[44px] leading-none tracking-[-.03em] tabular-nums text-[var(--color-accent)]">
+                  <div className="num font-bold text-display leading-none tracking-[-.03em] tabular-nums">
                     {d.reagendasLista.length}
                   </div>
-                  <div className="text-[13px] opacity-62">últimos registrados</div>
+                  <div className="text-meta opacity-62">últimos registrados</div>
                 </div>
                 <div className="mt-3.5">
                   {d.reagendasLista.map((r) => (
@@ -225,14 +236,14 @@ export default function PanelDashboard({ data }: { data: Record<Rango, PanelData
                       className="w-full block text-left py-2.5 border-b border-black/[.1] hover:bg-black/5"
                     >
                       <div className="flex gap-2 items-baseline">
-                        <span className="font-extrabold text-[13px] min-w-0">{r.visita.sucursal?.nombre}</span>
-                        <span className="ml-auto text-[11px] tabular-nums opacity-62">{r.visita.folio}</span>
+                        <span className="font-extrabold text-meta min-w-0">{r.visita.sucursal?.nombre}</span>
+                        <span className="ml-auto text-cap tabular-nums opacity-62">{r.visita.folio}</span>
                       </div>
-                      <div className="text-xs opacity-70 mt-1">{r.reagendamiento.motivo}</div>
+                      <div className="text-cap opacity-70 mt-1">{r.reagendamiento.motivo}</div>
                     </Link>
                   ))}
                   {d.reagendasLista.length === 0 ? (
-                    <div className="py-3.5 text-[13px] opacity-66">Sin reagendamientos.</div>
+                    <div className="py-3.5 text-meta opacity-66">Sin reagendamientos.</div>
                   ) : null}
                 </div>
               </div>
@@ -249,30 +260,43 @@ export default function PanelDashboard({ data }: { data: Record<Rango, PanelData
  * trabajado. Los días sin visitas programadas no aparecen. Al pasar el mouse
  * por una barra se explica ese día; al hacer clic se abren sus visitas.
  */
-function CumplimientoPanel({ cumplimiento }: { cumplimiento: PanelData["cumplimiento"] }) {
+function CumplimientoPanel({
+  cumplimiento,
+  porTecnico,
+  hoy,
+}: {
+  cumplimiento: PanelData["cumplimiento"];
+  /** En «Hoy»: el avance de cada técnico en vez de una sola barra del día. */
+  porTecnico: PanelData["carga"] | null;
+  hoy: string;
+}) {
   const [hover, setHover] = useState<string | null>(null);
   const dia = cumplimiento.dias.find((x) => x.fecha === hover) ?? null;
 
   return (
     <div className="p-4 md:p-6 border-b border-black/[.12]">
       <div className="flex items-baseline gap-2.5">
-        <h2 className="font-extrabold text-[17px] m-0">Cumplimiento vs programado</h2>
-        <span className="ml-auto text-[11px] tracking-[.08em] uppercase opacity-60">{cumplimiento.rangoTexto}</span>
+        <h2 className="font-extrabold text-lead m-0">Cumplimiento vs programado</h2>
+        <span className="ml-auto text-cap opacity-60">{cumplimiento.rangoTexto}</span>
       </div>
 
       <div className="flex items-end gap-3.5 mt-3.5">
-        <div className="font-extrabold text-[56px] leading-none tracking-[-.04em] tabular-nums">
+        <div className="num font-bold text-hero leading-none tracking-[-.03em] tabular-nums">
           {cumplimiento.pct}%
         </div>
-        <div className="text-xs opacity-66 pb-2">
+        <div className="text-cap opacity-66 pb-2">
           {cumplimiento.detalle}
           <br />
           Meta interna {cumplimiento.meta}%
         </div>
       </div>
 
+      {porTecnico ? (
+        <PorTecnico filas={porTecnico} meta={cumplimiento.meta} hoy={hoy} />
+      ) : (
+      <>
       <div
-        className="mt-3.5 px-3 py-2.5 text-xs min-h-5 border-l-[3px]"
+        className="mt-3.5 px-3 py-2.5 text-cap min-h-5 border"
         style={{
           background: dia ? "var(--color-accent-200)" : "var(--color-surface)",
           borderColor: dia ? "var(--color-accent)" : "var(--color-divider)",
@@ -280,7 +304,7 @@ function CumplimientoPanel({ cumplimiento }: { cumplimiento: PanelData["cumplimi
       >
         {dia
           ? `${dia.label} · ${dia.pct}% · ${dia.cerradas} de ${dia.programadas} cerradas a tiempo · click para ver sus visitas`
-          : "Pasa el mouse por un día para ver su detalle; haz clic para abrir esas visitas."}
+          : "Toca o pasa el mouse por un día para ver su detalle; haz clic para abrir esas visitas."}
       </div>
 
       {cumplimiento.dias.length > 0 ? (
@@ -296,10 +320,10 @@ function CumplimientoPanel({ cumplimiento }: { cumplimiento: PanelData["cumplimi
                   onMouseLeave={() => setHover(null)}
                   aria-label={`${day.label} ${day.pct}%`}
                   className="flex-1 flex flex-col justify-end items-stretch h-full"
-                  style={{ background: activo ? "rgba(32,30,29,.07)" : "transparent" }}
+                  style={{ background: activo ? "rgba(31,28,33,.07)" : "transparent" }}
                 >
                   <div
-                    className="text-[10px] font-extrabold text-center tabular-nums mb-1.5"
+                    className="text-cap font-extrabold text-center tabular-nums mb-1.5"
                     style={{ opacity: activo ? 1 : 0.5 }}
                   >
                     {day.pctTxt}
@@ -311,7 +335,7 @@ function CumplimientoPanel({ cumplimiento }: { cumplimiento: PanelData["cumplimi
                         ? "var(--color-accent-active)"
                         : day.esHoy
                           ? "var(--color-accent)"
-                          : "#7a7676",
+                          : "var(--color-neutral-600)",
                     }}
                   />
                 </Link>
@@ -322,7 +346,7 @@ function CumplimientoPanel({ cumplimiento }: { cumplimiento: PanelData["cumplimi
             {cumplimiento.dias.map((day) => (
               <div
                 key={day.fecha}
-                className="flex-1 text-center text-[10px] tracking-[.06em] uppercase"
+                className="flex-1 text-center text-cap "
                 style={{
                   opacity: hover === day.fecha || day.esHoy ? 1 : 0.45,
                   fontWeight: hover === day.fecha || day.esHoy ? 800 : 400,
@@ -334,8 +358,56 @@ function CumplimientoPanel({ cumplimiento }: { cumplimiento: PanelData["cumplimi
           </div>
         </>
       ) : (
-        <div className="py-8 text-[13px] opacity-66">Sin días trabajados en este período.</div>
+        <div className="py-8 text-meta opacity-66">Sin días trabajados en este período.</div>
       )}
+      </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * El cumplimiento del día leído por técnico: cuántas de sus visitas de hoy ya
+ * cerró, con la meta interna marcada en cada barra. Cada fila abre sus visitas.
+ */
+function PorTecnico({ filas, meta, hoy }: { filas: PanelData["carga"]; meta: number; hoy: string }) {
+  const orden = [...filas].sort((a, b) => a.pct - b.pct || b.programadas - a.programadas);
+  if (orden.length === 0) {
+    return <div className="py-8 text-meta opacity-66">Nadie tiene visitas programadas hoy.</div>;
+  }
+  return (
+    <div className="mt-4">
+      <div className="flex items-center gap-3 pb-2 border-b border-[var(--color-line-control)] text-cap font-semibold text-[var(--color-muted)]">
+        <span className="flex-1">Técnico</span>
+        <span className="w-[72px] text-right">Cerradas</span>
+        <span className="w-[38%] min-w-[120px]">Avance · meta {meta}%</span>
+      </div>
+      {orden.map((t) => (
+        <Link
+          key={t.tecnicoId}
+          href={`/admin/visitas?fecha=${hoy}&tecnico=${t.tecnicoId}`}
+          className="flex items-center gap-3 py-2.5 border-b border-[var(--color-line)] hover:bg-[rgba(31,28,33,.04)]"
+        >
+          <span className="flex-1 min-w-0 truncate text-ui font-semibold">{t.nombre}</span>
+          <span className="w-[72px] text-right text-meta text-[var(--color-muted)]">
+            <span className="num text-[var(--color-text)]">{t.realizadas}</span> de <span className="num">{t.programadas}</span>
+          </span>
+          <span className="w-[38%] min-w-[120px] flex items-center gap-2">
+            <span className="relative flex-1 h-2 bg-[var(--color-neutral-300)]">
+              <span
+                className="absolute inset-y-0 left-0"
+                style={{ width: `${t.pct}%`, background: t.pct >= meta ? "var(--color-text)" : "var(--color-accent)" }}
+              />
+              <span
+                className="absolute -top-1 -bottom-1 w-px bg-[var(--color-text)]"
+                style={{ left: `${meta}%` }}
+                aria-hidden="true"
+              />
+            </span>
+            <span className="num w-9 text-right text-cap">{t.pct}%</span>
+          </span>
+        </Link>
+      ))}
     </div>
   );
 }
@@ -359,15 +431,15 @@ function KpiCard({
 }) {
   return (
     <Link href={href} className="block text-left px-4 md:px-6 pt-4 md:pt-[22px] pb-4.5 border-r max-lg:border-b border-black/[.2] hover:bg-black/5">
-      <div className="text-[10px] tracking-[.12em] uppercase opacity-66">{label}</div>
+      <div className="text-cap opacity-66">{label}</div>
       <div className="flex items-baseline gap-2 mt-3">
-        <div className="font-extrabold text-[32px] md:text-[40px] leading-none tracking-[-.03em] tabular-nums" style={{ color }}>
+        <div className="num font-bold text-h1 md:text-display leading-none tracking-[-.03em] tabular-nums" style={{ color }}>
           {n}
         </div>
-        {unidad ? <div className="text-xs opacity-62">{unidad}</div> : null}
+        {unidad ? <div className="text-cap opacity-62">{unidad}</div> : null}
       </div>
-      <div className="text-xs opacity-66 mt-2.5">{sub}</div>
-      <div className="flex items-center gap-1.5 mt-2.5 text-[10px] tracking-[.1em] uppercase text-[var(--color-accent-active)]">
+      <div className="text-cap opacity-66 mt-2.5">{sub}</div>
+      <div className="flex items-center gap-1.5 mt-2.5 text-cap text-[var(--color-accent-active)]">
         <span>{accion}</span>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
           <path d="M5 12h14M13 6l6 6-6 6" />

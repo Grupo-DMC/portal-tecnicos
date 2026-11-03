@@ -32,20 +32,30 @@ export function sumarDias(fecha: string, dias: number): string {
 }
 
 /**
- * 'YYYY-MM-DDTHH:mm:ss' → "24 ago 2026 · 14:35".
+ * Fecha para mostrar, en el formato de Chile: 'YYYY-MM-DD' (o una marca con
+ * hora) → "02/11/2026". Lo que no tenga forma de fecha se devuelve tal cual.
+ * Solo para mostrar: en URLs, formularios y la base la fecha sigue en ISO.
+ */
+export function fechaCL(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
+}
+
+/**
+ * 'YYYY-MM-DDTHH:mm:ss' → "24/08/2026 · 14:35".
  *
  * La marca viene sin zona desde SQL Server (ya es hora de Chile), así que se
  * formatea a mano: dársela a Date la haría interpretar como UTC y correría las
  * horas según dónde esté corriendo el servidor.
  */
-const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
 export function fechaHoraLegible(marca: string | null | undefined): string {
   if (!marca) return "—";
   const m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/.exec(marca);
   if (!m) return marca;
   const [, anio, mes, dia, hh, mm] = m;
-  return `${Number(dia)} ${MESES[Number(mes) - 1] ?? mes} ${anio} · ${hh}:${mm}`;
+  return `${dia}/${mes}/${anio} · ${hh}:${mm}`;
 }
 
 interface ConMargen {
@@ -67,9 +77,9 @@ export function diaDeVisita(v: ConMargen, hoy: string): string {
   return hoy < v.fechaHasta ? hoy : v.fechaHasta;
 }
 
-/** '2026-10-01', o '2026-10-01 → 2026-10-05' si la visita tiene margen. */
+/** '01/10/2026', o '01/10/2026 → 05/10/2026' si la visita tiene margen. */
 export function textoFechaVisita(v: Pick<ConMargen, "fechaProgramada" | "fechaHasta">): string {
-  return v.fechaHasta ? `${v.fechaProgramada} → ${v.fechaHasta}` : v.fechaProgramada;
+  return v.fechaHasta ? `${fechaCL(v.fechaProgramada)} → ${fechaCL(v.fechaHasta)}` : fechaCL(v.fechaProgramada);
 }
 
 /** Primer día del mes de `fecha`. */

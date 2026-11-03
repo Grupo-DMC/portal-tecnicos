@@ -36,11 +36,11 @@ export function HojaTrabajo({ fv }: { fv: FormularioVisitaApi }) {
                 para que el técnico no tenga que volver a buscar el botón ni se
                 confunda con lo que ya cargó. */}
             {nt.agregados.length > 0 ? (
-              <div className="px-3.5 py-3 bg-[var(--color-accent-100)] border-l-4 border-[var(--color-accent)]">
-                <div className="text-[10px] tracking-[.12em] uppercase text-[var(--color-accent-800)]">
+              <div className="px-3.5 py-3 bg-[var(--color-accent-100)] border border-[var(--color-accent-300)]">
+                <div className="text-cap text-[var(--color-accent-800)]">
                   Ya agregaste
                 </div>
-                <div className="text-sm font-extrabold mt-1">{nt.agregados.map(nombreTrabajo).join(" · ")}</div>
+                <div className="text-ui font-extrabold mt-1">{nt.agregados.map(nombreTrabajo).join(" · ")}</div>
               </div>
             ) : null}
             <div>
@@ -64,7 +64,7 @@ export function HojaTrabajo({ fv }: { fv: FormularioVisitaApi }) {
                     })
                   : ofrecidos.map(filaTrabajo)}
                 {ofrecidos.length === 0 ? (
-                  <div className="px-3.5 py-3 border border-dashed border-black/[.4] text-[13px] opacity-70">
+                  <div className="px-3.5 py-3 border border-dashed border-black/[.4] text-meta opacity-70">
                     El checklist no tiene trabajos para este motivo. Avisa a coordinación.
                   </div>
                 ) : null}
@@ -89,19 +89,19 @@ export function HojaTrabajo({ fv }: { fv: FormularioVisitaApi }) {
                                 : [...p.subs, { etiqueta: s.etiqueta, cantidad: 1 }],
                             }))
                           }
-                          className="flex-1 min-w-0 min-h-[54px] flex items-center gap-3 px-3.5 text-[15px] leading-[1.2] text-[var(--color-text)] cursor-pointer text-left hover:brightness-95"
+                          className="flex-1 min-w-0 min-h-[54px] flex items-center gap-3 px-3.5 text-body leading-[1.2] text-[var(--color-text)] cursor-pointer text-left hover:brightness-95"
                           style={{
                             background: activo ? "var(--color-accent-100)" : "var(--color-surface-3)",
-                            border: `1px solid ${activo ? "var(--color-accent)" : "rgba(32,30,29,.35)"}`,
+                            border: `1px solid ${activo ? "var(--color-accent)" : "rgba(31,28,33,.35)"}`,
                             fontWeight: activo ? 800 : 400,
                           }}
                         >
                           <span
                             className="w-[18px] h-[18px] flex-none border-2 border-[var(--color-text)] grid place-items-center"
-                            style={{ background: activo ? "var(--color-text)" : "transparent" }}
+                            style={{ background: activo ? "var(--color-accent)" : "transparent" }}
                           >
                             {activo ? (
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f3f2f2" strokeWidth="3.2">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f4f3f5" strokeWidth="3.2">
                                 <path d="M4 12l5 5L20 6" />
                               </svg>
                             ) : null}
@@ -147,9 +147,9 @@ export function HojaTrabajo({ fv }: { fv: FormularioVisitaApi }) {
                 setNt((p) => ({ ...p, codigo: "", subs: [], agregados: [...p.agregados, p.codigo] }));
                 aviso(`${nombreTrabajo(nt.codigo)} agregado · ¿qué más hiciste?`);
               }}
-              className="w-full min-h-[58px] flex items-center justify-between px-4.5 border-0 font-extrabold text-base cursor-pointer text-left hover:brightness-95"
+              className="w-full min-h-[58px] flex items-center justify-between px-4.5 border-0 font-extrabold text-lead cursor-pointer text-left hover:brightness-95"
               style={{
-                background: nt.codigo ? "var(--color-accent)" : "#8f8b8b",
+                background: nt.codigo ? "var(--color-accent)" : "var(--color-neutral-500)",
                 color: nt.codigo ? "var(--color-bg)" : "var(--color-surface-3)",
               }}
             >
@@ -161,7 +161,7 @@ export function HojaTrabajo({ fv }: { fv: FormularioVisitaApi }) {
             {nt.agregados.length > 0 ? (
               <button
                 onClick={() => setSheet(null)}
-                className="w-full min-h-[50px] px-4 -mt-2 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-sm cursor-pointer text-left hover:bg-black/[.07]"
+                className="w-full min-h-[50px] px-4 -mt-2 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
               >
                 Listo, no hice nada más
               </button>
@@ -204,11 +204,11 @@ export function HojaProblema({ fv }: { fv: FormularioVisitaApi }) {
                     <button
                       key={t.codigo}
                       onClick={() => setNp((p) => ({ ...p, codigo: t.codigo, items: [] }))}
-                      className="w-full min-h-[54px] flex items-center gap-3 px-3.5 font-extrabold text-[15px] leading-[1.3] cursor-pointer text-left"
+                      className="w-full min-h-[54px] flex items-center gap-3 px-3.5 font-extrabold text-body leading-[1.3] cursor-pointer text-left"
                       style={{
-                        background: activo ? "var(--color-text)" : "var(--color-surface-3)",
-                        color: activo ? "var(--color-bg)" : "var(--color-text)",
-                        border: `1px solid ${activo ? "var(--color-text)" : "rgba(32,30,29,.35)"}`,
+                        background: activo ? "var(--color-accent)" : "var(--color-surface-3)",
+                        color: activo ? "#fff" : "var(--color-text)",
+                        border: `1px solid ${activo ? "var(--color-accent)" : "rgba(31,28,33,.35)"}`,
                       }}
                     >
                       <span className="w-[18px] h-[18px] flex-none border-2 border-current grid place-items-center">
@@ -224,7 +224,7 @@ export function HojaProblema({ fv }: { fv: FormularioVisitaApi }) {
             {probSel && probSel.opciones.length > 0 ? (
               <div className="border-t border-black/[.3] pt-4">
                 <PasoTitulo n="2" texto={probSel.grupoLabel ?? "Detalle"} />
-                <p className="m-0 mb-3 ml-[33px] text-[13px] opacity-60">
+                <p className="m-0 mb-3 ml-[33px] text-meta opacity-60">
                   {probSel.ayuda ?? `Marca ${(probSel.grupoLabel ?? "el detalle").toLowerCase()} y ajusta la cantidad.`}
                 </p>
                 <div className="flex flex-col gap-2">
@@ -242,10 +242,10 @@ export function HojaProblema({ fv }: { fv: FormularioVisitaApi }) {
                                 : [...p.items, { etiqueta: o.etiqueta, cantidad: 1 }],
                             }))
                           }
-                          className="flex-1 min-w-0 min-h-[58px] flex items-center gap-3 px-3.5 text-base leading-[1.3] text-[var(--color-text)] cursor-pointer text-left"
+                          className="flex-1 min-w-0 min-h-[58px] flex items-center gap-3 px-3.5 text-lead leading-[1.3] text-[var(--color-text)] cursor-pointer text-left"
                           style={{
                             background: activo ? "var(--color-accent-100)" : "var(--color-surface-3)",
-                            border: `1px solid ${activo ? "var(--color-accent)" : "rgba(32,30,29,.35)"}`,
+                            border: `1px solid ${activo ? "var(--color-accent)" : "rgba(31,28,33,.35)"}`,
                             fontWeight: activo ? 800 : 400,
                           }}
                         >
@@ -254,7 +254,7 @@ export function HojaProblema({ fv }: { fv: FormularioVisitaApi }) {
                             style={{ background: activo ? "var(--color-accent)" : "transparent" }}
                           >
                             {activo ? (
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f3f2f2" strokeWidth="3.4">
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f4f3f5" strokeWidth="3.4">
                                 <path d="M4 12l5 5L20 6" />
                               </svg>
                             ) : null}
@@ -268,7 +268,7 @@ export function HojaProblema({ fv }: { fv: FormularioVisitaApi }) {
                     );
                   })}
                 </div>
-                <p className="mt-3 mb-0 text-xs opacity-62">
+                <p className="mt-3 mb-0 text-cap opacity-62">
                   Toca para marcar. Las opciones que llevan cantidad muestran − y + al marcarlas.
                 </p>
               </div>
@@ -311,9 +311,9 @@ export function HojaProblema({ fv }: { fv: FormularioVisitaApi }) {
                 setAbierta("problemas");
                 aviso(np.editando === null ? "Problema agregado a la ficha" : "Problema corregido");
               }}
-              className="w-full min-h-[58px] flex items-center justify-between px-4.5 border-0 font-extrabold text-base cursor-pointer text-left hover:brightness-95"
+              className="w-full min-h-[58px] flex items-center justify-between px-4.5 border-0 font-extrabold text-lead cursor-pointer text-left hover:brightness-95"
               style={{
-                background: probListo ? "var(--color-accent)" : "#8f8b8b",
+                background: probListo ? "var(--color-accent)" : "var(--color-neutral-500)",
                 color: probListo ? "var(--color-bg)" : "var(--color-surface-3)",
               }}
             >

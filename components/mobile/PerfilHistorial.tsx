@@ -13,7 +13,7 @@ import {
   textoMotivos,
   textoMotivosReales,
 } from "@/lib/ui/estado";
-import { sumarDias } from "@/lib/ui/fecha";
+import { sumarDias, fechaCL } from "@/lib/ui/fecha";
 import { nombreProblema, nombreTrabajo, useReferencias } from "@/lib/ui/referencias";
 import type { Visita } from "@/lib/types";
 
@@ -139,8 +139,8 @@ export default function PerfilHistorial({
   return (
     <div className="mt-7">
       <div className="flex items-baseline gap-2.5 flex-wrap pb-2 mb-3 border-b-2 border-[var(--color-divider)]">
-        <h2 className="font-extrabold text-[19px] leading-[1.15] tracking-[-.02em] m-0">Mis visitas realizadas</h2>
-        <span className="text-xs leading-[1.3] opacity-62 ml-auto">{cfg.leyenda}</span>
+        <h2 className="font-extrabold text-h3 leading-[1.15] tracking-[-.02em] m-0">Mis visitas realizadas</h2>
+        <span className="text-cap leading-[1.3] opacity-62 ml-auto">{cfg.leyenda}</span>
       </div>
 
       <div className="grid grid-cols-3 gap-1.5 mb-2.5">
@@ -151,11 +151,11 @@ export default function PerfilHistorial({
               key={f.c}
               onClick={() => setFiltro(f.c)}
               aria-pressed={activo}
-              className="min-h-11 px-2.5 font-extrabold text-xs leading-none tracking-[.07em] uppercase cursor-pointer hover:brightness-95"
+              className="min-h-11 px-2.5 font-extrabold text-cap leading-none cursor-pointer hover:brightness-95"
               style={{
-                background: activo ? "var(--color-text)" : "transparent",
-                color: activo ? "var(--color-bg)" : "var(--color-text)",
-                border: `1px solid ${activo ? "var(--color-text)" : "rgba(32,30,29,.35)"}`,
+                background: activo ? "var(--color-accent)" : "transparent",
+                color: activo ? "#fff" : "var(--color-text)",
+                border: `1px solid ${activo ? "var(--color-accent)" : "rgba(31,28,33,.35)"}`,
               }}
             >
               {f.label}
@@ -171,12 +171,16 @@ export default function PerfilHistorial({
             key={c.k}
             className={`px-3 py-2.5 border ${
               c.alerta
-                ? "bg-[var(--color-accent-200)] border-[var(--color-accent)] text-[var(--color-accent-800)]"
+                ? "bg-[var(--color-danger-100)] border-[var(--color-danger-400)] text-[var(--color-danger-800)]"
                 : "bg-[var(--color-surface)] border-black/[.2]"
             }`}
           >
-            <div className="font-extrabold text-[22px] leading-[1.1] tracking-[-.02em] tabular-nums">{c.v}</div>
-            <div className={`text-[10px] tracking-[.09em] uppercase mt-1 ${c.alerta ? "" : "opacity-62"}`}>{c.k}</div>
+            <div className="font-extrabold text-h2 leading-[1.1] tracking-[-.02em] tabular-nums">
+              {String(c.v)
+                .split(/(\d+)/)
+                .map((t, i) => (/^\d+$/.test(t) ? <span key={i} className="num font-bold">{t}</span> : t))}
+            </div>
+            <div className={`text-cap mt-1 ${c.alerta ? "" : "opacity-62"}`}>{c.k}</div>
           </div>
         ))}
       </div>
@@ -184,8 +188,8 @@ export default function PerfilHistorial({
       {grupos.map((g) => (
         <div key={g.fecha} className="mb-5">
           <div className="flex items-center gap-2 pb-2">
-            <div className="font-extrabold text-xs tracking-[.1em] uppercase">{g.titulo}</div>
-            <div className="text-xs tabular-nums opacity-60">{g.items.length}</div>
+            <div className="font-extrabold text-cap ">{g.titulo}</div>
+            <div className="text-cap tabular-nums opacity-60">{g.items.length}</div>
           </div>
           <div className="flex flex-col gap-2.5">
             {g.items.map((v) => {
@@ -198,41 +202,39 @@ export default function PerfilHistorial({
                   key={v.id}
                   onClick={() => setAbierta(v)}
                   className="block w-full min-w-0 text-left border border-[var(--color-divider)] bg-[var(--color-surface-3)] px-3.5 pt-3 pb-3 cursor-pointer text-[var(--color-text)] hover:bg-[var(--color-surface)]"
-                  style={{ borderLeft: `5px solid ${ESTADO_VISITA_BARRA[v.estado]}` }}
+                  style={{ borderLeft: `4px solid ${ESTADO_VISITA_BARRA[v.estado]}` }}
                 >
                   <div className="flex items-baseline gap-2.5">
-                    <span className="font-extrabold text-[17px] leading-[1.2] tabular-nums">{textoHorario(v)}</span>
-                    <span className="text-[11px] tabular-nums tracking-[.06em] opacity-62 truncate">{v.folio}</span>
+                    <span className="font-extrabold text-lead leading-[1.2] tabular-nums">{textoHorario(v)}</span>
+                    <span className="num text-cap tabular-nums opacity-62 truncate">{v.folio}</span>
                     <Tag variant={ESTADO_VISITA_TAG[v.estado]} className="ml-auto flex-none">
                       {ESTADO_VISITA_LABEL[v.estado]}
                     </Tag>
                   </div>
-                  <div className="font-extrabold text-[16px] leading-[1.25] mt-2 truncate">{v.sucursal?.nombre}</div>
-                  <div className="text-[13px] opacity-66 mt-0.5 truncate">
+                  <div className="font-extrabold text-lead leading-[1.25] mt-2 truncate">{v.sucursal?.nombre}</div>
+                  <div className="text-meta opacity-66 mt-0.5 truncate">
                     {v.cliente?.nombreFantasia} · {textoMotivos(v)}
                   </div>
-                  <div className="flex flex-wrap gap-1.5 mt-2.5">
-                    {minutos !== null ? (
-                      <span className="tag tag-neutral border border-black/[.2] tabular-nums">{textoDuracion(minutos)}</span>
-                    ) : null}
-                    {trabajos > 0 ? (
-                      <span className="tag tag-neutral border border-black/[.2] tabular-nums">
-                        {plural(trabajos, "trabajo", "trabajos")}
-                      </span>
-                    ) : null}
-                    {fotos > 0 ? (
-                      <span className="tag tag-neutral border border-black/[.2] tabular-nums">{plural(fotos, "foto", "fotos")}</span>
-                    ) : null}
-                    {v.tecnicoId !== tecnicoId ? <span className="tag tag-dark">Ayudante</span> : null}
+                  <div className="flex items-center gap-2 mt-1.5 min-w-0 text-meta text-[var(--color-muted)] tabular-nums">
+                    <span className="min-w-0 truncate">
+                      {[
+                        minutos !== null ? textoDuracion(minutos) : null,
+                        trabajos > 0 ? plural(trabajos, "trabajo", "trabajos") : null,
+                        fotos > 0 ? plural(fotos, "foto", "fotos") : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                    {v.tecnicoId !== tecnicoId ? <span className="tag tag-dark flex-none">Ayudante</span> : null}
                   </div>
                   {abiertos.length > 0 ? (
-                    <div className="text-xs text-[var(--color-accent-800)] mt-2.5 px-2.5 py-1.5 bg-[var(--color-accent-200)] border-l-[3px] border-[var(--color-accent)]">
+                    <div className="text-cap text-[var(--color-danger-800)] mt-2.5 px-2.5 py-1.5 bg-[var(--color-danger-100)] border border-[var(--color-danger-200)]">
                       {plural(abiertos.length, "problema abierto", "problemas abiertos")}:{" "}
                       {nombreProblema(catalogoProblema, abiertos[0].tipoCodigo)}
                       {abiertos.length > 1 ? ` y ${abiertos.length - 1} más` : ""}
                     </div>
                   ) : null}
-                  <div className="flex items-center gap-1.5 mt-2.5 text-[11px] leading-none tracking-[.07em] uppercase opacity-60">
+                  <div className="flex items-center gap-1.5 mt-2.5 text-cap leading-none opacity-60">
                     <span>Ver detalle</span>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
                       <path d="M5 12h14M13 6l6 6-6 6" />
@@ -245,7 +247,7 @@ export default function PerfilHistorial({
         </div>
       ))}
       {listadas.length === 0 ? (
-        <div className="py-6.5 px-4 text-center text-sm opacity-62 border border-dashed border-black/[.3]">
+        <div className="py-6.5 px-4 text-center text-ui opacity-62 border border-dashed border-black/[.3]">
           No hay visitas cerradas en este período.
         </div>
       ) : null}
@@ -259,15 +261,15 @@ function Seccion({ titulo, cuenta, children }: { titulo: string; cuenta?: number
   return (
     <div className="pt-5">
       <div className="flex items-center gap-2 pb-2 mb-3 border-b-2 border-[var(--color-divider)]">
-        <div className="font-extrabold text-[13px] tracking-[.1em] uppercase">{titulo}</div>
-        {cuenta !== undefined ? <div className="text-xs tabular-nums opacity-60">{cuenta}</div> : null}
+        <div className="font-extrabold text-meta ">{titulo}</div>
+        {cuenta !== undefined ? <div className="text-cap tabular-nums opacity-60">{cuenta}</div> : null}
       </div>
       {children}
     </div>
   );
 }
 
-const chip = "px-2 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-xs leading-[1.2] tabular-nums";
+const chip = "px-2 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap leading-[1.2] tabular-nums";
 
 function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId: number; onCerrar: () => void }) {
   const { problemas: catalogoProblema, trabajos: catalogoTrabajo, motivos } = useReferencias();
@@ -311,22 +313,22 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
 
   return (
     <>
-      <Sheet titulo={visita.sucursal?.nombre ?? "Visita"} eyebrow="Visita realizada" onClose={onCerrar}>
+      <Sheet titulo={visita.sucursal?.nombre ?? "Visita"} onClose={onCerrar}>
         <div className="px-4 pt-4 pb-6">
           {/* Cuándo y cuánto: lo primero que se busca al abrir una visita vieja. */}
           <div className="bg-[var(--color-text)] text-[var(--color-bg)] px-4 py-3.5">
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="text-[11px] tracking-[.09em] uppercase opacity-75">
+              <div className="text-cap opacity-75">
                 {fechaLarga(visita.fechaProgramada)}
               </div>
               <Tag variant={visita.estado === "COMPLETADA" ? "neutral" : "accent"} className="ml-auto">
                 {ESTADO_VISITA_LABEL[visita.estado]}
               </Tag>
             </div>
-            <div className="font-extrabold text-[28px] leading-[1.1] tracking-[-.02em] tabular-nums mt-2">
+            <div className="num font-bold text-h1 leading-[1.1] tracking-[-.02em] tabular-nums mt-2">
               {textoHorario(visita)}
             </div>
-            <div className="text-[13px] opacity-75 mt-1">
+            <div className="text-meta opacity-75 mt-1">
               {minutos !== null
                 ? `${textoDuracion(minutos)} en terreno`
                 : ejec?.horaInicio
@@ -343,27 +345,27 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
               { k: fotosTrabajo.length === 1 ? "Foto" : "Fotos", v: fotosTrabajo.length },
             ].map((c) => (
               <div key={c.k} className="px-3 py-2.5 bg-[var(--color-surface)] border border-black/[.2]">
-                <div className="font-extrabold text-[20px] leading-[1.1] tabular-nums">{c.v}</div>
-                <div className="text-[10px] tracking-[.09em] uppercase opacity-62 mt-1">{c.k}</div>
+                <div className="font-extrabold text-h3 leading-[1.1] tabular-nums">{c.v}</div>
+                <div className="text-cap opacity-62 mt-1">{c.k}</div>
               </div>
             ))}
           </div>
 
           {visita.motivoPendiente ? (
-            <div className="mt-3 p-3.5 bg-[var(--color-accent-200)] border-l-4 border-[var(--color-accent)]">
-              <div className="text-[10px] tracking-[.12em] uppercase text-[var(--color-accent-800)] mb-1.5">Quedó pendiente</div>
-              <div className="text-sm leading-[1.5] text-[var(--color-accent-800)]">{visita.motivoPendiente}</div>
+            <div className="mt-3 p-3.5 bg-[var(--color-accent-200)] border border-[var(--color-accent-300)]">
+              <div className="text-cap text-[var(--color-accent-800)] mb-1.5">Quedó pendiente</div>
+              <div className="text-ui leading-[1.5] text-[var(--color-accent-800)]">{visita.motivoPendiente}</div>
             </div>
           ) : null}
 
           {reagenda ? (
-            <div className="mt-3 p-3.5 bg-[var(--color-surface)] border-l-4 border-[var(--color-text)]">
-              <div className="text-[10px] tracking-[.12em] uppercase opacity-62 mb-1.5">Reagendada</div>
-              <div className="text-sm leading-[1.5]">
+            <div className="mt-3 p-3.5 bg-[var(--color-surface)] border border-[var(--color-line-control)]">
+              <div className="text-cap opacity-62 mb-1.5">Reagendada</div>
+              <div className="text-ui leading-[1.5]">
                 <span className="tabular-nums">
-                  Antes {reagenda.fechaAnterior}
+                  Antes {fechaCL(reagenda.fechaAnterior)}
                   {reagenda.horaAnterior ? ` · ${reagenda.horaAnterior}` : ""}
-                  {reagenda.fechaNueva ? ` → ${reagenda.fechaNueva}${reagenda.horaNueva ? ` · ${reagenda.horaNueva}` : ""}` : ""}
+                  {reagenda.fechaNueva ? ` → ${fechaCL(reagenda.fechaNueva)}${reagenda.horaNueva ? ` · ${reagenda.horaNueva}` : ""}` : ""}
                 </span>
                 <br />
                 {reagenda.motivo}
@@ -374,33 +376,33 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
           <div className="mt-3 border border-[var(--color-divider)] bg-[var(--color-surface-3)] px-3.5">
             {filas.map((f, i) => (
               <div key={f.k} className={`flex gap-3 py-3 ${i > 0 ? "border-t border-black/[.15]" : ""}`}>
-                <div className="text-[10px] leading-[1.6] tracking-[.09em] uppercase opacity-62 w-[96px] flex-none">{f.k}</div>
-                <div className="text-sm min-w-0">{f.v}</div>
+                <div className="text-cap leading-[1.6] opacity-62 w-[96px] flex-none">{f.k}</div>
+                <div className="text-ui min-w-0">{f.v}</div>
               </div>
             ))}
           </div>
 
           {visita.trabajoSolicitado ? (
             <Seccion titulo="Qué se pidió">
-              <div className="text-sm leading-[1.55]">{visita.trabajoSolicitado}</div>
+              <div className="text-ui leading-[1.55]">{visita.trabajoSolicitado}</div>
             </Seccion>
           ) : null}
 
           <Seccion titulo="Trabajo realizado" cuenta={trabajos.length}>
             {trabajos.length === 0 ? (
-              <div className="text-sm opacity-70">No quedó trabajo registrado en esta visita.</div>
+              <div className="text-ui opacity-70">No quedó trabajo registrado en esta visita.</div>
             ) : (
               <div className="flex flex-col gap-2">
                 {trabajos.map((t, i) => (
                   <div key={t.id} className="flex gap-3 px-3 py-3 bg-[var(--color-surface-3)] border border-black/[.2]">
-                    <div className="font-extrabold text-[13px] leading-[1.45] tabular-nums opacity-45 flex-none">
+                    <div className="font-extrabold text-meta leading-[1.45] tabular-nums opacity-45 flex-none">
                       {String(i + 1).padStart(2, "0")}
                     </div>
                     <div className="min-w-0">
                       {t.motivoCodigo ? (
-                        <div className="text-[10px] tracking-[.1em] uppercase opacity-62">{nombreMotivo(t.motivoCodigo)}</div>
+                        <div className="text-cap opacity-62">{nombreMotivo(t.motivoCodigo)}</div>
                       ) : null}
-                      <div className="font-extrabold text-[15px] leading-[1.25]">
+                      <div className="font-extrabold text-body leading-[1.25]">
                         {nombreTrabajo(catalogoTrabajo, t.trabajoCodigo)}
                       </div>
                       {t.subtrabajos.length > 0 ? (
@@ -413,29 +415,29 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
                           ))}
                         </div>
                       ) : null}
-                      {t.detalle ? <div className="text-sm leading-[1.5] opacity-80 mt-2">{t.detalle}</div> : null}
+                      {t.detalle ? <div className="text-ui leading-[1.5] opacity-80 mt-2">{t.detalle}</div> : null}
                     </div>
                   </div>
                 ))}
               </div>
             )}
             {ejec?.observaciones ? (
-              <div className="mt-3 px-3.5 py-3 bg-[var(--color-surface)] border-l-4 border-[var(--color-text)]">
-                <div className="text-[10px] tracking-[.1em] uppercase opacity-62 mb-1.5">Observación escrita</div>
-                <div className="text-sm leading-[1.5]">{ejec.observaciones}</div>
+              <div className="mt-3 px-3.5 py-3 bg-[var(--color-surface)] border border-[var(--color-line-control)]">
+                <div className="text-cap opacity-62 mb-1.5">Observación escrita</div>
+                <div className="text-ui leading-[1.5]">{ejec.observaciones}</div>
               </div>
             ) : null}
           </Seccion>
 
           <Seccion titulo="Problemas levantados" cuenta={problemas.length}>
             {problemas.length === 0 ? (
-              <div className="text-sm opacity-70">No se levantaron problemas en esta visita.</div>
+              <div className="text-ui opacity-70">No se levantaron problemas en esta visita.</div>
             ) : (
               <div className="flex flex-col gap-2">
                 {problemas.map((p) => (
-                  <div key={p.id} className="px-3 py-3 bg-[var(--color-accent-200)] border-l-[3px] border-[var(--color-accent)]">
+                  <div key={p.id} className="px-3 py-3 bg-[var(--color-accent-200)] border border-[var(--color-accent-300)]">
                     <div className="flex items-baseline gap-2 flex-wrap">
-                      <div className="font-extrabold text-sm leading-[1.25] text-[var(--color-accent-800)]">
+                      <div className="font-extrabold text-ui leading-[1.25] text-[var(--color-accent-800)]">
                         {nombreProblema(catalogoProblema, p.tipoCodigo)}
                       </div>
                       <EstadoProblemaTag estado={p.estado} className="ml-auto" />
@@ -450,10 +452,10 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
                       </div>
                     ) : null}
                     {p.descripcion ? (
-                      <div className="text-[13px] leading-[1.5] text-[var(--color-accent-800)] mt-2">{p.descripcion}</div>
+                      <div className="text-meta leading-[1.5] text-[var(--color-accent-800)] mt-2">{p.descripcion}</div>
                     ) : null}
                     {p.solucion ? (
-                      <div className="text-[13px] leading-[1.5] text-[var(--color-accent-800)] mt-2 pt-2 border-t border-black/[.15]">
+                      <div className="text-meta leading-[1.5] text-[var(--color-accent-800)] mt-2 pt-2 border-t border-black/[.15]">
                         <b>{p.estado === "RESUELTO" ? "Se realizó: " : "Sugerido: "}</b>
                         {p.solucion}
                       </div>
@@ -466,7 +468,7 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
 
           <Seccion titulo="Fotos y videos" cuenta={fotosTrabajo.length + videosTrabajo.length}>
             {fotosTrabajo.length === 0 && videosTrabajo.length === 0 ? (
-              <div className="text-sm opacity-70">No se tomaron fotos ni videos en esta visita.</div>
+              <div className="text-ui opacity-70">No se tomaron fotos ni videos en esta visita.</div>
             ) : null}
             {fotosTrabajo.length > 0 ? (
               <div className="grid grid-cols-3 gap-1.5">
@@ -504,8 +506,8 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
           {/* Comentario interno: lo ve coordinación, no el cliente ni el PDF. */}
           {ejec?.comentarioInterno || internos.length || fotosInternas.length || videosInternos.length ? (
             <Seccion titulo="Comentario interno">
-              <div className="px-3 py-3 bg-[var(--color-surface)] border-l-[3px] border-[var(--color-text)]">
-                <div className="text-[10px] tracking-[.1em] uppercase opacity-62">No lo ve el cliente</div>
+              <div className="px-3 py-3 bg-[var(--color-surface)] border border-[var(--color-line-control)]">
+                <div className="text-cap opacity-62">No lo ve el cliente</div>
                 {internos.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {internos.map((x) => (
@@ -515,7 +517,7 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
                     ))}
                   </div>
                 ) : null}
-                {ejec?.comentarioInterno ? <div className="text-sm leading-[1.5] mt-2">{ejec.comentarioInterno}</div> : null}
+                {ejec?.comentarioInterno ? <div className="text-ui leading-[1.5] mt-2">{ejec.comentarioInterno}</div> : null}
                 {fotosInternas.length > 0 ? (
                   <div className="grid grid-cols-4 gap-1.5 mt-2.5">
                     {fotosInternas.map((f, i) => (
@@ -556,21 +558,21 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
                   className="w-full max-w-[260px] h-[70px] object-contain object-left-bottom"
                 />
                 <div className="h-px bg-[var(--color-text)] mt-1" />
-                <div className="text-xs mt-1.5">
+                <div className="text-cap mt-1.5">
                   {firma.nombre}
                   {firma.rut ? ` · ${firma.rut}` : ""}
                 </div>
-                <div className="text-[10px] tracking-[.09em] uppercase opacity-62">
+                <div className="text-cap opacity-62">
                   Firmó a las {hhmm(firma.firmadoEn)}
                 </div>
               </div>
             ) : (
-              <div className="text-sm opacity-70">Esta visita no quedó firmada.</div>
+              <div className="text-ui opacity-70">Esta visita no quedó firmada.</div>
             )}
           </Seccion>
 
           {ejec?.registradoOffline ? (
-            <div className="mt-5 px-3.5 py-2.5 bg-[var(--color-surface)] border-l-4 border-[var(--color-text)] text-[13px] leading-[1.45]">
+            <div className="mt-5 px-3.5 py-2.5 bg-[var(--color-surface)] border border-[var(--color-line-control)] text-meta leading-[1.45]">
               Se llenó sin señal y se sincronizó
               {ejec.sincronizadoEn ? ` el ${ejec.sincronizadoEn.slice(0, 16).replace("T", " a las ")}` : " al recuperar cobertura"}.
             </div>
@@ -581,7 +583,7 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
               <a
                 href={`/api/visita/acta/${encodeURIComponent(visita.folio)}`}
                 download={`Acta ${visita.folio}.pdf`}
-                className="w-full min-h-[52px] flex items-center justify-between px-4 bg-[var(--color-accent)] text-[var(--color-bg)] font-extrabold text-sm hover:bg-[var(--color-accent-hover)]"
+                className="w-full min-h-[52px] flex items-center justify-between px-4 bg-[var(--color-accent)] text-[var(--color-bg)] font-extrabold text-ui hover:bg-[var(--color-accent-hover)]"
               >
                 <span>Descargar acta en PDF</span>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -591,7 +593,7 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
             ) : null}
             <Link
               href={`/tecnico/visitas/${encodeURIComponent(visita.folio)}`}
-              className="w-full min-h-[50px] flex items-center justify-between px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-sm hover:bg-black/[.07]"
+              className="w-full min-h-[50px] flex items-center justify-between px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui hover:bg-black/[.07]"
             >
               <span>Abrir la visita</span>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -600,7 +602,7 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
             </Link>
           </div>
 
-          <p className="mt-3.5 mb-0 text-xs opacity-62">Solo lectura: el acta ya fue enviada a coordinación.</p>
+          <p className="mt-3.5 mb-0 text-cap opacity-62">Solo lectura: el acta ya fue enviada a coordinación.</p>
         </div>
       </Sheet>
 

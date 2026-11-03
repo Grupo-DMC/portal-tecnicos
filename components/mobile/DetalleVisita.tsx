@@ -15,6 +15,7 @@ import { puede, useReferencias } from "@/lib/ui/referencias";
 import { hayDireccion, urlMapa, urlTel } from "@/lib/ui/formato";
 import type { HistorialVista } from "@/lib/contratos/panel";
 import type { EstadoVisita, Visita } from "@/lib/types";
+import { fechaCL } from "@/lib/ui/fecha";
 
 type AccionEstado = "reagendar" | "pendiente" | "cancelar";
 
@@ -101,8 +102,8 @@ export default function DetalleVisita({
     { k: visita.motivosCodigos.length > 1 ? "Motivos" : "Motivo", v: textoMotivos(visita) },
     { k: "Estado", v: ESTADO_VISITA_LABEL[visita.estado] },
     visita.fechaHasta
-      ? { k: "Margen", v: `Cualquier día del ${visita.fechaProgramada} al ${visita.fechaHasta}` }
-      : { k: "Fecha", v: visita.fechaProgramada },
+      ? { k: "Margen", v: `Cualquier día del ${fechaCL(visita.fechaProgramada)} al ${fechaCL(visita.fechaHasta)}` }
+      : { k: "Fecha", v: fechaCL(visita.fechaProgramada) },
   ];
   if (esAyudante) {
     filas.push({ k: "Técnico a cargo", v: visita.tecnico?.nombreCompleto ?? "—" });
@@ -116,7 +117,7 @@ export default function DetalleVisita({
   if (reagenda) {
     filas.push({
       k: "Reagendada",
-      v: `Antes ${reagenda.fechaAnterior}${reagenda.horaAnterior ? " · " + reagenda.horaAnterior : ""} — ${reagenda.motivo}`,
+      v: `Antes ${fechaCL(reagenda.fechaAnterior)}${reagenda.horaAnterior ? " · " + reagenda.horaAnterior : ""} — ${reagenda.motivo}`,
     });
   }
 
@@ -165,12 +166,12 @@ export default function DetalleVisita({
     <div className="animate-fade-in">
       <div className="px-4 pt-5">
         <div className="flex items-center gap-2.5">
-          <div className="text-xs tabular-nums tracking-[.08em] opacity-66">{visita.folio}</div>
+          <div className="text-cap tabular-nums tracking-[.08em] opacity-66">{visita.folio}</div>
           <Tag variant={ESTADO_VISITA_TAG[visita.estado]}>{ESTADO_VISITA_LABEL[visita.estado]}</Tag>
           {esAyudante ? <Tag variant="neutral">Ayudante</Tag> : null}
         </div>
-        <h1 className="font-extrabold text-[30px] leading-[1.06] tracking-[-.03em] mt-2.5 mb-0.5">{visita.sucursal?.nombre}</h1>
-        <div className="text-sm opacity-60">{visita.cliente?.nombreFantasia}</div>
+        <h1 className="font-extrabold text-h1 leading-[1.06] tracking-[-.03em] mt-2.5 mb-0.5">{visita.sucursal?.nombre}</h1>
+        <div className="text-ui opacity-60">{visita.cliente?.nombreFantasia}</div>
         <div className="h-0.5 bg-[var(--color-divider)] mt-4" />
       </div>
 
@@ -181,8 +182,8 @@ export default function DetalleVisita({
           aria-expanded={openDatos}
           className="w-full min-h-[54px] flex items-center gap-2.5 p-0 bg-transparent border-0 border-b border-black/[.25] cursor-pointer text-[var(--color-text)] text-left hover:opacity-75"
         >
-          <span className="font-extrabold text-[13px] tracking-[.1em] uppercase flex-1">Datos de la visita</span>
-          <span className="text-xs tabular-nums opacity-66">{visita.horaProgramada ?? "Sin hora"}</span>
+          <span className="font-extrabold text-meta flex-1">Datos de la visita</span>
+          <span className="text-cap tabular-nums opacity-66">{visita.horaProgramada ?? "Sin hora"}</span>
           <svg
             width="16"
             height="16"
@@ -200,8 +201,8 @@ export default function DetalleVisita({
           <div className="flex flex-col">
             {filas.map((f) => (
               <div key={f.k} className="flex gap-3 py-3.5 border-b border-black/[.25]">
-                <div className="text-[10px] leading-[1.6] tracking-[.09em] uppercase opacity-62 min-w-[96px] flex-none">{f.k}</div>
-                <div className="text-sm min-w-0">{f.v}</div>
+                <div className="text-cap leading-[1.6] opacity-62 min-w-[96px] flex-none">{f.k}</div>
+                <div className="text-ui min-w-0">{f.v}</div>
               </div>
             ))}
           </div>
@@ -215,7 +216,7 @@ export default function DetalleVisita({
               target="_blank"
               rel="noreferrer"
               title={textoDireccion}
-              className="flex-1 min-h-[50px] flex items-center gap-2 px-3.5 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-[13px] hover:bg-black/[.07]"
+              className="flex-1 min-h-[50px] flex items-center gap-2 px-3.5 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-meta hover:bg-black/[.07]"
             >
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1116 0z" />
@@ -227,7 +228,7 @@ export default function DetalleVisita({
             <button
               type="button"
               onClick={() => aviso("Esta sucursal no tiene dirección cargada. Avisa a coordinación.")}
-              className="flex-1 min-h-[50px] flex items-center gap-2 px-3.5 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-[13px] opacity-55 cursor-pointer"
+              className="flex-1 min-h-[50px] flex items-center gap-2 px-3.5 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-meta opacity-55 cursor-pointer"
             >
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1116 0z" />
@@ -238,7 +239,7 @@ export default function DetalleVisita({
           )}
           <a
             href={urlTel(visita.responsableTelefono)}
-            className="flex-1 min-h-[50px] flex items-center gap-2 px-3.5 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-[13px] hover:bg-black/[.07]"
+            className="flex-1 min-h-[50px] flex items-center gap-2 px-3.5 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-meta hover:bg-black/[.07]"
           >
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M5 4h4l2 5-3 2a12 12 0 005 5l2-3 5 2v4a1 1 0 01-1 1A16 16 0 014 5a1 1 0 011-1z" />
@@ -249,9 +250,9 @@ export default function DetalleVisita({
 
         {/* ── Qué hay que hacer ── */}
         {visita.trabajoSolicitado ? (
-          <div className="mt-4 px-4 pt-4 pb-4.5 bg-[var(--color-surface)] border-l-4 border-[var(--color-text)]">
-            <div className="font-extrabold text-[13px] tracking-[.1em] uppercase mb-2.5">Qué hay que hacer</div>
-            <div className="text-base leading-[1.55]">{visita.trabajoSolicitado}</div>
+          <div className="mt-4 px-4 pt-4 pb-4.5 bg-[var(--color-surface)] border border-[var(--color-line-control)]">
+            <div className="font-extrabold text-meta mb-2.5">Qué hay que hacer</div>
+            <div className="text-lead leading-[1.55]">{visita.trabajoSolicitado}</div>
             {visita.adjuntos?.length ? (
               <div className="mt-3">
                 <AdjuntosVista adjuntos={visita.adjuntos} />
@@ -266,10 +267,10 @@ export default function DetalleVisita({
             onClick={() => setOpenHistorial((v) => !v)}
             aria-expanded={openHistorial}
             className="w-full min-h-[54px] flex items-center gap-2.5 flex-wrap px-3.5 bg-transparent border-0 cursor-pointer text-[var(--color-text)] text-left hover:bg-black/[.04]"
-            style={{ borderBottom: openHistorial ? "1px solid rgba(32,30,29,.25)" : "0" }}
+            style={{ borderBottom: openHistorial ? "1px solid rgba(31,28,33,.25)" : "0" }}
           >
-            <span className="font-extrabold text-[13px] tracking-[.1em] uppercase flex-1">Última visita al local</span>
-            <span className="text-xs tabular-nums opacity-66">{historial.encabezado}</span>
+            <span className="font-extrabold text-meta flex-1">Última visita al local</span>
+            <span className="text-cap tabular-nums opacity-66">{historial.encabezado}</span>
             <svg
               width="16"
               height="16"
@@ -286,35 +287,35 @@ export default function DetalleVisita({
           {openHistorial ? (
             <div className="px-3.5 pt-3.5 pb-4">
               {!historial.hay ? (
-                <div className="text-sm opacity-70">Primera visita registrada a este local: no hay historial previo.</div>
+                <div className="text-ui opacity-70">Primera visita registrada a este local: no hay historial previo.</div>
               ) : (
                 <div className="flex flex-col gap-3.5">
                   <div>
-                    <div className="text-[10px] tracking-[.1em] uppercase opacity-62 mb-2">Trabajo realizado</div>
+                    <div className="text-cap opacity-62 mb-2">Trabajo realizado</div>
                     <div className="flex flex-wrap gap-1.5">
                       {historial.trabajos.map((t) => (
-                        <span key={t} className="px-2.5 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-xs leading-[1.2]">
+                        <span key={t} className="px-2.5 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap leading-[1.2]">
                           {t}
                         </span>
                       ))}
                     </div>
                   </div>
-                  {historial.obs ? <div className="text-sm leading-[1.5] opacity-80">{historial.obs}</div> : null}
+                  {historial.obs ? <div className="text-ui leading-[1.5] opacity-80">{historial.obs}</div> : null}
                   <div>
-                    <div className="text-[10px] tracking-[.1em] uppercase opacity-62 mb-2">Problemas que quedaron abiertos</div>
+                    <div className="text-cap opacity-62 mb-2">Problemas que quedaron abiertos</div>
                     {historial.sinProblemas ? (
-                      <div className="text-sm opacity-70">El local quedó sin problemas abiertos.</div>
+                      <div className="text-ui opacity-70">El local quedó sin problemas abiertos.</div>
                     ) : (
                       <div className="flex flex-col gap-2.5">
                         {historial.problemas.map((p) => (
-                          <div key={p.tipo} className="px-3 py-3 bg-[var(--color-accent-200)] border-l-[3px] border-[var(--color-accent)]">
+                          <div key={p.tipo} className="px-3 py-3 bg-[var(--color-accent-200)] border border-[var(--color-accent-300)]">
                             <div className="flex items-baseline gap-2 flex-wrap">
-                              <div className="font-extrabold text-sm leading-[1.25] text-[var(--color-accent-800)]">{p.tipo}</div>
+                              <div className="font-extrabold text-ui leading-[1.25] text-[var(--color-accent-800)]">{p.tipo}</div>
                               <Tag variant={p.tag} className="ml-auto">
                                 {p.estado}
                               </Tag>
                             </div>
-                            <div className="text-[13px] leading-[1.5] text-[var(--color-accent-800)] mt-1.5">{p.detalle}</div>
+                            <div className="text-meta leading-[1.5] text-[var(--color-accent-800)] mt-1.5">{p.detalle}</div>
                           </div>
                         ))}
                       </div>
@@ -339,9 +340,9 @@ export default function DetalleVisita({
 
         {/* ── Quedó pendiente ── */}
         {visita.motivoPendiente ? (
-          <div className="mt-3 p-3.5 bg-[var(--color-accent-200)] border-l-4 border-[var(--color-accent)]">
-            <div className="text-[10px] tracking-[.12em] uppercase text-[var(--color-accent-800)] mb-1.5">Quedó pendiente</div>
-            <div className="text-sm text-[var(--color-accent-800)]">{visita.motivoPendiente}</div>
+          <div className="mt-3 p-3.5 bg-[var(--color-accent-200)] border border-[var(--color-accent-300)]">
+            <div className="text-cap text-[var(--color-accent-800)] mb-1.5">Quedó pendiente</div>
+            <div className="text-ui text-[var(--color-accent-800)]">{visita.motivoPendiente}</div>
           </div>
         ) : null}
 
@@ -355,14 +356,14 @@ export default function DetalleVisita({
             <button
               onClick={iniciar}
               disabled={pendiente}
-              className="w-full min-h-[62px] flex items-center justify-between px-4.5 mt-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-[17px] cursor-pointer text-left hover:bg-[var(--color-accent-hover)] active:bg-[var(--color-accent-active)] disabled:opacity-60"
+              className="w-full min-h-[62px] flex items-center justify-between px-4.5 mt-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)] active:bg-[var(--color-accent-active)] disabled:opacity-60"
             >
               <span>{visita.estado === "EN_CURSO" ? "Continuar formulario" : "Iniciar visita"}</span>
               <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                 <path d="M5 12h14M13 6l6 6-6 6" />
               </svg>
             </button>
-            <p className="mt-2.5 mb-0 text-xs opacity-66">
+            <p className="mt-2.5 mb-0 text-cap opacity-66">
               Al iniciar se registra la hora en el acta. El formulario guarda sección por sección.
               {visita.tecnicoAyudante
                 ? ` Van dos técnicos: quien abre el acta la reserva, y si pasan ${minutosDelPlazo(reservaPlazoSeg)} minutos sin actividad la puede tomar el otro.`
@@ -377,7 +378,7 @@ export default function DetalleVisita({
               aria-expanded={openAcciones}
               className="w-full min-h-[50px] flex items-center gap-2.5 px-1 mt-5 bg-transparent border-0 cursor-pointer text-[var(--color-text)] text-left hover:opacity-75"
             >
-              <span className="font-extrabold text-[13px] leading-none tracking-[.07em] uppercase">
+              <span className="font-extrabold text-meta leading-none ">
                 {openAcciones ? "Ocultar otras acciones" : "Otras acciones de la visita"}
               </span>
               <svg
@@ -397,7 +398,7 @@ export default function DetalleVisita({
               <div className="flex flex-col gap-2.5 mt-1.5 mb-3">
                 <button
                   onClick={() => abrirSheet("reagendar")}
-                  className="w-full min-h-[50px] flex items-center justify-between px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-sm cursor-pointer text-left hover:bg-black/[.07]"
+                  className="w-full min-h-[50px] flex items-center justify-between px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
                 >
                   <span>Reagendar visita</span>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -407,7 +408,7 @@ export default function DetalleVisita({
                 </button>
                 <button
                   onClick={() => abrirSheet("pendiente")}
-                  className="w-full min-h-[50px] flex items-center justify-between px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-sm cursor-pointer text-left hover:bg-black/[.07]"
+                  className="w-full min-h-[50px] flex items-center justify-between px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
                 >
                   <span>No se pudo realizar</span>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -417,7 +418,7 @@ export default function DetalleVisita({
                 </button>
                 <button
                   onClick={() => abrirSheet("cancelar")}
-                  className="w-full min-h-11 flex items-center px-1 bg-transparent border-0 text-[var(--color-accent-active)] text-[13px] underline underline-offset-4 cursor-pointer text-left"
+                  className="w-full min-h-11 flex items-center px-1 bg-transparent border-0 text-[var(--color-accent-active)] text-meta underline underline-offset-4 cursor-pointer text-left"
                 >
                   Cancelar la visita
                 </button>
@@ -429,7 +430,7 @@ export default function DetalleVisita({
         ) : cerradaConActa ? (
           <button
             onClick={() => router.push(`/tecnico/visitas/${visita.folio}/revisar`)}
-            className="w-full min-h-[54px] flex items-center justify-between px-4 mt-4.5 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-sm cursor-pointer text-left hover:bg-black/[.07]"
+            className="w-full min-h-[54px] flex items-center justify-between px-4 mt-4.5 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
           >
             <span>Ver acta guardada</span>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -437,7 +438,7 @@ export default function DetalleVisita({
             </svg>
           </button>
         ) : (
-          <p className="mt-4.5 text-sm opacity-62">
+          <p className="mt-4.5 text-ui opacity-62">
             Esta visita quedó {ESTADO_VISITA_LABEL[visita.estado].toLowerCase()}. Coordinación debe reagendarla.
           </p>
         )}
@@ -448,12 +449,12 @@ export default function DetalleVisita({
       {cfg ? (
         <Sheet titulo={cfg.titulo} onClose={() => setSheet(null)}>
           <div className="p-4 flex flex-col gap-3.5">
-            <p className="m-0 text-[13px] opacity-65">{cfg.ayuda}</p>
+            <p className="m-0 text-meta opacity-65">{cfg.ayuda}</p>
             {cfg.pideFecha ? (
               <>
                 <div className="flex gap-3">
                   <div className="flex-1 min-w-0">
-                    <label htmlFor="rg-fecha" className="block text-[11px] tracking-[.09em] uppercase opacity-60 mb-1.5">
+                    <label htmlFor="rg-fecha" className="block text-cap opacity-60 mb-1.5">
                       Nueva fecha
                     </label>
                     <input
@@ -465,17 +466,17 @@ export default function DetalleVisita({
                     />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <label htmlFor="rg-hora" className="block text-[11px] tracking-[.09em] uppercase opacity-60 mb-1.5">
+                    <label htmlFor="rg-hora" className="block text-cap opacity-60 mb-1.5">
                       Hora <span className="opacity-66 normal-case tracking-normal">(opcional)</span>
                     </label>
                     <input id="rg-hora" type="time" value={hora} onChange={(e) => setHora(e.target.value)} className={campo} />
                   </div>
                 </div>
-                <p className="-mt-1 mb-0 text-xs opacity-66">Si no pones hora, la visita queda para cualquier momento de ese día.</p>
+                <p className="-mt-1 mb-0 text-cap opacity-66">Si no pones hora, la visita queda para cualquier momento de ese día.</p>
               </>
             ) : null}
             <div>
-              <label htmlFor="rg-mot" className="block text-[11px] tracking-[.09em] uppercase opacity-60 mb-1.5">
+              <label htmlFor="rg-mot" className="block text-cap opacity-60 mb-1.5">
                 {cfg.labelMotivo}
               </label>
               <textarea
@@ -491,9 +492,9 @@ export default function DetalleVisita({
             <button
               onClick={confirmarEstado}
               disabled={pendiente}
-              className="w-full min-h-[58px] flex items-center justify-between px-4.5 border-0 font-extrabold text-base cursor-pointer text-left hover:brightness-95 disabled:opacity-60"
+              className="w-full min-h-[58px] flex items-center justify-between px-4.5 border-0 font-extrabold text-lead cursor-pointer text-left hover:brightness-95 disabled:opacity-60"
               style={{
-                background: motivo.trim() ? "var(--color-accent)" : "#8f8b8b",
+                background: motivo.trim() ? "var(--color-accent)" : "var(--color-neutral-500)",
                 color: motivo.trim() ? "var(--color-bg)" : "var(--color-surface-3)",
               }}
             >
@@ -512,4 +513,4 @@ export default function DetalleVisita({
 }
 
 const campo =
-  "w-full min-h-[54px] px-3.5 py-3 text-base tabular-nums bg-[var(--color-surface)] border border-[var(--color-divider)] text-[var(--color-text)] caret-[var(--color-accent)] rounded-none focus-visible:border-[var(--color-accent)] focus-visible:outline-none";
+  "w-full min-h-[54px] px-3.5 py-3 text-lead tabular-nums bg-[var(--color-surface)] border border-[var(--color-divider)] text-[var(--color-text)] caret-[var(--color-accent)] rounded-none focus-visible:border-[var(--color-accent)] focus-visible:outline-none";

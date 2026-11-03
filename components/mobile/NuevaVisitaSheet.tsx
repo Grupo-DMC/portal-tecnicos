@@ -16,9 +16,9 @@ import { fmtRut, fmtTel, mensajeRut } from "@/lib/ui/formato";
 import { algunoPideHora } from "@/lib/ui/motivos";
 import { agruparPorSeccion, hayAlgunaSeccion } from "@/lib/ui/secciones";
 
-const LABEL = "block text-[11px] tracking-[.09em] uppercase opacity-60 mb-1.5";
+const LABEL = "block text-cap opacity-60 mb-1.5";
 const CAMPO =
-  "w-full min-h-[54px] px-3.5 py-3 text-base leading-[1.3] bg-[var(--color-surface)] border border-[var(--color-divider)] text-[var(--color-text)] caret-[var(--color-accent)] focus-visible:border-[var(--color-accent)]";
+  "w-full min-h-[54px] px-3.5 py-3 text-lead leading-[1.3] bg-[var(--color-surface)] border border-[var(--color-divider)] text-[var(--color-text)] caret-[var(--color-accent)] focus-visible:border-[var(--color-accent)]";
 
 /**
  * "Agregar visita" del celular: el mismo formulario que usa coordinación, para
@@ -80,7 +80,7 @@ export default function NuevaVisitaSheet({
         role="checkbox"
         aria-checked={activo}
         onClick={() => setMotivos((prev) => (activo ? prev.filter((c) => c !== m.codigo) : [...prev, m.codigo]))}
-        className="w-full min-h-[52px] flex items-center gap-3 px-3.5 text-[15px] leading-[1.25] text-[var(--color-text)] cursor-pointer text-left"
+        className="w-full min-h-[52px] flex items-center gap-3 px-3.5 text-body leading-[1.25] text-[var(--color-text)] cursor-pointer text-left"
         style={{
           background: activo ? "var(--color-accent-100)" : "var(--color-surface)",
           border: `1px solid ${activo ? "var(--color-accent)" : "var(--color-divider)"}`,
@@ -92,7 +92,7 @@ export default function NuevaVisitaSheet({
           style={{ background: activo ? "var(--color-accent)" : "transparent" }}
         >
           {activo ? (
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f3f2f2" strokeWidth="3.4">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f4f3f5" strokeWidth="3.4">
               <path d="M4 12l5 5L20 6" />
             </svg>
           ) : null}
@@ -165,7 +165,7 @@ export default function NuevaVisitaSheet({
   return (
     <Sheet titulo="Agregar visita" onClose={onCerrar}>
       <div className="p-4 flex flex-col gap-3.5">
-        <p className="m-0 text-[13px] opacity-60">
+        <p className="m-0 text-meta opacity-60">
           Mismo formulario que usa coordinación para crear una visita, para cuando no te la asignaron o la haces fuera
           de tu planificación.
         </p>
@@ -232,7 +232,7 @@ export default function NuevaVisitaSheet({
                 })
               : catalogoMotivo.map(fila)}
             {catalogoMotivo.length === 0 ? (
-              <div className="px-3.5 py-3 border border-dashed border-black/[.4] text-[13px] opacity-70">
+              <div className="px-3.5 py-3 border border-dashed border-black/[.4] text-meta opacity-70">
                 No hay motivos en el checklist: avisa a coordinacion.
               </div>
             ) : null}
@@ -346,7 +346,7 @@ export default function NuevaVisitaSheet({
               className={`${CAMPO} tabular-nums`}
             />
             {mensajeRut(rut) ? (
-              <div className="mt-1 text-[11px] leading-[1.4] text-[var(--color-accent-800)]">{mensajeRut(rut)}</div>
+              <div className="mt-1 text-cap leading-[1.4] text-[var(--color-accent-800)]">{mensajeRut(rut)}</div>
             ) : null}
           </div>
           <div className="flex-1 min-w-0">
@@ -411,8 +411,8 @@ export default function NuevaVisitaSheet({
           type="button"
           onClick={confirmar}
           disabled={guardando}
-          className="w-full min-h-[58px] flex items-center justify-between px-4.5 border-0 font-extrabold text-base cursor-pointer text-left text-[var(--color-bg)] hover:brightness-95"
-          style={{ background: listo ? "var(--color-accent)" : "#8f8b8b" }}
+          className="w-full min-h-[58px] flex items-center justify-between px-4.5 border-0 font-extrabold text-lead cursor-pointer text-left text-[var(--color-bg)] hover:brightness-95"
+          style={{ background: listo ? "var(--color-accent)" : "var(--color-neutral-500)" }}
         >
           <span>{subiendo ?? (guardando ? "Creando…" : adjuntos.preparando ? "Preparando adjuntos…" : "Crear e iniciar visita")}</span>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">

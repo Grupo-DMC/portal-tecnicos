@@ -77,7 +77,6 @@ export default async function ClienteFichaPage({ params }: { params: Promise<{ i
   return (
     <FichaVisitas
       modo="cliente"
-      kicker="Maestros · ficha de cliente"
       titulo={c.nombreFantasia}
       subtitulo={`${c.razonSocial !== c.nombreFantasia ? `${c.razonSocial} · ` : ""}RUT ${c.rut}`}
       activo={c.activo}

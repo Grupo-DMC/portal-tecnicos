@@ -117,11 +117,11 @@ export default function CamaraSheet({
       role="dialog"
       aria-modal="true"
       aria-label="Tomar foto"
-      className="fixed inset-0 z-50 bg-[rgba(45,43,43,.7)] flex flex-col justify-end items-center"
+      className="fixed inset-0 z-50 bg-[rgba(31,28,33,.7)] flex flex-col justify-end items-center"
     >
       <div className="w-full max-w-[460px] max-h-[94vh] overflow-y-auto bg-[var(--color-bg)] border-t-2 border-[var(--color-text)] animate-up-sheet">
         <div className="flex items-center gap-2.5 px-4 py-3.5 border-b-2 border-[var(--color-divider)]">
-          <div className="font-extrabold text-[17px] leading-[1.2]">Tomar foto</div>
+          <div className="font-extrabold text-lead leading-[1.2]">Tomar foto</div>
           <button
             type="button"
             onClick={cerrar}
@@ -138,12 +138,12 @@ export default function CamaraSheet({
           <div className="relative w-full aspect-[4/3] bg-[var(--color-text)] overflow-hidden border border-[var(--color-divider)]">
             <video ref={videoRef} playsInline muted className="w-full h-full object-cover" />
             {estado === "pidiendo" ? (
-              <div className="absolute inset-0 grid place-items-center px-6 text-center text-[13px] text-[var(--color-bg)]">
+              <div className="absolute inset-0 grid place-items-center px-6 text-center text-meta text-[var(--color-bg)]">
                 Esperando que autorices el uso de la cámara…
               </div>
             ) : null}
             {estado !== "lista" && estado !== "pidiendo" ? (
-              <div className="absolute inset-0 grid place-items-center px-6 text-center text-[13px] text-[var(--color-bg)]">
+              <div className="absolute inset-0 grid place-items-center px-6 text-center text-meta text-[var(--color-bg)]">
                 {error}
               </div>
             ) : null}
@@ -154,7 +154,7 @@ export default function CamaraSheet({
               <button
                 type="button"
                 onClick={disparar}
-                className="w-full min-h-[58px] flex items-center justify-between px-4.5 mt-3.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-base cursor-pointer text-left hover:bg-[var(--color-accent-hover)]"
+                className="w-full min-h-[58px] flex items-center justify-between px-4.5 mt-3.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)]"
               >
                 <span>Tomar foto</span>
                 <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
@@ -162,7 +162,7 @@ export default function CamaraSheet({
                   <circle cx="12" cy="13" r="3.4" />
                 </svg>
               </button>
-              <p className="mt-2.5 mb-0 text-xs opacity-66">
+              <p className="mt-2.5 mb-0 text-cap opacity-66">
                 {tomadas > 0
                   ? `${tomadas} foto${tomadas > 1 ? "s" : ""} agregada${tomadas > 1 ? "s" : ""} a la visita. Puedes seguir disparando.`
                   : "Cada disparo se agrega a la visita al instante."}
@@ -170,7 +170,7 @@ export default function CamaraSheet({
             </>
           ) : null}
 
-          <label className="w-full min-h-[52px] flex items-center gap-2.5 px-4 mt-2.5 bg-transparent border border-dashed border-black/[.5] text-[var(--color-text)] font-extrabold text-sm cursor-pointer hover:bg-black/[.06]">
+          <label className="w-full min-h-[52px] flex items-center gap-2.5 px-4 mt-2.5 bg-transparent border border-dashed border-black/[.5] text-[var(--color-text)] font-extrabold text-ui cursor-pointer hover:bg-black/[.06]">
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               <path d="M4 5h16v14H4z" />
               <path d="M4 16l5-5 4 4 3-3 4 4" />
@@ -183,7 +183,7 @@ export default function CamaraSheet({
           <button
             type="button"
             onClick={cerrar}
-            className="w-full min-h-[50px] mt-2.5 px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-sm cursor-pointer text-left hover:bg-black/[.07]"
+            className="w-full min-h-[50px] mt-2.5 px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
           >
             {tomadas > 0 ? "Listo" : "Cancelar"}
           </button>

@@ -42,22 +42,22 @@ export default function SeccionPlegable({
         onClick={() => setAbierta(!visible)}
         aria-expanded={visible}
         className={`w-full flex items-center gap-2.5 px-3 ${movil ? "min-h-[52px]" : "min-h-10"} bg-transparent border-0 cursor-pointer text-left text-[var(--color-text)]`}
-        style={{ background: visible ? "#e3e1e0" : "var(--color-surface)" }}
+        style={{ background: visible ? "#e3e1e5" : "var(--color-surface)" }}
       >
         {etiqueta ? (
-          <span className="flex-none text-[10px] tracking-[.09em] uppercase px-1.5 py-0.5 border border-black/[.35] opacity-70">
+          <span className="flex-none text-cap px-1.5 py-0.5 border border-black/[.35] opacity-70">
             {etiqueta}
           </span>
         ) : null}
-        <span className={`flex-1 min-w-0 font-extrabold ${movil ? "text-[15px]" : "text-[13px]"} leading-[1.2]`}>
+        <span className={`flex-1 min-w-0 font-extrabold ${movil ? "text-body" : "text-meta"} leading-[1.2]`}>
           {titulo}
         </span>
         {marcados > 0 ? (
-          <span className="flex-none text-[11px] tracking-[.06em] uppercase font-extrabold text-[var(--color-accent-800)]">
+          <span className="flex-none text-cap font-extrabold text-[var(--color-accent-800)]">
             {marcados} {marcados === 1 ? "marcado" : "marcados"}
           </span>
         ) : null}
-        <span className="flex-none text-[11px] tracking-[.06em] uppercase opacity-62 tabular-nums">{total}</span>
+        <span className="flex-none text-cap opacity-62 tabular-nums">{total}</span>
         <svg
           width="14"
           height="14"

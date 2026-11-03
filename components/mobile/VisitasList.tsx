@@ -137,58 +137,51 @@ export default function VisitasList({
     <button
       key={v.id}
       onClick={() => router.push(`/tecnico/visitas/${v.folio}`)}
-      className="block w-full min-w-0 text-left bg-[var(--color-surface)] border border-[var(--color-divider)] px-3.5 pt-3.5 pb-3 hover:bg-[#e2e0e0]"
-      style={{ borderLeft: `5px solid ${ESTADO_VISITA_BARRA[v.estado]}` }}
+      className="block w-full min-w-0 text-left bg-[var(--color-surface)] border border-[var(--color-divider)] px-3.5 pt-3.5 pb-3 hover:bg-[rgba(31,28,33,.05)]"
+      style={{ borderLeft: `4px solid ${ESTADO_VISITA_BARRA[v.estado]}` }}
     >
       <div className="flex items-baseline gap-2.5">
-        <span className="font-extrabold text-[19px] tabular-nums">{v.horaProgramada ?? "—"}</span>
-        <span className="text-[11px] tabular-nums tracking-[.06em] opacity-62">{v.folio}</span>
+        <span className="font-extrabold text-h3 tabular-nums">{v.horaProgramada ?? "—"}</span>
+        <span className="text-cap tabular-nums tracking-[.06em] opacity-62">{v.folio}</span>
         <Tag variant={ESTADO_VISITA_TAG[v.estado]} className="ml-auto">
           {ESTADO_VISITA_LABEL[v.estado]}
         </Tag>
       </div>
-      <div className="font-extrabold text-[17px] leading-[1.2] mt-2.5 truncate">{v.sucursal?.nombre}</div>
-      <div className="text-[13px] opacity-60 mt-0.5 truncate">{v.cliente?.nombreFantasia}</div>
-      <div className="text-[13px] opacity-60 truncate">{v.sucursal?.direccion}</div>
-      {/* Todo en una línea y cortado con "…": un motivo largo ya no
-          agranda la tarjeta y la lista queda pareja. */}
-      <div className="flex gap-1.5 mt-2.5 min-w-0">
-        <span className="tag tag-neutral border border-black/[.2] min-w-0 max-w-full">
-          <span className="truncate">{textoMotivos(v)}</span>
+      <div className="font-extrabold text-lead leading-[1.2] mt-2.5 truncate">{v.sucursal?.nombre}</div>
+      <div className="text-meta opacity-60 mt-0.5 truncate">{v.cliente?.nombreFantasia}</div>
+      <div className="text-meta opacity-60 truncate">{v.sucursal?.direccion}</div>
+      {/* Los datos de la visita en una línea de texto, cortada con "…": un
+          motivo largo no agranda la tarjeta y nada se confunde con un botón. */}
+      <div className="flex items-center gap-2 mt-2 min-w-0 text-meta">
+        <span className="min-w-0 truncate">
+          {[
+            textoMotivos(v),
+            v.fechaHasta ? `hasta el ${diaCorto(v.fechaHasta)}` : null,
+            v.tecnicoId === tecnicoId && v.tecnicoAyudante ? `con ${v.tecnicoAyudante.nombreCompleto}` : null,
+            v.responsableNombre ? `recibe ${v.responsableNombre}` : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
         </span>
-        {v.fechaHasta ? (
-          <span className="tag tag-accent flex-none tabular-nums">Hasta {diaCorto(v.fechaHasta)}</span>
-        ) : null}
-        {v.tecnicoId !== tecnicoId ? (
-          <span className="tag tag-dark flex-none">Ayudante</span>
-        ) : v.tecnicoAyudante ? (
-          <span className="tag tag-neutral border border-black/[.2] min-w-0 flex-none max-w-[45%]">
-            <span className="truncate">+ {v.tecnicoAyudante.nombreCompleto}</span>
-          </span>
-        ) : null}
-        {v.responsableNombre ? (
-          <span className="tag tag-neutral border border-black/[.2] min-w-0 flex-none max-w-[45%]">
-            <span className="truncate">{v.responsableNombre}</span>
-          </span>
-        ) : null}
+        {v.tecnicoId !== tecnicoId ? <span className="tag tag-dark flex-none">Ayudante</span> : null}
       </div>
     </button>
   );
 
   return (
     <div className="px-4 pt-5 pb-[26px] animate-fade-in">
-      <h1 className="font-extrabold text-[28px] leading-[1.06] tracking-[-.03em] m-0 mb-1">Mis visitas</h1>
-      <p className="m-0 mb-3.5 text-[13px] opacity-66">asignadas a ti y en las que vas de ayudante</p>
+      <h1 className="font-extrabold text-h1 leading-[1.06] tracking-[-.03em] m-0 mb-1">Mis visitas</h1>
+      <p className="m-0 mb-3.5 text-meta opacity-66">asignadas a ti y en las que vas de ayudante</p>
 
       {/* Actas que se llenaron sin señal: hay que entrar a la visita para que se
           manden. Se avisa acá porque en la lista la visita se ve "en curso" y
           nada delataba que el acta ya estaba lista y guardada en el equipo. */}
       {pendientes.length > 0 ? (
-        <div className="mb-4 px-3.5 py-3 bg-[var(--color-accent-200)] border-l-4 border-[var(--color-accent)]">
-          <div className="text-[10px] tracking-[.12em] uppercase text-[var(--color-accent-800)]">
+        <div className="mb-4 px-3.5 py-3 bg-[var(--color-accent-200)] border border-[var(--color-accent-300)]">
+          <div className="text-cap text-[var(--color-accent-800)]">
             {pendientes.length === 1 ? "Un acta espera señal" : `${pendientes.length} actas esperan señal`}
           </div>
-          <div className="text-[13px] leading-[1.45] text-[var(--color-accent-800)] mt-1.5">
+          <div className="text-meta leading-[1.45] text-[var(--color-accent-800)] mt-1.5">
             Están completas y guardadas en este celular. Abre la visita y se manda sola; no hay que llenarla de nuevo.
           </div>
           <div className="flex flex-col gap-1.5 mt-2.5">
@@ -203,7 +196,7 @@ export default function VisitasList({
                       : `/tecnico/visitas/${a.folio}/formulario`
                   )
                 }
-                className="w-full min-h-[44px] flex items-center gap-2 px-3 bg-[var(--color-bg)] border border-[var(--color-accent)] text-[var(--color-accent-800)] font-extrabold text-[13px] cursor-pointer text-left"
+                className="w-full min-h-[44px] flex items-center gap-2 px-3 bg-[var(--color-bg)] border border-[var(--color-accent)] text-[var(--color-accent-800)] font-extrabold text-meta cursor-pointer text-left"
               >
                 <span className="tabular-nums">{a.folio}</span>
                 <span className="font-normal opacity-70">
@@ -228,11 +221,11 @@ export default function VisitasList({
       ) : null}
 
       <div className="flex gap-2 items-center mb-3.5">
-        <button onClick={() => setFiltroAbierto((v) => !v)} className={`tag ${estado ? "tag-accent" : "tag-neutral"} min-h-[34px] border border-[var(--color-divider)] cursor-pointer gap-1.5 px-3 uppercase text-[11px] tracking-[.08em]`}>
+        <button onClick={() => setFiltroAbierto((v) => !v)} className={`tag ${estado ? "tag-accent" : "tag-neutral"} min-h-[34px] border border-[var(--color-divider)] cursor-pointer gap-1.5 px-3 text-cap `}>
           <span>Filtrar por estado</span>
         </button>
         {estado ? (
-          <button onClick={() => setEstado("")} className="tag tag-accent min-h-[34px] border-0 cursor-pointer gap-1.5 px-2.5 text-[11px] tracking-[.06em]">
+          <button onClick={() => setEstado("")} className="tag tag-accent min-h-[34px] border-0 cursor-pointer gap-1.5 px-2.5 text-cap tracking-[.06em]">
             <span>{ESTADO_VISITA_LABEL[estado as EstadoVisita]}</span>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
               <path d="M6 6l12 12M18 6L6 18" />
@@ -261,7 +254,7 @@ export default function VisitasList({
                 setEstado(e);
                 setFiltroAbierto(false);
               }}
-              className={`tag ${estado === e ? "tag-accent" : "tag-neutral"} flex-none min-h-[34px] border border-[var(--color-divider)] cursor-pointer uppercase text-[11px] tracking-[.08em] px-3`}
+              className={`tag ${estado === e ? "tag-accent" : "tag-neutral"} flex-none min-h-[34px] border border-[var(--color-divider)] cursor-pointer text-cap px-3`}
             >
               {ESTADO_VISITA_LABEL[e]}
             </button>
@@ -279,8 +272,8 @@ export default function VisitasList({
             onClick={() => setDiasTocados((prev) => ({ ...prev, [g.fecha]: !diaDesplegado }))}
             className="w-full min-h-[44px] flex items-center gap-2 pb-2 pt-2 bg-transparent border-0 border-b-2 border-[var(--color-divider)] cursor-pointer text-[var(--color-text)] text-left"
           >
-            <div className="font-extrabold text-xs tracking-[.1em] uppercase capitalize">{g.titulo}</div>
-            <div className="text-xs tabular-nums opacity-60">{g.n}</div>
+            <div className="font-extrabold text-cap capitalize">{g.titulo}</div>
+            <div className="text-cap tabular-nums opacity-60">{g.n}</div>
             <svg
               width="18"
               height="18"
@@ -306,7 +299,7 @@ export default function VisitasList({
               return (
                 <div
                   key={clave}
-                  className="border border-[var(--color-divider)] border-l-[5px] border-l-[var(--color-accent)] bg-[var(--color-surface)]"
+                  className="border border-[var(--color-divider)] bg-[var(--color-surface)]"
                 >
                   <button
                     type="button"
@@ -315,11 +308,11 @@ export default function VisitasList({
                     className="w-full min-h-[64px] flex items-center gap-3 px-3.5 py-3 bg-transparent border-0 cursor-pointer text-[var(--color-text)] text-left"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="font-extrabold text-[17px] leading-[1.2] truncate">{b.mall.nombre}</div>
-                      <div className="text-[13px] opacity-60 mt-0.5 truncate">
+                      <div className="font-extrabold text-lead leading-[1.2] truncate">{b.mall.nombre}</div>
+                      <div className="text-meta opacity-60 mt-0.5 truncate">
                         {[b.mall.direccion, b.mall.comuna].filter(Boolean).join(", ")}
                       </div>
-                      <div className="text-[11px] tracking-[.06em] uppercase opacity-66 mt-1.5 tabular-nums">
+                      <div className="text-cap opacity-66 mt-1.5 tabular-nums">
                         {b.visitas.length} {b.visitas.length === 1 ? "visita" : "visitas"}
                         {porHacer > 0 ? ` · ${porHacer} por hacer` : " · todas cerradas"}
                       </div>
@@ -350,7 +343,7 @@ export default function VisitasList({
         </div>
         );
       })}
-      {grupos.length === 0 ? <div className="py-8.5 text-center text-sm opacity-62">No hay visitas con ese estado.</div> : null}
+      {grupos.length === 0 ? <div className="py-8.5 text-center text-ui opacity-62">No hay visitas con ese estado.</div> : null}
 
       {nueva ? <NuevaVisitaSheet hoy={hoy} tecnicoId={tecnicoId} onCerrar={() => setNueva(false)} onError={aviso} /> : null}
       <Toast texto={toast} />

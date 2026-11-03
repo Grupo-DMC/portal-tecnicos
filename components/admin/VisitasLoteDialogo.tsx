@@ -293,7 +293,6 @@ export default function VisitasLoteDialogo({
 
   return (
     <Dialogo
-      kicker="Operación · acciones para múltiples visitas"
       titulo={titulo}
       cta={accion === "modificar" ? `Aplicar a ${nVisitas(n)}` : accion === "cancelar" ? `Cerrar ${nVisitas(n)}` : titulo}
       nota={
@@ -312,14 +311,14 @@ export default function VisitasLoteDialogo({
     >
       <div className="mt-5 border border-black/[.3]">
         <div className="flex items-center gap-2.5 px-3.5 py-2.5 bg-[var(--color-surface)] border-b border-[var(--color-divider-soft)]">
-          <div className="font-extrabold text-[11px] tracking-[.11em] uppercase">Visitas seleccionadas</div>
-          <div className="ml-auto text-[11px] tracking-[.06em] uppercase opacity-66 tabular-nums">
+          <div className="font-extrabold text-cap ">Visitas seleccionadas</div>
+          <div className="ml-auto text-cap opacity-66 tabular-nums">
             {guardando && n > TANDA ? `Aplicando… ${avance} de ${n}` : nVisitas(n)}
           </div>
         </div>
 
         {n === 0 ? (
-          <div className="px-3.5 py-5 text-[13px] opacity-66">No queda ninguna visita en la lista.</div>
+          <div className="px-3.5 py-5 text-meta opacity-66">No queda ninguna visita en la lista.</div>
         ) : null}
 
         {filas.map(({ visita: v, propio: p }) => (
@@ -333,11 +332,11 @@ export default function VisitasLoteDialogo({
                 className="flex-1 min-w-0 flex items-center gap-2.5 min-h-10 bg-transparent border-0 cursor-pointer disabled:cursor-default text-[var(--color-text)] text-left"
               >
                 <span className="min-w-0">
-                  <span className="block text-[14px] truncate">
+                  <span className="block text-ui truncate">
                     <span className="font-semibold tabular-nums">{v.folio}</span> · {v.cliente?.nombreFantasia ?? ""} ·{" "}
                     {v.sucursal?.nombre ?? ""}
                   </span>
-                  <span className="block text-[12px] opacity-66 truncate tabular-nums">
+                  <span className="block text-cap opacity-66 truncate tabular-nums">
                     {textoFechaVisita(v)} · {v.horaProgramada ?? "Sin hora"} · {v.tecnico?.nombreCompleto ?? ""} ·{" "}
                     {textoMotivos(v)}
                   </span>
@@ -375,7 +374,7 @@ export default function VisitasLoteDialogo({
             </div>
 
             {p.error ? (
-              <div className="px-3.5 pb-2.5 text-[12px] leading-[1.4] text-[var(--color-accent-800)]">
+              <div className="px-3.5 pb-2.5 text-cap leading-[1.4] text-[var(--color-accent-800)]">
                 No se aplicó: {p.error}
               </div>
             ) : null}
@@ -428,7 +427,7 @@ export default function VisitasLoteDialogo({
                     opciones={opc.motivos}
                     onCambiar={(valor) => cambiar(v.folio, { motivoCodigo: valor })}
                   />
-                  <div className="text-[11px] leading-[1.4] opacity-66 mt-1.5">Sin marcar = se usa lo de arriba.</div>
+                  <div className="text-cap leading-[1.4] opacity-66 mt-1.5">Sin marcar = se usa lo de arriba.</div>
                 </div>
                 <CampoFila
                   folio={v.folio}

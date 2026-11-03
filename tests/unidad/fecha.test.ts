@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   diaDeVisita,
+  fechaCL,
   fechaHoraLegible,
   hoyISO,
   inicioMes,
@@ -8,6 +9,18 @@ import {
   sumarDias,
   textoFechaVisita,
 } from "@/lib/ui/fecha";
+
+describe("fechaCL (formato de Chile, solo para mostrar)", () => {
+  it("día/mes/año con ceros a la izquierda", () => {
+    expect(fechaCL("2026-11-02")).toBe("02/11/2026");
+    expect(fechaCL("2026-08-24T14:35:10")).toBe("24/08/2026");
+  });
+  it("sin fecha, una raya; lo que no es fecha, tal cual", () => {
+    expect(fechaCL(null)).toBe("—");
+    expect(fechaCL("")).toBe("—");
+    expect(fechaCL("pronto")).toBe("pronto");
+  });
+});
 
 describe("hoyISO (siempre en hora de Chile)", () => {
   it("de noche en Chile no salta al día siguiente aunque el servidor esté en UTC", () => {
@@ -45,8 +58,8 @@ describe("inicioSemana / sumarDias / inicioMes", () => {
 
 describe("fechaHoraLegible", () => {
   it("formatea sin interpretar el huso", () => {
-    expect(fechaHoraLegible("2026-08-24T14:35:10")).toBe("24 ago 2026 · 14:35");
-    expect(fechaHoraLegible("2026-01-05 09:05:00")).toBe("5 ene 2026 · 09:05");
+    expect(fechaHoraLegible("2026-08-24T14:35:10")).toBe("24/08/2026 · 14:35");
+    expect(fechaHoraLegible("2026-01-05 09:05:00")).toBe("05/01/2026 · 09:05");
   });
   it("vacío → raya; texto raro → tal cual", () => {
     expect(fechaHoraLegible(null)).toBe("—");
@@ -82,7 +95,7 @@ describe("diaDeVisita (visitas con margen de días)", () => {
 
 describe("textoFechaVisita", () => {
   it("muestra el rango solo si hay margen", () => {
-    expect(textoFechaVisita({ fechaProgramada: "2026-10-26" })).toBe("2026-10-26");
-    expect(textoFechaVisita({ fechaProgramada: "2026-10-26", fechaHasta: "2026-10-30" })).toBe("2026-10-26 → 2026-10-30");
+    expect(textoFechaVisita({ fechaProgramada: "2026-10-26" })).toBe("26/10/2026");
+    expect(textoFechaVisita({ fechaProgramada: "2026-10-26", fechaHasta: "2026-10-30" })).toBe("26/10/2026 → 30/10/2026");
   });
 });

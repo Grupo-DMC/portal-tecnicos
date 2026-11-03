@@ -41,13 +41,11 @@ export interface FieldConfig extends CampoDef {
  * que se ve sea siempre lo que quedó en la base y no una copia optimista.
  */
 export default function MaestroTable<T extends { id: number }>({
-  kicker,
   title,
   modulo,
   pestanas,
   addLabel,
   editLabel,
-  dialogoKicker,
   nota,
   columns,
   rows,
@@ -65,7 +63,6 @@ export default function MaestroTable<T extends { id: number }>({
   resumen,
   accionesCabecera,
 }: {
-  kicker: string;
   title: string;
   /** El módulo de permisos: decide si se ofrecen "agregar" y "editar". */
   modulo: string;
@@ -73,7 +70,6 @@ export default function MaestroTable<T extends { id: number }>({
   pestanas?: React.ReactNode;
   addLabel: string;
   editLabel: string;
-  dialogoKicker: string;
   nota?: string;
   columns: Column<T>[];
   rows: T[];
@@ -154,7 +150,7 @@ export default function MaestroTable<T extends { id: number }>({
 
   return (
     <>
-      <AdminHeader kicker={kicker} title={title} pestanas={pestanas}>
+      <AdminHeader title={title} pestanas={pestanas}>
         {puedeCrear ? accionesCabecera : null}
         {puedeCrear ? (
           <button onClick={() => setDialogo({ id: null, form: emptyRow })} className="btn btn-primary">
@@ -223,8 +219,8 @@ export default function MaestroTable<T extends { id: number }>({
 
           {filtradas.length === 0 ? (
             <div className="py-14 text-center">
-              <div className="font-extrabold text-[17px] mb-1.5">Nada que mostrar</div>
-              <div className="text-[13px] opacity-66">Ajusta la búsqueda.</div>
+              <div className="font-extrabold text-lead mb-1.5">Nada que mostrar</div>
+              <div className="text-meta opacity-66">Ajusta la búsqueda.</div>
             </div>
           ) : null}
         </div>
@@ -232,7 +228,6 @@ export default function MaestroTable<T extends { id: number }>({
 
       {dialogo ? (
         <Dialogo
-          kicker={dialogoKicker}
           titulo={dialogo.id === null ? addLabel : editLabel}
           cta={dialogo.id === null ? addLabel.replace(/^Nuev[oa]/, "Crear") : "Guardar cambios"}
           nota={nota}

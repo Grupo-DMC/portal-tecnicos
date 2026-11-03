@@ -4,7 +4,7 @@ export default function Tag({
   className = "",
 }: {
   children: React.ReactNode;
-  variant?: "accent" | "neutral" | "outline" | "dark";
+  variant?: "accent" | "danger" | "neutral" | "outline" | "dark";
   className?: string;
 }) {
   return <span className={`tag tag-${variant} ${className}`}>{children}</span>;

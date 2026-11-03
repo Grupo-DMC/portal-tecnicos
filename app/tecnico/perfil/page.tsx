@@ -28,13 +28,13 @@ export default async function PerfilPage() {
         <div className="flex items-center gap-3.5">
           <div
             aria-hidden="true"
-            className="w-16 h-16 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-[22px] leading-none tracking-[.02em]"
+            className="w-16 h-16 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-h2 leading-none tracking-[.02em]"
           >
             {iniciales || "—"}
           </div>
           <div className="min-w-0">
-            <div className="text-[10px] tracking-[.15em] uppercase text-[var(--color-accent-active)]">Técnico en terreno</div>
-            <h1 className="font-extrabold text-[24px] leading-[1.1] tracking-[-.03em] m-0 mt-1">{tecnico.nombreCompleto}</h1>
+            <h1 className="font-extrabold text-h2 leading-[1.1] tracking-[-.03em] m-0">{tecnico.nombreCompleto}</h1>
+            <div className="text-meta text-[var(--color-muted)] mt-1">Técnico en terreno</div>
           </div>
         </div>
 
@@ -44,8 +44,8 @@ export default async function PerfilPage() {
               key={f.k}
               className={`flex items-baseline gap-3 py-3 ${i > 0 ? "border-t border-black/[.15]" : ""}`}
             >
-              <div className="text-[10px] tracking-[.09em] uppercase opacity-62 w-[78px] flex-none">{f.k}</div>
-              <div className="text-sm min-w-0 tabular-nums">{f.v}</div>
+              <div className="text-cap opacity-62 w-[78px] flex-none">{f.k}</div>
+              <div className="text-ui min-w-0 tabular-nums">{f.v}</div>
             </div>
           ))}
         </div>

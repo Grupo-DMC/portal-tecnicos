@@ -13,7 +13,7 @@ import { useReferencias } from "@/lib/ui/referencias";
 import { REGIONES } from "@/lib/ui/regiones";
 import { OPCIONES_SI_NO, calibracionDeSucursal, formASiNo, mesesDeForm, siNoAForm } from "@/lib/ui/sino";
 import { ETIQUETA_GARANTIA, enGarantia, garantiaDe, type EstadoGarantia } from "@/lib/ui/garantia";
-import { hoyISO } from "@/lib/ui/fecha";
+import { hoyISO, fechaCL } from "@/lib/ui/fecha";
 import type { Cliente, Mall, Sucursal } from "@/lib/types";
 
 /** El filtro de una marca opcional: "" = todas, y si no, sí / no / sin indicar. */
@@ -92,12 +92,10 @@ export default function SucursalesTable({
           <span>Alta masiva</span>
         </button>
       }
-      kicker="Maestros"
       title="Sucursales"
       modulo="sucursales"
       addLabel="Nueva sucursal"
       editLabel="Editar sucursal"
-      dialogoKicker="Maestro · sucursal"
       nota="La sucursal siempre pertenece a un cliente y no se puede dejar sin él. El mall es opcional: elegirlo le pone a la sucursal la ubicación del mall y, si es nueva, también su nombre."
       phBusqueda="Buscar sucursal, comuna, mall, código…"
       rows={sucursales}
@@ -174,7 +172,7 @@ export default function SucursalesTable({
                 ) : null}
                 {cal.valor === false ? <Tag variant="outline">Sin calibración</Tag> : null}
                 {s.fechaInstalacion ? (
-                  <div className="basis-full text-[11px] opacity-66 tabular-nums">Instalada el {s.fechaInstalacion}</div>
+                  <div className="basis-full text-cap opacity-66 tabular-nums">Instalada el {fechaCL(s.fechaInstalacion)}</div>
                 ) : null}
               </div>
             ) : (
@@ -189,7 +187,7 @@ export default function SucursalesTable({
             <>
               <Tag variant={s.activo ? "accent" : "neutral"}>{s.activo ? "Activa" : "Inactiva"}</Tag>
               {!s.activo && s.motivoInactivo ? (
-                <div className="text-[11px] leading-[1.4] opacity-66 mt-1 max-w-[260px]">{s.motivoInactivo}</div>
+                <div className="text-cap leading-[1.4] opacity-66 mt-1 max-w-[260px]">{s.motivoInactivo}</div>
               ) : null}
             </>
           ),

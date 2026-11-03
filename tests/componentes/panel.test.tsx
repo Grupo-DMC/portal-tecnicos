@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // las consultas simuladas, así el componente y el cálculo se prueban juntos.
 const q = vi.hoisted(() => ({
   contarProblemasAbiertos: vi.fn(),
+  contarPorReagendar: vi.fn(),
   getCargaTecnico: vi.fn(),
   getCumplimientoRango: vi.fn(),
   getEstadoHoyDistribucion: vi.fn(),
@@ -36,6 +37,7 @@ const v = (estado: string, tecnicoId: number) => ({ estado, tecnicoId });
 beforeEach(() => {
   vi.resetAllMocks();
   q.contarProblemasAbiertos.mockResolvedValue(7);
+  q.contarPorReagendar.mockResolvedValue(4);
   q.getEstadoHoyDistribucion.mockResolvedValue([
     { estado: "COMPLETADA", n: 3, pct: 75 },
     { estado: "EN_CURSO", n: 1, pct: 25 },
@@ -79,7 +81,8 @@ describe("panel de operación", () => {
     await u.click(screen.getByRole("radio", { name: "Mes" }));
     expect(screen.getByText("Visitas · mes")).toBeInTheDocument();
     expect(screen.getAllByText("25%").length).toBeGreaterThan(0);
-    expect(screen.getByText("Reagendas · mes")).toBeInTheDocument();
+    expect(screen.getByText("Esperan nueva fecha")).toBeInTheDocument();
+    expect(screen.getByText(/de este mes$/)).toBeInTheDocument();
   });
 
   it("los KPI enlazan a la vista filtrada correspondiente", async () => {
@@ -117,8 +120,19 @@ describe("panel de operación", () => {
     expect(screen.getByText("4 visitas")).toBeInTheDocument();
   });
 
-  it("la carga por técnico muestra programadas y realizadas con su avance", async () => {
+  it("en «Hoy» el cumplimiento se lee por técnico y cada fila abre sus visitas del día", async () => {
     render(<PanelDashboard data={await datos()} />);
+    const fila = screen.getByText("Ana Pérez").closest("a")!;
+    expect(fila).toHaveAttribute("href", expect.stringMatching(/fecha=.+&tecnico=/));
+    expect(within(fila).getByText("4")).toBeInTheDocument();
+    expect(within(fila).getByText("3")).toBeInTheDocument();
+    expect(screen.queryByText("Carga por técnico")).toBeNull();
+  });
+
+  it("en semana o mes la carga por técnico muestra programadas y realizadas", async () => {
+    const u = userEvent.setup();
+    render(<PanelDashboard data={await datos()} />);
+    await u.click(screen.getByRole("radio", { name: "Semana" }));
     const fila = screen.getByText("Ana Pérez").closest("tr")!;
     expect(within(fila).getByText("4")).toBeInTheDocument();
     expect(within(fila).getByText("3")).toBeInTheDocument();

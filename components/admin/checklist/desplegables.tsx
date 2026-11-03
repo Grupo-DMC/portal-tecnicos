@@ -102,7 +102,7 @@ export function Desplegable({
     <div className="border border-black/[.35] bg-[var(--color-surface-3)]">
       <div
         className="flex items-center gap-2.5 flex-wrap px-3 py-2.5"
-        style={{ background: abierto ? "#e3e1e0" : "var(--color-surface)" }}
+        style={{ background: abierto ? "#e3e1e5" : "var(--color-surface)" }}
       >
         {agarre}
         <Numero n={n} />
@@ -110,20 +110,20 @@ export function Desplegable({
           value={grupo.nombre}
           onChange={(e) => onCambiar((g) => ({ ...g, nombre: e.target.value }))}
           placeholder={phNombre}
-          className="input flex-1 min-w-[200px] min-h-10 font-extrabold text-[15px] bg-[var(--color-bg)]"
+          className="input flex-1 min-w-[200px] min-h-10 font-extrabold text-body bg-[var(--color-bg)]"
           aria-label={phNombre}
           autoComplete="off"
         />
         <Codigo codigo={grupo.codigo} />
         <span
-          className={`text-[11px] leading-[1.2] tracking-[.06em] uppercase ${alerta ? "font-extrabold text-[var(--color-accent-800)]" : "opacity-62"}`}
+          className={`text-cap leading-[1.2] ${alerta ? "font-extrabold text-[var(--color-danger-800)]" : "opacity-62"}`}
         >
           {resumen}
         </span>
         <button
           onClick={onToggle}
           aria-label={abierto ? `Ocultar ${etiquetaPlural}` : `Ver ${etiquetaPlural}`}
-          className="min-h-[34px] flex items-center gap-2 px-2.5 flex-none bg-transparent border border-black/[.3] cursor-pointer text-[var(--color-text)] text-[11px] leading-none tracking-[.07em] uppercase hover:bg-black/[.07]"
+          className="min-h-[34px] flex items-center gap-2 px-2.5 flex-none bg-transparent border border-black/[.3] cursor-pointer text-[var(--color-text)] text-cap leading-none hover:bg-black/[.07]"
         >
           <span>{abierto ? `Ocultar ${etiquetaPlural}` : `Ver ${etiquetaPlural}`}</span>
           <svg
@@ -159,10 +159,10 @@ export function Desplegable({
 
       {abierto ? (
         <div className="px-3.5 pt-3.5 pb-4 border-t border-black/[.25]">
-          {nota ? <p className="m-0 mb-3.5 text-xs opacity-72 max-w-[72ch]">{nota}</p> : null}
+          {nota ? <p className="m-0 mb-3.5 text-cap opacity-72 max-w-[72ch]">{nota}</p> : null}
           {seccion && seccion.opciones.some((o) => o.nombre.trim()) ? (
             <div className="mb-4.5">
-              <label className="block text-[10px] tracking-[.11em] uppercase opacity-62 mb-1.5">Sección</label>
+              <label className="block text-cap opacity-62 mb-1.5">Sección</label>
               <select
                 value={seccion.valor ?? ""}
                 onChange={(e) => seccion.onCambiar(e.target.value || null)}
@@ -182,7 +182,7 @@ export function Desplegable({
           ) : null}
           {enMotivos ? (
             <div className="mb-4.5">
-              <div className="block text-[10px] tracking-[.11em] uppercase opacity-62 mb-1.5">
+              <div className="block text-cap opacity-62 mb-1.5">
                 Aparece bajo estos motivos
               </div>
               <div className="flex flex-wrap gap-1.5 max-w-[720px]">
@@ -197,11 +197,11 @@ export function Desplegable({
                         role="checkbox"
                         aria-checked={activo}
                         onClick={() => enMotivos.onAlternar(m.key)}
-                        className="min-h-[34px] px-3 border cursor-pointer text-[12px] leading-[1.2]"
+                        className="min-h-[34px] px-3 border cursor-pointer text-cap leading-[1.2]"
                         style={{
-                          background: activo ? "var(--color-text)" : "transparent",
-                          color: activo ? "var(--color-bg)" : "var(--color-text)",
-                          borderColor: activo ? "var(--color-text)" : "rgba(32,30,29,.3)",
+                          background: activo ? "var(--color-accent)" : "transparent",
+                          color: activo ? "#fff" : "var(--color-text)",
+                          borderColor: activo ? "var(--color-accent)" : "rgba(31,28,33,.3)",
                           fontWeight: activo ? 800 : 400,
                         }}
                       >
@@ -210,14 +210,14 @@ export function Desplegable({
                     );
                   })}
               </div>
-              <p className="m-0 mt-1.5 text-xs opacity-62">
+              <p className="m-0 mt-1.5 text-cap opacity-62">
                 {enMotivos.lista.some((m) => m.trabajos.includes(grupo.key))
                   ? "El técnico solo ve este trabajo bajo los motivos marcados. Al marcar uno, el trabajo entra al final de ese motivo."
                   : "Sin ningún motivo marcado, el técnico no ve este trabajo."}
               </p>
             </div>
           ) : null}
-          <label className="block text-[10px] tracking-[.11em] uppercase opacity-62 mb-1.5">{tituloSub}</label>
+          <label className="block text-cap opacity-62 mb-1.5">{tituloSub}</label>
           <input
             value={grupo.grupoLabel}
             onChange={(e) => onCambiar((g) => ({ ...g, grupoLabel: e.target.value }))}
@@ -288,7 +288,7 @@ export function Desplegable({
               </Arrastrable>
             ))}
             {grupo.items.length === 0 ? (
-              <div className="px-3.5 py-2.5 border border-dashed border-black/[.35] text-[13px] opacity-68">
+              <div className="px-3.5 py-2.5 border border-dashed border-black/[.35] text-meta opacity-68">
                 {vacioSub}
               </div>
             ) : null}
@@ -394,7 +394,7 @@ export function MotivoDesplegable({
     <div className="border border-black/[.35] bg-[var(--color-surface-3)]">
       <div
         className="flex items-center gap-2.5 flex-wrap px-3 py-2.5"
-        style={{ background: abierto ? "#e3e1e0" : "var(--color-surface)" }}
+        style={{ background: abierto ? "#e3e1e5" : "var(--color-surface)" }}
       >
         {agarre}
         <Numero n={n} />
@@ -402,7 +402,7 @@ export function MotivoDesplegable({
           value={motivo.nombre}
           onChange={(e) => onRenombrar(e.target.value)}
           placeholder="Ej: Calibración de las antenas"
-          className="input flex-1 min-w-[200px] min-h-10 font-extrabold text-[15px] bg-[var(--color-bg)]"
+          className="input flex-1 min-w-[200px] min-h-10 font-extrabold text-body bg-[var(--color-bg)]"
           aria-label="Nombre del motivo"
           autoComplete="off"
         />
@@ -411,7 +411,7 @@ export function MotivoDesplegable({
           <select
             value={motivo.seccion ?? ""}
             onChange={(e) => onCambiarSeccion(e.target.value || null)}
-            className="input min-h-[34px] max-w-[160px] flex-none text-[12px] bg-[var(--color-bg)]"
+            className="input min-h-[34px] max-w-[160px] flex-none text-cap bg-[var(--color-bg)]"
             aria-label="Sección del motivo"
             title="Cambiar el motivo de sección"
           >
@@ -426,7 +426,7 @@ export function MotivoDesplegable({
           </select>
         ) : null}
         <span
-          className={`text-[11px] leading-[1.2] tracking-[.06em] uppercase ${sinTrabajos ? "font-extrabold text-[var(--color-accent-800)]" : "opacity-62"}`}
+          className={`text-cap leading-[1.2] ${sinTrabajos ? "font-extrabold text-[var(--color-accent-800)]" : "opacity-62"}`}
           title={sinTrabajos ? "Una visita con solo este motivo no se puede cerrar: el técnico no tiene qué registrar." : undefined}
         >
           {sinTrabajos ? "Sin trabajos" : `${suyos.length} ${suyos.length === 1 ? "trabajo" : "trabajos"}`}
@@ -434,7 +434,7 @@ export function MotivoDesplegable({
         <button
           onClick={onToggle}
           aria-expanded={abierto}
-          className="min-h-[34px] flex items-center gap-2 px-2.5 flex-none bg-transparent border border-black/[.3] cursor-pointer text-[var(--color-text)] text-[11px] leading-none tracking-[.07em] uppercase hover:bg-black/[.07]"
+          className="min-h-[34px] flex items-center gap-2 px-2.5 flex-none bg-transparent border border-black/[.3] cursor-pointer text-[var(--color-text)] text-cap leading-none hover:bg-black/[.07]"
         >
           <span>{abierto ? "Ocultar trabajos" : "Ver trabajos"}</span>
           <svg
@@ -470,7 +470,7 @@ export function MotivoDesplegable({
 
       {abierto ? (
         <div className="px-3.5 pt-3.5 pb-4 border-t border-black/[.25]">
-          <div className="text-[10px] tracking-[.11em] uppercase opacity-62 mb-2">
+          <div className="text-cap opacity-62 mb-2">
             Trabajos que el técnico puede registrar bajo este motivo
           </div>
           <div className="flex flex-col gap-2">
@@ -540,7 +540,7 @@ export function MotivoDesplegable({
 
           <div className="flex items-end gap-2.5 flex-wrap mt-3.5 max-w-[860px]">
             <div className="flex-1 min-w-[240px]">
-              <div className="text-[10px] tracking-[.11em] uppercase opacity-62 mb-1.5">Agregar un trabajo que ya existe</div>
+              <div className="text-cap opacity-62 mb-1.5">Agregar un trabajo que ya existe</div>
               {disponibles.length ? (
                 <SelectBuscable
                   valor=""
@@ -550,7 +550,7 @@ export function MotivoDesplegable({
                   ariaLabel="Agregar un trabajo que ya existe"
                 />
               ) : (
-                <div className="text-xs opacity-62 min-h-10 flex items-center">Ya tiene todos los trabajos del checklist.</div>
+                <div className="text-cap opacity-62 min-h-10 flex items-center">Ya tiene todos los trabajos del checklist.</div>
               )}
             </div>
             <button onClick={onCrearTrabajo} className="btn btn-secondary shrink-0 min-h-10">

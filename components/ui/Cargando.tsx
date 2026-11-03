@@ -11,7 +11,7 @@ export default function Cargando({ compacta = false }: { compacta?: boolean }) {
         <div className="h-0.5 bg-[var(--color-divider-soft)] overflow-hidden">
           <div className="h-full w-1/3 bg-[var(--color-accent)] animate-pulse" />
         </div>
-        <p className="mt-3 text-[10px] tracking-[.16em] uppercase opacity-60">Cargando…</p>
+        <p className="mt-3 text-cap opacity-60">Cargando…</p>
       </div>
     </div>
   );

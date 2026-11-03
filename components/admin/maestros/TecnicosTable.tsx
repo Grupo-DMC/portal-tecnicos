@@ -15,13 +15,11 @@ export default function TecnicosTable({
 }) {
   return (
     <MaestroTable<Tecnico>
-      kicker="Maestros · quién sale a terreno"
       title="Usuarios"
       pestanas={pestanas}
       modulo="tecnicos"
       addLabel="Nuevo técnico"
       editLabel="Editar técnico"
-      dialogoKicker="Maestro · técnico"
       nota="El RUT y el correo no se pueden repetir. Todos los técnicos salen desde la oficina central, así que no se asigna zona."
       phBusqueda="Buscar técnico, RUT, correo…"
       rows={tecnicos}

@@ -1,0 +1,511 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-02T12:00:00Z",
+  "title": "Design System: DMC Contingencia",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Morado dMC",
+        "tonalRamp": [
+          "#2e0c34",
+          "#4a1453",
+          "#571862",
+          "#762282",
+          "#8f4a9a",
+          "#c69dc8",
+          "#ecdcee",
+          "#f6eef7"
+        ]
+      },
+      "accent-hover": {
+        "role": "primary",
+        "displayName": "Morado hover",
+        "tonalRamp": [
+          "#2e0c34",
+          "#4a1453",
+          "#571862",
+          "#762282",
+          "#8f4a9a",
+          "#c69dc8",
+          "#ecdcee",
+          "#f6eef7"
+        ]
+      },
+      "accent-active": {
+        "role": "primary",
+        "displayName": "Morado presionado",
+        "tonalRamp": [
+          "#2e0c34",
+          "#4a1453",
+          "#571862",
+          "#762282",
+          "#8f4a9a",
+          "#c69dc8",
+          "#ecdcee",
+          "#f6eef7"
+        ]
+      },
+      "accent-500": {
+        "role": "primary",
+        "displayName": "Morado medio (planificado)",
+        "tonalRamp": [
+          "#2e0c34",
+          "#4a1453",
+          "#571862",
+          "#762282",
+          "#8f4a9a",
+          "#c69dc8",
+          "#ecdcee",
+          "#f6eef7"
+        ]
+      },
+      "accent-400": {
+        "role": "primary",
+        "displayName": "Lila dMC",
+        "tonalRamp": [
+          "#2e0c34",
+          "#4a1453",
+          "#571862",
+          "#762282",
+          "#8f4a9a",
+          "#c69dc8",
+          "#ecdcee",
+          "#f6eef7"
+        ]
+      },
+      "accent-100": {
+        "role": "primary",
+        "displayName": "Lavanda",
+        "tonalRamp": [
+          "#2e0c34",
+          "#4a1453",
+          "#571862",
+          "#762282",
+          "#8f4a9a",
+          "#c69dc8",
+          "#ecdcee",
+          "#f6eef7"
+        ]
+      },
+      "danger": {
+        "role": "secondary",
+        "displayName": "Rojo alarma",
+        "tonalRamp": [
+          "#3f0a02",
+          "#7c1405",
+          "#a01f0a",
+          "#c4260d",
+          "#e0705e",
+          "#f0a99d",
+          "#f9dcd6",
+          "#fdeeeb"
+        ]
+      },
+      "bg": {
+        "role": "neutral",
+        "displayName": "Papel violáceo",
+        "tonalRamp": [
+          "#2c292e",
+          "#433f46",
+          "#5f5b63",
+          "#7c7880",
+          "#9a969e",
+          "#b9b5bd",
+          "#e9e6eb",
+          "#f9f7fa"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Superficie",
+        "tonalRamp": [
+          "#2c292e",
+          "#433f46",
+          "#5f5b63",
+          "#7c7880",
+          "#9a969e",
+          "#b9b5bd",
+          "#e9e6eb",
+          "#f9f7fa"
+        ]
+      },
+      "surface-3": {
+        "role": "neutral",
+        "displayName": "Superficie clara",
+        "tonalRamp": [
+          "#2c292e",
+          "#433f46",
+          "#5f5b63",
+          "#7c7880",
+          "#9a969e",
+          "#b9b5bd",
+          "#e9e6eb",
+          "#f9f7fa"
+        ]
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Lienzo",
+        "tonalRamp": [
+          "#2c292e",
+          "#433f46",
+          "#5f5b63",
+          "#7c7880",
+          "#9a969e",
+          "#b9b5bd",
+          "#e9e6eb",
+          "#f9f7fa"
+        ]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "Tinta",
+        "tonalRamp": [
+          "#2c292e",
+          "#433f46",
+          "#5f5b63",
+          "#7c7880",
+          "#9a969e",
+          "#b9b5bd",
+          "#e9e6eb",
+          "#f9f7fa"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Gris legible",
+        "tonalRamp": [
+          "#2c292e",
+          "#433f46",
+          "#5f5b63",
+          "#7c7880",
+          "#9a969e",
+          "#b9b5bd",
+          "#e9e6eb",
+          "#f9f7fa"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Línea de fila",
+        "tonalRamp": [
+          "#2c292e",
+          "#433f46",
+          "#5f5b63",
+          "#7c7880",
+          "#9a969e",
+          "#b9b5bd",
+          "#e9e6eb",
+          "#f9f7fa"
+        ]
+      },
+      "line-control": {
+        "role": "neutral",
+        "displayName": "Borde de control",
+        "tonalRamp": [
+          "#2c292e",
+          "#433f46",
+          "#5f5b63",
+          "#7c7880",
+          "#9a969e",
+          "#b9b5bd",
+          "#e9e6eb",
+          "#f9f7fa"
+        ]
+      },
+      "accent-200": {
+        "role": "primary",
+        "displayName": "Lavanda de selección",
+        "tonalRamp": [
+          "#2e0c34",
+          "#4a1453",
+          "#571862",
+          "#762282",
+          "#8f4a9a",
+          "#c69dc8",
+          "#ecdcee",
+          "#f6eef7"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "cap": {
+        "displayName": "Cap",
+        "purpose": "Tags, cabeceras de tabla, contadores, detalle de menú (text-cap)."
+      },
+      "meta": {
+        "displayName": "Meta",
+        "purpose": "Datos secundarios, etiquetas de campo, línea de metadatos (text-meta)."
+      },
+      "ui": {
+        "displayName": "UI",
+        "purpose": "Botones, tablas, campos, navegación y menús (text-ui); 16px en inputs de celular."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Texto corrido con cifras tabulares (text-body)."
+      },
+      "lead": {
+        "displayName": "Lead",
+        "purpose": "Títulos de tarjeta, hoja y panel (text-lead)."
+      },
+      "h3": {
+        "displayName": "H3",
+        "purpose": "Hora de la tarjeta de visita, subtítulos (text-h3)."
+      },
+      "h2": {
+        "displayName": "H2",
+        "purpose": "Título de página en celular (text-h2)."
+      },
+      "h1": {
+        "displayName": "H1",
+        "purpose": "Título de página desde 768px y títulos del celular (text-h1)."
+      },
+      "display": {
+        "displayName": "Display",
+        "purpose": "Cifras KPI en Fira Code; folio del acta en escritorio (text-display)."
+      },
+      "hero": {
+        "displayName": "Hero",
+        "purpose": "La cifra protagonista del panel (text-hero)."
+      },
+      "data": {
+        "displayName": "Data",
+        "purpose": "Clase de cifras: conteos, folios, horas."
+      }
+    },
+    "shadows": [
+      {
+        "name": "dropdown",
+        "value": "0 6px 18px rgba(0,0,0,.18)",
+        "purpose": "Listas flotantes de selectores con búsqueda y múltiples."
+      },
+      {
+        "name": "menu-actions",
+        "value": "0 8px 24px rgba(31,28,33,.14)",
+        "purpose": "Menú de acciones (Descargar, Editar), junto a su borde de 2px en tinta."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Única curva de la app."
+      },
+      {
+        "name": "duration-fast",
+        "value": "150ms",
+        "purpose": "Cambios de color, fondo y borde; fundidos."
+      },
+      {
+        "name": "duration-base",
+        "value": "200ms",
+        "purpose": "Entrada del diálogo (8px hacia arriba)."
+      },
+      {
+        "name": "duration-medium",
+        "value": "200ms",
+        "purpose": "Salida de la hoja (igual a SALIDA_MS en Sheet.tsx)."
+      },
+      {
+        "name": "duration-slow",
+        "value": "280ms",
+        "purpose": "Entrada de la hoja inferior (24px hacia arriba)."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "columna-movil",
+        "value": "460px"
+      }
+    ],
+    "typeScaleSource": "app/globals.css @theme inline (--text-cap … --text-hero, con --line-height por paso)",
+    "dateFormat": {
+      "numeric": "dd/mm/aaaa (02/11/2026)",
+      "withTime": "dd/mm/aaaa · hh:mm (24/08/2026 · 14:35)",
+      "dayHeading": "lunes, 2 de noviembre",
+      "iso": "solo URLs, inputs y base",
+      "source": "lib/ui/fecha.ts fechaCL / fechaHoraLegible; lib/pdf/acta.ts"
+    }
+  },
+  "components": [
+    {
+      "name": "Botón primario",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "La acción principal de un grupo.",
+      "html": "<button class=\"ds-btn ds-btn-primary\"><svg width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\"><path d=\"M4 12l5 5L20 6\"/></svg><span>Guardar</span></button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-family:var(--font-fira-sans),system-ui,sans-serif;font-weight:800;font-size:14px;line-height:1.2;color:var(--color-text,#1f1c21);background:transparent;border:1px solid transparent;padding:0 16px;min-height:42px;border-radius:0;transition:background-color 150ms cubic-bezier(0.22, 1, 0.36, 1),border-color 150ms cubic-bezier(0.22, 1, 0.36, 1),scale 150ms cubic-bezier(0.22, 1, 0.36, 1)}.ds-btn:active{scale:.96}.ds-btn:focus-visible{outline:2px solid var(--color-accent,#762282);outline-offset:2px}.ds-btn-primary{background:var(--color-accent,#762282);color:#fff}.ds-btn-primary:hover{background:var(--color-accent-hover,#661d71)}.ds-btn-primary:active{background:var(--color-accent-active,#571862)}"
+    },
+    {
+      "name": "Botón secundario",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Cancelar y acciones alternativas.",
+      "html": "<button class=\"ds-btn2\">Cancelar</button>",
+      "css": ".ds-btn2{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-family:var(--font-fira-sans),system-ui,sans-serif;font-weight:800;font-size:14px;color:var(--color-text,#1f1c21);background:transparent;border:1px solid var(--color-line-control,#a8a4ad);padding:0 16px;min-height:42px;border-radius:0;transition:background-color 150ms cubic-bezier(0.22, 1, 0.36, 1),border-color 150ms cubic-bezier(0.22, 1, 0.36, 1)}.ds-btn2:hover{background:rgba(31,28,33,.06);border-color:var(--color-text,#1f1c21)}.ds-btn2:active{background:rgba(31,28,33,.12);scale:.96}.ds-btn2:focus-visible{outline:2px solid var(--color-accent,#762282);outline-offset:2px}"
+    },
+    {
+      "name": "Botón fantasma",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Acción terciaria en línea.",
+      "html": "<button class=\"ds-ghost\">Ver detalle</button>",
+      "css": ".ds-ghost{cursor:pointer;font-family:var(--font-fira-sans),system-ui,sans-serif;font-weight:600;font-size:14px;min-height:42px;padding:0 4px;background:transparent;border:0;border-radius:0;color:var(--color-accent-active,#571862);text-decoration:underline;text-decoration-color:rgba(87,24,98,.35);text-underline-offset:3px;transition:background-color 150ms cubic-bezier(0.22, 1, 0.36, 1),text-decoration-color 150ms cubic-bezier(0.22, 1, 0.36, 1)}.ds-ghost:hover{background:var(--color-accent-100,#f6eef7);text-decoration-color:currentColor}.ds-ghost:focus-visible{outline:2px solid var(--color-accent,#762282);outline-offset:2px}"
+    },
+    {
+      "name": "Campo",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Etiqueta arriba, campo blanco sobre el papel.",
+      "html": "<div class=\"ds-field\"><label for=\"ds-f\">Sucursal</label><input id=\"ds-f\" class=\"ds-input\" placeholder=\"Buscar…\"></div>",
+      "css": ".ds-field label{display:block;font-size:13px;font-weight:600;color:var(--color-muted,#5f5b63);margin-bottom:6px;font-family:var(--font-fira-sans),system-ui,sans-serif;}.ds-input{width:100%;min-height:42px;padding:8px 12px;font-family:var(--font-fira-sans),system-ui,sans-serif;font-size:14px;color:var(--color-text,#1f1c21);caret-color:var(--color-accent,#762282);background:#fff;border:1px solid var(--color-line-control,#a8a4ad);border-radius:0;transition:border-color 150ms cubic-bezier(0.22, 1, 0.36, 1)}.ds-input::placeholder{color:#736f77}.ds-input:hover{border-color:var(--color-neutral-700,#5f5b63)}.ds-input:focus-visible{border-color:var(--color-accent,#762282);outline:2px solid var(--color-accent,#762282);outline-offset:0}"
+    },
+    {
+      "name": "Tags de estado",
+      "kind": "chip",
+      "refersTo": "tag-accent",
+      "description": "Cinco variantes, asignadas por el mapa de estados.",
+      "html": "<span class=\"ds-tag ds-tag-neutral\">Programada</span> <span class=\"ds-tag ds-tag-accent\">En curso</span> <span class=\"ds-tag ds-tag-dark\">Completada</span> <span class=\"ds-tag ds-tag-danger\">Pendiente</span> <span class=\"ds-tag ds-tag-outline\">Reagendada</span>",
+      "css": ".ds-tag{display:inline-flex;align-items:center;font-family:var(--font-fira-sans),system-ui,sans-serif;font-size:12px;font-weight:600;line-height:1.3;padding:3px 9px;border-radius:0;white-space:nowrap}.ds-tag-accent{background:var(--color-accent-100,#f6eef7);color:var(--color-accent-800,#4a1453)}.ds-tag-danger{background:var(--color-danger-100,#fdeeeb);color:var(--color-danger-800,#7c1405)}.ds-tag-neutral{background:var(--color-neutral-200,#e9e6eb);color:var(--color-neutral-800,#433f46)}.ds-tag-outline{border:1px solid var(--color-accent,#762282);color:var(--color-accent-active,#571862)}.ds-tag-dark{background:var(--color-text,#1f1c21);color:var(--color-bg,#f4f3f5)}"
+    },
+    {
+      "name": "Control segmentado",
+      "kind": "nav",
+      "refersTo": "seg-option",
+      "description": "Hoy / Semana / Mes; el elegido en morado.",
+      "html": "<div class=\"ds-seg\"><button class=\"ds-seg-opt is-on\">Hoy</button><button class=\"ds-seg-opt\">Semana</button><button class=\"ds-seg-opt\">Mes</button></div>",
+      "css": ".ds-seg{display:inline-flex;border:1px solid var(--color-line-control,#a8a4ad)}.ds-seg-opt{display:inline-flex;align-items:center;min-height:38px;padding:0 14px;font-family:var(--font-fira-sans),system-ui,sans-serif;font-size:13px;font-weight:600;background:transparent;color:var(--color-text,#1f1c21);border:0;cursor:pointer;transition:background-color 150ms cubic-bezier(0.22, 1, 0.36, 1),color 150ms cubic-bezier(0.22, 1, 0.36, 1)}.ds-seg-opt+.ds-seg-opt{border-left:1px solid var(--color-line-control,#a8a4ad)}.ds-seg-opt:hover{background:rgba(31,28,33,.06)}.ds-seg-opt.is-on{background:var(--color-accent,#762282);color:#fff}.ds-seg-opt:focus-visible{outline:2px solid var(--color-accent,#762282);outline-offset:2px}"
+    },
+    {
+      "name": "Navegación lateral",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Ítem activo con fila entera lavanda y aria-current; contador de pendientes en rojo.",
+      "html": "<nav class=\"ds-side\"><a class=\"ds-nav\" aria-current=\"page\" href=\"#\"><span>Visitas</span><span class=\"ds-badge\">3</span><span class=\"ds-n\">128</span></a><a class=\"ds-nav\" href=\"#\"><span>Problemas</span><span class=\"ds-n ds-auto\">14</span></a></nav>",
+      "css": ".ds-side{width:260px;background:var(--color-bg,#f4f3f5);border-right:2px solid var(--color-divider,rgba(31,28,33,.22))}.ds-nav{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 20px;font-family:var(--font-fira-sans),system-ui,sans-serif;font-weight:800;font-size:14px;line-height:1.45;color:var(--color-neutral-800,#433f46);text-decoration:none;transition:background-color 150ms cubic-bezier(0.22, 1, 0.36, 1),color 150ms cubic-bezier(0.22, 1, 0.36, 1)}.ds-nav:hover{background:rgba(31,28,33,.05);color:var(--color-text,#1f1c21)}.ds-nav[aria-current=page]{background:var(--color-accent-200,#ecdcee);color:var(--color-accent-800,#4a1453)}.ds-nav:focus-visible{outline:2px solid var(--color-accent,#762282);outline-offset:2px}.ds-badge{margin-left:auto;min-width:20px;height:20px;padding:0 6px;display:grid;place-items:center;background:var(--color-danger,#c4260d);color:#fff;font-size:12px;font-family:var(--font-fira-code),ui-monospace,monospace;font-feature-settings:'cv11'}.ds-n{font-family:var(--font-fira-code),ui-monospace,monospace;font-feature-settings:'cv11';font-size:12px;opacity:.66}.ds-auto{margin-left:auto}"
+    },
+    {
+      "name": "Pestañas del técnico",
+      "kind": "nav",
+      "description": "Tres pestañas abajo; la activa con barra superior morada de 3px.",
+      "html": "<nav class=\"ds-tabs\"><a class=\"ds-tab is-on\" href=\"#\">Inicio</a><a class=\"ds-tab\" href=\"#\">Visitas</a><a class=\"ds-tab\" href=\"#\">Cuenta</a></nav>",
+      "css": ".ds-tabs{display:grid;grid-template-columns:repeat(3,1fr);background:var(--color-bg,#f4f3f5);border-top:2px solid var(--color-divider,rgba(31,28,33,.22));max-width:460px}.ds-tab{position:relative;min-height:60px;display:flex;align-items:center;justify-content:center;font-family:var(--font-fira-sans),system-ui,sans-serif;font-weight:800;font-size:12px;color:var(--color-text,#1f1c21);text-decoration:none;opacity:.6;transition:background-color 150ms cubic-bezier(0.22, 1, 0.36, 1),opacity 150ms cubic-bezier(0.22, 1, 0.36, 1)}.ds-tab:hover{background:rgba(0,0,0,.05)}.ds-tab.is-on{opacity:1}.ds-tab.is-on::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--color-accent,#762282)}.ds-tab:focus-visible{outline:2px solid var(--color-accent,#762282);outline-offset:2px}"
+    },
+    {
+      "name": "Tarjeta de visita (celular)",
+      "kind": "card",
+      "description": "Fila de estado con franja izquierda de 4px; metadatos en una línea unida con ' · '; solo el rol Ayudante es tag.",
+      "html": "<button class=\"ds-vcard\"><span class=\"ds-vtop\"><span class=\"ds-vhora\">10:30</span><span class=\"ds-vfolio\">V-01284</span></span><span class=\"ds-vtitle\">Sucursal Costanera</span><span class=\"ds-vmeta\">Mantención preventiva · recibe Ana Soto</span></button>",
+      "css": ".ds-vcard{display:flex;flex-direction:column;gap:4px;width:100%;max-width:420px;text-align:left;cursor:pointer;background:var(--color-surface,#ebe9ed);border:1px solid var(--color-divider,rgba(31,28,33,.22));border-left:4px solid var(--color-accent,#762282);border-radius:0;padding:14px 14px 12px;font-family:var(--font-fira-sans),system-ui,sans-serif;color:var(--color-text,#1f1c21);transition:background-color 150ms cubic-bezier(0.22, 1, 0.36, 1)}.ds-vcard:hover{background:var(--color-surface-2,#e9e6eb)}.ds-vcard:focus-visible{outline:2px solid var(--color-accent,#762282);outline-offset:2px}.ds-vfolio{font-family:var(--font-fira-code),ui-monospace,monospace;font-feature-settings:'cv11';font-variant-numeric:tabular-nums;font-size:11px;opacity:.62}.ds-vtop{display:flex;align-items:baseline;gap:10px}.ds-vhora{font-weight:800;font-size:20px;line-height:1.2}.ds-vtitle{font-weight:800;font-size:17px;line-height:1.3}.ds-vmeta{font-size:13px;color:var(--color-muted,#5f5b63)}.ds-vmeta{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}"
+    },
+    {
+      "name": "Menú de acciones",
+      "kind": "custom",
+      "description": "Botón secundario con chevrón que abre acciones hermanas; con una sola acción es un botón simple.",
+      "html": "<div class=\"ds-menu-wrap\"><button class=\"ds-menu-btn\" aria-haspopup=\"menu\" aria-expanded=\"true\"><span>Descargar</span><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" style=\"transform:rotate(180deg)\"><path d=\"M6 9l6 6 6-6\"/></svg></button><div class=\"ds-menu\" role=\"menu\"><button class=\"ds-mi\" role=\"menuitem\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\"><path d=\"M12 4v11M7 10l5 5 5-5M5 20h14\"/></svg><span><span class=\"ds-mi-t\">PDF del acta</span><span class=\"ds-mi-d\">El documento firmado</span></span></button><button class=\"ds-mi\" role=\"menuitem\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\"><path d=\"M4 6h16v12H4zM8 14l3-3 3 3 2-2 2 2\"/></svg><span><span class=\"ds-mi-t\">Fotos y videos</span><span class=\"ds-mi-d\">Zip con la multimedia del local</span></span></button></div></div>",
+      "css": ".ds-menu-wrap{position:relative;display:inline-block;padding-bottom:150px}.ds-menu-btn{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 14px;cursor:pointer;font-family:var(--font-fira-sans),system-ui,sans-serif;font-weight:800;font-size:14px;color:var(--color-text,#1f1c21);background:transparent;border:1px solid var(--color-line-control,#a8a4ad);border-radius:0;transition:background-color 150ms cubic-bezier(0.22, 1, 0.36, 1),border-color 150ms cubic-bezier(0.22, 1, 0.36, 1)}.ds-menu-btn:hover{background:rgba(31,28,33,.06);border-color:var(--color-text,#1f1c21)}.ds-menu-btn:focus-visible{outline:2px solid var(--color-accent,#762282);outline-offset:2px}.ds-menu{position:absolute;right:0;top:calc(40px + 4px);min-width:260px;background:var(--color-bg,#f4f3f5);border:2px solid var(--color-text,#1f1c21);box-shadow:0 8px 24px rgba(31,28,33,.14)}.ds-mi{width:100%;display:flex;align-items:flex-start;gap:10px;padding:12px 14px;text-align:left;background:transparent;border:0;border-bottom:1px solid var(--color-line,#d7d4da);cursor:pointer;color:var(--color-text,#1f1c21);font-family:var(--font-fira-sans),system-ui,sans-serif;transition:background-color 150ms cubic-bezier(0.22, 1, 0.36, 1)}.ds-mi:last-child{border-bottom:0}.ds-mi:hover{background:var(--color-accent-100,#f6eef7)}.ds-mi:focus-visible{outline:2px solid var(--color-accent,#762282);outline-offset:2px}.ds-mi svg{margin-top:2px;flex:none}.ds-mi-t{display:block;font-size:14px;line-height:1.45;font-weight:600}.ds-mi-d{display:block;font-size:12px;line-height:1.35;color:var(--color-muted,#5f5b63);margin-top:2px}"
+    },
+    {
+      "name": "Cumplimiento por técnico",
+      "kind": "custom",
+      "description": "Fila por técnico con barra de avance y marca de meta al 92%; morado bajo la meta, tinta al alcanzarla.",
+      "html": "<div class=\"ds-cum\"><a class=\"ds-cum-row\" href=\"#\"><span class=\"ds-cum-n\">Pedro Rojas</span><span class=\"ds-cum-c\">5 de 7</span><span class=\"ds-cum-bar\"><span class=\"ds-cum-fill\" style=\"width:71%\"></span><span class=\"ds-cum-meta\"></span></span></a><a class=\"ds-cum-row\" href=\"#\"><span class=\"ds-cum-n\">Luis Pérez</span><span class=\"ds-cum-c\">6 de 6</span><span class=\"ds-cum-bar\"><span class=\"ds-cum-fill is-ok\" style=\"width:100%\"></span><span class=\"ds-cum-meta\"></span></span></a></div>",
+      "css": ".ds-cum{max-width:520px;font-family:var(--font-fira-sans),system-ui,sans-serif;color:var(--color-text,#1f1c21)}.ds-cum-row{display:flex;align-items:center;gap:12px;padding:10px 8px;border-bottom:1px solid var(--color-line,#d7d4da);text-decoration:none;color:inherit;transition:background-color 150ms cubic-bezier(0.22, 1, 0.36, 1)}.ds-cum-row:hover{background:rgba(31,28,33,.04)}.ds-cum-row:focus-visible{outline:2px solid var(--color-accent,#762282);outline-offset:2px}.ds-cum-n{flex:1;font-size:14px;font-weight:600}.ds-cum-c{width:72px;text-align:right;font-size:13px;color:var(--color-muted,#5f5b63);font-variant-numeric:tabular-nums}.ds-cum-bar{position:relative;width:38%;min-width:120px;height:8px;background:var(--color-neutral-200,#e9e6eb)}.ds-cum-fill{position:absolute;left:0;top:0;bottom:0;background:var(--color-accent,#762282)}.ds-cum-fill.is-ok{background:var(--color-text,#1f1c21)}.ds-cum-meta{position:absolute;top:-4px;bottom:-4px;left:92%;width:1px;background:var(--color-text,#1f1c21)}"
+    },
+    {
+      "name": "Celda KPI",
+      "kind": "custom",
+      "description": "Celda reglada con la cifra en Display (Fira Code); la protagonista en Hero.",
+      "html": "<div class=\"ds-kpi\"><div class=\"ds-kpi-l\">Esperan nueva fecha</div><div class=\"ds-kpi-n\">12</div><div class=\"ds-kpi-s\">4 eran de este período</div></div>",
+      "css": ".ds-kpi{padding:16px 18px;border:1px solid var(--color-line,#d7d4da);background:var(--color-bg,#f4f3f5);font-family:var(--font-fira-sans),system-ui,sans-serif;color:var(--color-text,#1f1c21);max-width:240px}.ds-kpi-l{font-size:13px;line-height:1.45;font-weight:600;color:var(--color-muted,#5f5b63);margin-bottom:8px}.ds-kpi-n{font-family:var(--font-fira-code),ui-monospace,monospace;font-feature-settings:'cv11';font-variant-numeric:tabular-nums;font-weight:700;font-size:40px;line-height:1.04;letter-spacing:-.03em}.ds-kpi-s{margin-top:6px;font-size:13px;line-height:1.45;color:var(--color-muted,#5f5b63)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "La planilla de turno",
+    "overview": "Un mundo operativo modernista de esquinas rectas: fondo casi blanco apenas teñido de violeta, tinta casi negra, paneles planos separados por reglas y no por sombras. Es una herramienta de trabajo para dos personas distintas: la coordinación que escanea el día en el escritorio y el técnico que actúa con el pulgar, de pie dentro de una tienda. La densidad es alta en el panel y generosa en el celular, pero el lenguaje es el mismo.\n\nEl color es información, no decoración. El morado del logo de Grupo dMC marca la acción principal, la selección y lo que está en curso; un morado medio marca lo planificado; el rojo de alarma vive aparte y solo dice \"esto está mal o atrasado\". Así el coordinador ve, solo por color, qué se mueve (morado) y qué falla (rojo). Los títulos van en Fira Sans 800 con tracking ceñido; las cifras, en Fira Code con el cero sin barra.\n\nRechaza el tablero SaaS por defecto: nada de tarjetas redondeadas con tinte, sombras difusas ni degradados.",
+    "keyCharacteristics": [
+      "Radio 0 en toda la interfaz.",
+      "Profundidad por reglas (líneas de 1 y 2 px) y escalones tonales, no por sombras.",
+      "Un acento (morado #762282) y una alarma (rojo #c4260d) con significados que no se cruzan.",
+      "Fira Sans para todo el texto; Fira Code solo para cifras y datos, en una escala de diez pasos con nombre.",
+      "Grises fríos teñidos hacia el violeta del logo."
+    ],
+    "rules": [
+      {
+        "name": "The Two Meanings Rule",
+        "body": "El morado dice \"acción, selección, en curso, planificado\"; el rojo dice \"mal, pendiente o atrasado\". El morado nunca señala peligro y el rojo nunca señala avance.",
+        "section": "colors"
+      },
+      {
+        "name": "The Status Map Rule",
+        "body": "El color de cada estado sale de `lib/ui/estado.ts` y de ningún otro lado: Programada neutral-500 / tag neutro; En curso accent / tag de acento; Completada tinta / tag oscuro; Pendiente danger / tag de alarma; Reagendada accent-500 / tag de contorno; Canceladas neutral-400 y neutral-500 / tag neutro. Problemas: Abierto danger, intermedios accent-500 (tag de contorno), Resuelto tinta.",
+        "section": "colors"
+      },
+      {
+        "name": "The Selection Is Purple Rule",
+        "body": "Todo lo elegido (navegación, pestañas, opciones de casillas, segmentos, texto seleccionado) usa la escala morada, no la tinta ni el rojo.",
+        "section": "colors"
+      },
+      {
+        "name": "The Named Step Rule",
+        "body": "Todo tamaño de texto es uno de los diez pasos; no hay `text-[Npx]` sueltos ni la escala genérica de Tailwind.",
+        "section": "typography"
+      },
+      {
+        "name": "The Figures Only Rule",
+        "body": "Fira Code se usa solo a través de la clase de cifras, y solo en números y datos. Títulos y texto van siempre en Fira Sans.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "Todo el body lleva `font-variant-numeric: tabular-nums`: folios, horas, conteos y KPI no bailan cuando cambian.",
+        "section": "typography"
+      },
+      {
+        "name": "The Chilean Date Rule",
+        "body": "Toda fecha numérica que lee una persona va en dd/mm/aaaa (02/11/2026), y con hora como \"24/08/2026 · 14:35\", en pantalla y en el PDF del acta. Los encabezados de día usan la fecha larga en palabras (\"lunes, 2 de noviembre\"). ISO queda solo en URLs, inputs y la base.",
+        "section": "typography"
+      },
+      {
+        "name": "The Ruled Not Lifted Rule",
+        "body": "Un panel se separa con una regla o un cambio de superficie, nunca con una sombra. Solo lo que se despliega sobre el contenido (listas y menús) lleva sombra, y lo que flota lleva borde de 2px en tinta.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Status Edge Rule",
+        "body": "Una franja izquierda de 4px, del color de su estado, aparece solo en filas y tarjetas de estado (tarjetas de visita del celular, filas de problemas y pendientes). No se usa como adorno ni como marca de selección.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do usar el morado dMC (#762282) para la acción principal, el foco y todo lo seleccionado.",
+      "Do tomar el color y la variante de tag de cada estado de `lib/ui/estado.ts`.",
+      "Do reservar el rojo (#c4260d) para errores, problemas abiertos, visitas pendientes, atrasos y contadores de lo que espera atención.",
+      "Do usar solo los diez pasos de la escala de tipo, y las cifras (KPI, conteos, folios, horas) en Fira Code a través de la clase de cifras.",
+      "Do mostrar las fechas numéricas en dd/mm/aaaa y las fechas con hora como \"dd/mm/aaaa · hh:mm\".",
+      "Do agrupar acciones hermanas en un menú de acciones y dejar una sola acción primaria por barra.",
+      "Do separar paneles con reglas de 1px y 2px y escalones de superficie; radio 0 en todo.",
+      "Do animar solo opacidad y desplazamientos cortos con la curva `cubic-bezier(0.22, 1, 0.36, 1)` en 150 / 200 / 280ms, y respetar la preferencia de menos movimiento."
+    ],
+    "donts": [
+      "Don't usar el rojo como color de marca o decoración, ni el morado para señalar peligro.",
+      "Don't redondear esquinas ni separar tarjetas con sombras; las únicas sombras son las de listas desplegables y menús.",
+      "Don't poner etiquetas en mayúsculas con tracking abierto encima de los títulos.",
+      "Don't usar franjas izquierdas fuera de las filas y tarjetas de estado, ni para marcar el ítem activo.",
+      "Don't mostrar fechas ISO a las personas ni usar tamaños de texto fuera de la escala.",
+      "Don't convertir metadatos en chips con borde; van como una línea de texto unida con \" · \".",
+      "Don't usar Fira Code en títulos o texto corrido.",
+      "Don't escribir colores sueltos en los componentes; usar los tokens de `app/globals.css`."
+    ]
+  }
+}

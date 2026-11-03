@@ -16,7 +16,7 @@ import type { ProblemaPanel } from "@/lib/contratos/panel";
  * el gráfico semanal tiene su tabla, para no depender del color ni del mouse.
  */
 
-const C_ABIERTO = "var(--color-accent)";
+const C_ABIERTO = "var(--color-danger)";
 const C_RESUELTO = "var(--color-neutral-700)";
 
 /** Un problema con la tienda a la que pertenece. */
@@ -182,7 +182,7 @@ export default function ProblemasAnalisis({
 
   if (problemas.length === 0) {
     return (
-      <div className="px-4 md:px-7 py-8 border-b-2 border-[var(--color-divider)] text-[13px] opacity-66">
+      <div className="px-4 md:px-7 py-8 border-b-2 border-[var(--color-divider)] text-meta opacity-66">
         No hay problemas que graficar con este recorte ({alcance}).
       </div>
     );
@@ -287,7 +287,7 @@ export default function ProblemasAnalisis({
             }))}
           />
           {d.tipos.length > FILAS_TIPO ? (
-            <div className="text-xs opacity-62 mt-2.5">
+            <div className="text-cap opacity-62 mt-2.5">
               Y {plural(d.tipos.length - FILAS_TIPO, "tipo más", "tipos más")}, con{" "}
               {d.tipos.slice(FILAS_TIPO).reduce((acc, t) => acc + t.abiertos, 0)} sin cerrar entre todos: están en el
               filtro «Tipo de falla».
@@ -320,7 +320,7 @@ export default function ProblemasAnalisis({
                 }))}
               />
               {d.tiendas.length > FILAS_TIENDA ? (
-                <div className="text-xs opacity-62 mt-2.5">
+                <div className="text-cap opacity-62 mt-2.5">
                   Y {plural(d.tiendas.length - FILAS_TIENDA, "tienda más", "tiendas más")} con problemas sin cerrar,
                   abajo en la lista.
                 </div>
@@ -330,7 +330,7 @@ export default function ProblemasAnalisis({
         </Tarjeta>
       </div>
 
-      <div className="px-4 md:px-7 py-2.5 border-t border-black/[.12] text-[11px] tracking-[.06em] uppercase opacity-60">
+      <div className="px-4 md:px-7 py-2.5 border-t border-black/[.12] text-cap opacity-60">
         Gráficos sobre {plural(problemas.length, "problema", "problemas")} · {alcance}
       </div>
     </div>
@@ -357,16 +357,16 @@ function Cifra({
 }) {
   const cuerpo = (
     <>
-      <div className="text-[10px] tracking-[.12em] uppercase opacity-66">{label}</div>
+      <div className="text-cap opacity-66">{label}</div>
       <div className="flex items-baseline gap-1.5 mt-2.5">
-        <div className="font-extrabold text-[34px] leading-none tracking-[-.03em]" style={{ color }}>
+        <div className="num font-bold text-display leading-none tracking-[-.03em]" style={{ color }}>
           {valor}
         </div>
-        {unidad ? <div className="text-xs opacity-62">{unidad}</div> : null}
+        {unidad ? <div className="text-cap opacity-62">{unidad}</div> : null}
       </div>
-      <div className="text-xs opacity-66 mt-2 leading-[1.4]">{sub}</div>
+      <div className="text-cap opacity-66 mt-2 leading-[1.4]">{sub}</div>
       {onClick && accion ? (
-        <div className="flex items-center gap-1.5 mt-2 text-[10px] tracking-[.1em] uppercase text-[var(--color-accent-active)]">
+        <div className="flex items-center gap-1.5 mt-2 text-cap text-[var(--color-accent-active)]">
           <span>{accion}</span>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
             <path d="M5 12h14M13 6l6 6-6 6" />
@@ -404,10 +404,10 @@ function Tarjeta({
   return (
     <div className={`p-4 md:p-6 border-b border-black/[.12] min-w-0 ${bordeDerecho ? "lg:border-r" : ""}`}>
       <div className="flex items-baseline gap-2.5 flex-wrap">
-        <h2 className="font-extrabold text-[17px] m-0">{titulo}</h2>
-        {derecha ? <span className="ml-auto text-[11px] tracking-[.08em] uppercase opacity-60">{derecha}</span> : null}
+        <h2 className="font-extrabold text-lead m-0">{titulo}</h2>
+        {derecha ? <span className="ml-auto text-cap opacity-60">{derecha}</span> : null}
       </div>
-      {bajada ? <p className="mt-1.5 mb-0 text-xs opacity-62">{bajada}</p> : null}
+      {bajada ? <p className="mt-1.5 mb-0 text-cap opacity-62">{bajada}</p> : null}
       {leyenda ? (
         <div className="flex gap-4 mt-3">
           <Leyenda color={C_ABIERTO} texto="Sin cerrar" />
@@ -421,7 +421,7 @@ function Tarjeta({
 
 function Leyenda({ color, texto }: { color: string; texto: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs">
+    <span className="inline-flex items-center gap-1.5 text-cap">
       <span className="w-2.5 h-2.5 flex-none" style={{ background: color }} aria-hidden="true" />
       <span>{texto}</span>
     </span>
@@ -429,7 +429,7 @@ function Leyenda({ color, texto }: { color: string; texto: string }) {
 }
 
 function Vacio({ children }: { children: React.ReactNode }) {
-  return <div className="py-5 text-[13px] opacity-66">{children}</div>;
+  return <div className="py-5 text-meta opacity-66">{children}</div>;
 }
 
 interface FilaBarra {
@@ -455,11 +455,11 @@ function Barras({ filas, max }: { filas: FilaBarra[]; max: number }) {
         const cuerpo = (
           <>
             <div className="flex items-baseline gap-2.5">
-              <span className="text-[13px] min-w-0 truncate">
+              <span className="text-meta min-w-0 truncate">
                 {f.nombre}
                 {f.sub ? <span className="opacity-55"> · {f.sub}</span> : null}
               </span>
-              <span className="ml-auto flex-none text-xs tabular-nums opacity-75">{f.detalle}</span>
+              <span className="ml-auto flex-none text-cap tabular-nums opacity-75">{f.detalle}</span>
             </div>
             <div className="flex gap-[2px] h-2 mt-1.5 bg-[var(--color-neutral-300)]">
               {f.abiertos > 0 ? (
@@ -514,12 +514,12 @@ function Semanal({ semanas }: { semanas: Semana[] }) {
   return (
     <div className="p-4 md:p-6 lg:border-r border-b border-black/[.12] min-w-0">
       <div className="flex items-baseline gap-2.5 flex-wrap">
-        <h2 className="font-extrabold text-[17px] m-0">Levantados y resueltos por semana</h2>
-        <span className="ml-auto text-[11px] tracking-[.08em] uppercase opacity-60">
+        <h2 className="font-extrabold text-lead m-0">Levantados y resueltos por semana</h2>
+        <span className="ml-auto text-cap opacity-60">
           Últimas {semanas.length} semanas
         </span>
       </div>
-      <p className="mt-1.5 mb-0 text-xs opacity-62">
+      <p className="mt-1.5 mb-0 text-cap opacity-62">
         {levantados === 0 && resueltos === 0
           ? "Sin movimiento en estas semanas."
           : `Se levantaron ${levantados} y se resolvieron ${resueltos}: ${
@@ -537,7 +537,7 @@ function Semanal({ semanas }: { semanas: Semana[] }) {
 
       {/* Lo que se lee al pasar por una semana: mismo lugar siempre, sin saltos. */}
       <div
-        className="mt-3 px-3 py-2 text-xs min-h-[34px] border-l-[3px] tabular-nums"
+        className="mt-3 px-3 py-2 text-cap min-h-[34px] border tabular-nums"
         style={{
           background: sem ? "var(--color-accent-200)" : "var(--color-surface)",
           borderColor: sem ? "var(--color-accent)" : "var(--color-divider)",
@@ -546,7 +546,7 @@ function Semanal({ semanas }: { semanas: Semana[] }) {
       >
         {sem
           ? `Semana del ${diaCorto(sem.inicio)} al ${diaCorto(sem.fin)} · ${sem.levantados} levantados · ${sem.resueltos} resueltos`
-          : "Pasa el mouse por una semana para ver su detalle."}
+          : "Toca o pasa el mouse por una semana para ver su detalle."}
       </div>
 
       <div className="flex mt-4">
@@ -555,7 +555,7 @@ function Semanal({ semanas }: { semanas: Semana[] }) {
           {marcas.map((m) => (
             <span
               key={m}
-              className="absolute right-1.5 text-[10px] leading-none opacity-55 tabular-nums translate-y-1/2"
+              className="absolute right-1.5 text-cap leading-none opacity-55 tabular-nums translate-y-1/2"
               style={{ bottom: `${(100 * m) / tope}%` }}
             >
               {m}
@@ -584,7 +584,7 @@ function Semanal({ semanas }: { semanas: Semana[] }) {
                 onBlur={() => setActiva(null)}
                 aria-label={`Semana del ${diaCorto(s.inicio)}: ${s.levantados} levantados, ${s.resueltos} resueltos`}
                 className="flex-1 min-w-0 flex items-end justify-center gap-[2px] px-[3px] py-0 border-0 cursor-default"
-                style={{ background: activa === i ? "rgba(32,30,29,.07)" : "transparent" }}
+                style={{ background: activa === i ? "rgba(31,28,33,.07)" : "transparent" }}
               >
                 <span
                   className="flex-1 max-w-[16px] block"
@@ -604,7 +604,7 @@ function Semanal({ semanas }: { semanas: Semana[] }) {
           <div
             key={s.inicio}
             // En pantallas angostas va una fecha sí y una no, para que no se pisen.
-            className={`flex-1 min-w-0 text-center text-[10px] whitespace-nowrap ${
+            className={`flex-1 min-w-0 text-center text-cap whitespace-nowrap ${
               (semanas.length - 1 - i) % 2 ? "max-md:invisible" : ""
             }`}
             style={{ opacity: activa === i ? 1 : 0.55, fontWeight: activa === i ? 800 : 400 }}
@@ -615,7 +615,7 @@ function Semanal({ semanas }: { semanas: Semana[] }) {
       </div>
 
       <details className="mt-3">
-        <summary className="cursor-pointer text-xs underline underline-offset-[3px] text-[var(--color-accent-active)]">
+        <summary className="cursor-pointer text-cap underline underline-offset-[3px] text-[var(--color-accent-active)]">
           Ver como tabla
         </summary>
         <table className="table mt-2">

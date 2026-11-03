@@ -57,8 +57,8 @@ export default function MarcasSeccion({
   return (
     <div className="p-4 md:p-6 border-b border-black/[.12]">
       <div className="flex items-center gap-2.5 flex-wrap">
-        <h2 className="font-extrabold text-[17px] m-0">Marcas</h2>
-        <span className="text-[11px] tracking-[.08em] uppercase opacity-60">{marcas.length}</span>
+        <h2 className="font-extrabold text-lead m-0">Marcas</h2>
+        <span className="text-cap opacity-60">{marcas.length}</span>
         {puede(ref, "marcas.crear") ? (
           <button type="button" className="btn btn-secondary ml-auto" onClick={() => abrir(null)}>
             Agregar marca
@@ -66,7 +66,7 @@ export default function MarcasSeccion({
         ) : null}
       </div>
       {marcas.length === 0 ? (
-        <p className="mt-3 mb-0 text-[13px] opacity-62">Este cliente todavía no tiene marcas.</p>
+        <p className="mt-3 mb-0 text-meta opacity-62">Este cliente todavía no tiene marcas.</p>
       ) : (
         <ul className="list-none m-0 mt-2 p-0">
           {marcas.map((m) => {
@@ -74,8 +74,8 @@ export default function MarcasSeccion({
             return (
               <li key={m.id} className="flex items-center gap-3 py-2.5 border-b border-black/[.1]">
                 <div className="min-w-0 flex-1">
-                  <span className="font-bold text-[14px]">{m.nombre}</span>{" "}
-                  <span className="text-[12px] opacity-62">
+                  <span className="font-bold text-ui">{m.nombre}</span>{" "}
+                  <span className="text-cap opacity-62">
                     · {n} {n === 1 ? "sucursal" : "sucursales"}
                   </span>
                 </div>
@@ -93,7 +93,6 @@ export default function MarcasSeccion({
 
       {dialogo ? (
         <Dialogo
-          kicker="Maestro · marca"
           titulo={dialogo.marca ? "Editar marca" : "Nueva marca"}
           cta={dialogo.marca ? "Guardar cambios" : "Crear marca"}
           nota="Las sucursales de la marca se eligen al crearlas o al editarlas."
@@ -111,7 +110,7 @@ export default function MarcasSeccion({
           guardando={guardando}
         >
           {error ? (
-            <p role="alert" className="mt-4 mb-0 text-[13px] font-extrabold text-[var(--color-accent-800)]">
+            <p role="alert" className="mt-4 mb-0 text-meta font-extrabold text-[var(--color-danger-800)]">
               {error}
             </p>
           ) : null}

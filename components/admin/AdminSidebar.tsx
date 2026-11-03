@@ -63,22 +63,23 @@ export default function AdminSidebar({
     return (
       <Link
         href={item.href}
-        className="relative w-full flex items-center gap-2.5 min-h-11 px-5 font-extrabold text-sm hover:bg-black/5"
-        style={{ opacity: activo ? 1 : 0.86 }}
+        aria-current={activo ? "page" : undefined}
+        className={`w-full flex items-center gap-2.5 min-h-11 px-5 font-extrabold text-ui ${
+          activo
+            ? "bg-[var(--color-accent-200)] text-[var(--color-accent-800)]"
+            : "text-[var(--color-neutral-800)] hover:bg-[rgba(31,28,33,.05)] hover:text-[var(--color-text)]"
+        }`}
       >
-        {activo ? (
-          <span className="absolute left-0 top-0 bottom-0 w-1 bg-[var(--color-accent)]" />
-        ) : null}
         <span>{item.label}</span>
         {item.pendientes ? (
           <span
-            className="ml-auto min-w-[20px] h-5 px-1.5 grid place-items-center bg-[var(--color-accent)] text-[var(--color-bg)] text-[11px] tabular-nums"
+            className="ml-auto min-w-[20px] h-5 px-1.5 grid place-items-center bg-[var(--color-danger)] text-white text-cap num"
             title={`${item.pendientes} sin atender`}
           >
             {item.pendientes}
           </span>
         ) : null}
-        <span className={`${item.pendientes ? "" : "ml-auto"} text-xs tabular-nums opacity-66`}>{item.n}</span>
+        <span className={`${item.pendientes ? "" : "ml-auto"} num text-cap tabular-nums opacity-66`}>{item.n}</span>
       </Link>
     );
   }
@@ -98,17 +99,17 @@ export default function AdminSidebar({
             <path d="M4 7h16M4 12h16M4 17h16" />
           </svg>
           {pendientes ? (
-            <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 grid place-items-center bg-[var(--color-accent)] text-[var(--color-bg)] text-[10px] tabular-nums">
+            <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 grid place-items-center bg-[var(--color-accent)] text-[var(--color-bg)] text-cap tabular-nums">
               {pendientes}
             </span>
           ) : null}
         </button>
         <Image src="/DMC-logo.png" alt="Grupo dMC" width={75} height={32} />
-        <div className="ml-auto text-[10px] tracking-[.09em] uppercase opacity-62 truncate">{rol}</div>
+        <div className="ml-auto text-cap opacity-62 truncate">{rol}</div>
       </div>
 
       {abierto ? (
-        <div onClick={() => setAbierto(false)} className="lg:hidden fixed inset-0 z-40 bg-[rgba(45,43,43,.5)]" />
+        <div onClick={() => setAbierto(false)} className="lg:hidden fixed inset-0 z-40 bg-[rgba(31,28,33,.5)]" />
       ) : null}
 
       <div
@@ -128,30 +129,30 @@ export default function AdminSidebar({
           </svg>
         </button>
         <Image src="/DMC-logo.png" alt="Grupo dMC" width={124} height={53} />
-        <div className="text-[9px] tracking-[.16em] uppercase opacity-62 mt-3">
+        <div className="text-cap opacity-62 mt-3">
           Sistema de técnicos · Coordinación
         </div>
       </div>
 
       <div className="pt-[18px] flex-1 overflow-y-auto">
-        <div className="text-[9px] tracking-[.16em] uppercase opacity-60 px-5 pb-2">Operación</div>
+        <div className="text-cap opacity-60 px-5 pb-2">Operación</div>
         {operacion.map((item) => (
           <NavButton key={item.href} item={item} />
         ))}
 
-        <div className="text-[9px] tracking-[.16em] uppercase opacity-60 px-5 pt-[22px] pb-2">Maestros</div>
+        <div className="text-cap opacity-60 px-5 pt-[22px] pb-2">Maestros</div>
         {maestros.map((item) => (
           <NavButton key={item.href} item={item} />
         ))}
       </div>
 
       <div className="border-t-2 border-[var(--color-divider)] px-5 pt-3.5 pb-3 flex items-center gap-2.5">
-        <div className="w-[34px] h-[34px] shrink-0 bg-[var(--color-text)] text-[var(--color-bg)] grid place-items-center font-extrabold text-[13px]">
+        <div className="w-[34px] h-[34px] shrink-0 bg-[var(--color-text)] text-[var(--color-bg)] grid place-items-center font-extrabold text-meta">
           {iniciales}
         </div>
         <div className="min-w-0">
-          <div className="font-extrabold text-[13px] whitespace-nowrap overflow-hidden text-ellipsis">{nombre}</div>
-          <div className="text-[10px] tracking-[.09em] uppercase opacity-62">{rol}</div>
+          <div className="font-extrabold text-meta whitespace-nowrap overflow-hidden text-ellipsis">{nombre}</div>
+          <div className="text-cap opacity-62">{rol}</div>
         </div>
       </div>
       <div className="px-4 pb-4">
@@ -167,7 +168,7 @@ export default function AdminSidebar({
               void logoutAction();
             }, 700);
           }}
-          className="w-full min-h-[42px] flex items-center gap-2.5 px-3 bg-transparent border border-[var(--color-accent)] text-[var(--color-accent-active)] font-extrabold text-[13px] cursor-pointer text-left hover:bg-[rgba(236,48,19,.1)] disabled:opacity-60"
+          className="w-full min-h-[42px] flex items-center gap-2.5 px-3 bg-transparent border border-[var(--color-accent)] text-[var(--color-accent-active)] font-extrabold text-meta cursor-pointer text-left hover:bg-[var(--color-accent-100)] disabled:opacity-60"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
             <path d="M15 17l5-5-5-5M20 12H9M12 4H5v16h7" />

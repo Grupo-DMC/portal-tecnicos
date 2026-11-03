@@ -39,7 +39,6 @@ export default async function MallFichaPage({ params }: { params: Promise<{ id: 
   return (
     <FichaVisitas
       modo="mall"
-      kicker="Maestros · ficha de mall"
       titulo={m.nombre}
       subtitulo={[m.direccion, m.comuna, m.region].filter(Boolean).join(" · ")}
       activo={m.activo}

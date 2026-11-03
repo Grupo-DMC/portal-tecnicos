@@ -195,7 +195,6 @@ export default function SucursalesLoteDialogo({
   return (
     <>
     <Dialogo
-      kicker="Maestro · alta masiva"
       titulo="Nuevas sucursales"
       cta={
         nuevas.length > 1
@@ -224,7 +223,7 @@ export default function SucursalesLoteDialogo({
           ariaLabel="Cliente"
         />
         {clienteSel ? (
-          <div className="text-[11px] leading-[1.4] opacity-66 mt-1.5">
+          <div className="text-cap leading-[1.4] opacity-66 mt-1.5">
             {delCliente.length === 0
               ? "Todavía no tiene sucursales."
               : `Ya tiene ${delCliente.length} ${delCliente.length === 1 ? "sucursal" : "sucursales"}: no se pueden repetir nombres ni códigos.`}
@@ -268,10 +267,10 @@ export default function SucursalesLoteDialogo({
           >
             <path d="M6 9l6 6 6-6" />
           </svg>
-          <span className="font-extrabold text-[12px] tracking-[.11em] uppercase truncate">
+          <span className="font-extrabold text-cap truncate">
             {mallDelGrupo ? mallDelGrupo.nombre : "Sin mall · a la calle"}
           </span>
-          <span className="ml-auto flex-none text-[11px] opacity-66">
+          <span className="ml-auto flex-none text-cap opacity-66">
             {g.filas.length} {g.filas.length === 1 ? "sucursal" : "sucursales"}
           </span>
         </button>
@@ -305,15 +304,15 @@ export default function SucursalesLoteDialogo({
                 <path d="M6 9l6 6 6-6" />
               </svg>
               <span className="min-w-0">
-                <span className="block font-extrabold text-[11px] tracking-[.11em] uppercase truncate">{titulo}</span>
-                <span className="block text-[11px] opacity-66 truncate">{subtitulo}</span>
+                <span className="block font-extrabold text-cap truncate">{titulo}</span>
+                <span className="block text-cap opacity-66 truncate">{subtitulo}</span>
               </span>
             </button>
             {nuevas.length > 1 ? (
               <button
                 type="button"
                 onClick={() => setNuevas((prev) => prev.filter((x) => x.key !== n.key))}
-                className="flex-none flex items-center gap-1.5 min-h-8 px-2 bg-transparent border-0 cursor-pointer text-[var(--color-text)] text-[11px] tracking-[.06em] uppercase opacity-72 hover:opacity-100"
+                className="flex-none flex items-center gap-1.5 min-h-8 px-2 bg-transparent border-0 cursor-pointer text-[var(--color-text)] text-cap opacity-72 hover:opacity-100"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
                   <path d="M6 6l12 12M18 6L6 18" />

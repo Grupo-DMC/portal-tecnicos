@@ -12,7 +12,7 @@ const initialState: LoginState = { error: null };
 const initialSolicitud: SolicitudState = { ok: false, error: null };
 
 export const CAMPO =
-  "w-full min-h-[54px] px-3.5 py-3 text-base bg-[var(--color-surface)] border border-[var(--color-divider)] text-[var(--color-text)] caret-[var(--color-accent)] focus-visible:border-[var(--color-accent)] focus-visible:outline-none";
+  "w-full min-h-[54px] px-3.5 py-3 text-lead bg-[var(--color-surface)] border border-[var(--color-divider)] text-[var(--color-text)] caret-[var(--color-accent)] focus-visible:border-[var(--color-accent)] focus-visible:outline-none";
 
 export default function LoginForm({ version }: { version: string }) {
   const [state, formAction, pending] = useActionState(loginAction, initialState);
@@ -24,7 +24,7 @@ export default function LoginForm({ version }: { version: string }) {
   return (
     <form action={formAction} className="flex flex-col gap-4" autoComplete="off">
       <div>
-        <label htmlFor="lg-mail" className="block text-[11px] tracking-[.09em] uppercase opacity-60 mb-1.5">
+        <label htmlFor="lg-mail" className="block text-cap opacity-60 mb-1.5">
           Correo
         </label>
         <input
@@ -43,7 +43,7 @@ export default function LoginForm({ version }: { version: string }) {
         />
       </div>
       <div>
-        <label htmlFor="lg-pass" className="block text-[11px] tracking-[.09em] uppercase opacity-60 mb-1.5">
+        <label htmlFor="lg-pass" className="block text-cap opacity-60 mb-1.5">
           Contraseña
         </label>
         {/* El ojo va dentro del campo: un solo control, sin casilla aparte. */}
@@ -78,7 +78,7 @@ export default function LoginForm({ version }: { version: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="w-full min-h-[58px] flex items-center justify-between gap-2.5 px-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-base cursor-pointer text-left mt-1.5 hover:bg-[var(--color-accent-hover)] active:bg-[var(--color-accent-active)] disabled:opacity-60"
+        className="w-full min-h-[58px] flex items-center justify-between gap-2.5 px-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-lead cursor-pointer text-left mt-1.5 hover:bg-[var(--color-accent-hover)] active:bg-[var(--color-accent-active)] disabled:opacity-60"
       >
         <span>{pending ? "Ingresando…" : "Iniciar sesión"}</span>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -90,11 +90,11 @@ export default function LoginForm({ version }: { version: string }) {
         <button
           type="button"
           onClick={() => setOlvide(true)}
-          className="p-0 bg-transparent border-0 text-[13px] text-[var(--color-accent-active)] underline underline-offset-[3px] cursor-pointer"
+          className="p-0 bg-transparent border-0 text-meta text-[var(--color-accent-active)] underline underline-offset-[3px] cursor-pointer"
         >
           Olvidé mi contraseña
         </button>
-        <span className="text-[11px] tracking-[.08em] uppercase opacity-60">v{version}</span>
+        <span className="text-cap opacity-60">v{version}</span>
       </div>
     </form>
   );
@@ -114,9 +114,9 @@ function OlvideMiPassword({ onVolver }: { onVolver: () => void }) {
   if (state.ok) {
     return (
       <div className="flex flex-col gap-4">
-        <div className="px-3.5 py-3 bg-[var(--color-surface)] border-l-4 border-[var(--color-text)]">
-          <div className="font-extrabold text-[15px] mb-1">Solicitud enviada</div>
-          <p className="m-0 text-[13px] leading-[1.5] opacity-75">
+        <div className="px-3.5 py-3 bg-[var(--color-surface)] border border-[var(--color-line-control)]">
+          <div className="font-extrabold text-body mb-1">Solicitud enviada</div>
+          <p className="m-0 text-meta leading-[1.5] opacity-75">
             Si ese correo tiene una cuenta, el administrador va a ver la solicitud en el panel y te va a entregar una
             contraseña temporal. No te llega ningún correo: te la pasan por el canal de siempre.
           </p>
@@ -124,7 +124,7 @@ function OlvideMiPassword({ onVolver }: { onVolver: () => void }) {
         <button
           type="button"
           onClick={onVolver}
-          className="w-full min-h-[54px] flex items-center justify-between px-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-base cursor-pointer text-left hover:bg-[var(--color-accent-hover)]"
+          className="w-full min-h-[54px] flex items-center justify-between px-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)]"
         >
           <span>Volver a iniciar sesión</span>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -137,12 +137,12 @@ function OlvideMiPassword({ onVolver }: { onVolver: () => void }) {
 
   return (
     <form action={formAction} className="flex flex-col gap-4" autoComplete="off">
-      <div className="px-3.5 py-3 bg-[var(--color-surface)] border-l-4 border-[var(--color-text)] text-[13px] leading-[1.5]">
+      <div className="px-3.5 py-3 bg-[var(--color-surface)] border border-[var(--color-line-control)] text-meta leading-[1.5]">
         Déjanos tu correo y el administrador te asigna una contraseña temporal. No se envía ningún correo automático.
       </div>
 
       <div>
-        <label htmlFor="rec-mail" className="block text-[11px] tracking-[.09em] uppercase opacity-60 mb-1.5">
+        <label htmlFor="rec-mail" className="block text-cap opacity-60 mb-1.5">
           Correo con el que entras
         </label>
         <input
@@ -160,7 +160,7 @@ function OlvideMiPassword({ onVolver }: { onVolver: () => void }) {
       </div>
 
       <div>
-        <label htmlFor="rec-msg" className="block text-[11px] tracking-[.09em] uppercase opacity-60 mb-1.5">
+        <label htmlFor="rec-msg" className="block text-cap opacity-60 mb-1.5">
           Mensaje para el administrador <span className="opacity-70">(opcional)</span>
         </label>
         <textarea
@@ -179,7 +179,7 @@ function OlvideMiPassword({ onVolver }: { onVolver: () => void }) {
       <button
         type="submit"
         disabled={pending}
-        className="w-full min-h-[58px] flex items-center justify-between gap-2.5 px-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-base cursor-pointer text-left hover:bg-[var(--color-accent-hover)] disabled:opacity-60"
+        className="w-full min-h-[58px] flex items-center justify-between gap-2.5 px-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)] disabled:opacity-60"
       >
         <span>{pending ? "Enviando…" : "Pedir contraseña nueva"}</span>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -190,7 +190,7 @@ function OlvideMiPassword({ onVolver }: { onVolver: () => void }) {
       <button
         type="button"
         onClick={onVolver}
-        className="w-full min-h-[50px] px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-sm cursor-pointer text-left hover:bg-black/[.07]"
+        className="w-full min-h-[50px] px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
       >
         Volver a iniciar sesión
       </button>
@@ -202,7 +202,7 @@ export function Alerta({ children }: { children: React.ReactNode }) {
   return (
     <div
       role="alert"
-      className="flex gap-2.5 items-start px-3.5 py-2.5 bg-[#f7ded9] border-l-[3px] border-[var(--color-accent)] text-[#8f1400] text-[13px] leading-[1.45]"
+      className="flex gap-2.5 items-start px-3.5 py-2.5 bg-[var(--color-danger-100)] border border-[var(--color-danger-400)] text-[var(--color-danger-800)] text-meta leading-[1.45]"
     >
       <svg
         width="17"

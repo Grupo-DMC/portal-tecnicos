@@ -14,7 +14,7 @@ export default function CambiarPasswordForm() {
     <div className="flex flex-col gap-4">
       <form action={formAction} className="flex flex-col gap-4" autoComplete="off">
         <div>
-          <label htmlFor="cp-nueva" className="block text-[11px] tracking-[.09em] uppercase opacity-60 mb-1.5">
+          <label htmlFor="cp-nueva" className="block text-cap opacity-60 mb-1.5">
             Contraseña nueva
           </label>
           <input
@@ -30,7 +30,7 @@ export default function CambiarPasswordForm() {
           />
         </div>
         <div>
-          <label htmlFor="cp-repetida" className="block text-[11px] tracking-[.09em] uppercase opacity-60 mb-1.5">
+          <label htmlFor="cp-repetida" className="block text-cap opacity-60 mb-1.5">
             Repítela
           </label>
           <input
@@ -45,7 +45,7 @@ export default function CambiarPasswordForm() {
             className={CAMPO}
           />
         </div>
-        <label className="flex items-center gap-2 text-[13px] opacity-75 cursor-pointer">
+        <label className="flex items-center gap-2 text-meta opacity-75 cursor-pointer">
           <input type="checkbox" checked={ver} onChange={(e) => setVer(e.target.checked)} />
           Mostrar las contraseñas
         </label>
@@ -55,7 +55,7 @@ export default function CambiarPasswordForm() {
         <button
           type="submit"
           disabled={pending}
-          className="w-full min-h-[58px] flex items-center justify-between gap-2.5 px-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-base cursor-pointer text-left mt-1.5 hover:bg-[var(--color-accent-hover)] active:bg-[var(--color-accent-active)] disabled:opacity-60"
+          className="w-full min-h-[58px] flex items-center justify-between gap-2.5 px-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-lead cursor-pointer text-left mt-1.5 hover:bg-[var(--color-accent-hover)] active:bg-[var(--color-accent-active)] disabled:opacity-60"
         >
           <span>{pending ? "Guardando…" : "Guardar y entrar"}</span>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -67,7 +67,7 @@ export default function CambiarPasswordForm() {
       <form action={logoutAction}>
         <button
           type="submit"
-          className="p-0 bg-transparent border-0 text-[13px] text-[var(--color-accent-active)] underline underline-offset-[3px] cursor-pointer"
+          className="p-0 bg-transparent border-0 text-meta text-[var(--color-accent-active)] underline underline-offset-[3px] cursor-pointer"
         >
           Salir sin cambiarla
         </button>

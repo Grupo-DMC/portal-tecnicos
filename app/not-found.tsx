@@ -4,7 +4,6 @@ import PantallaEstado, { CLASE_BOTON } from "@/components/ui/PantallaEstado";
 export default function NotFound() {
   return (
     <PantallaEstado
-      etiqueta="Error 404"
       titulo={
         <>
           Esta página

@@ -43,13 +43,11 @@ export default function UsuariosTable({
 
   return (
     <MaestroTable<Usuario>
-      kicker="Maestros · quién entra al sistema"
       title="Usuarios"
       modulo="usuarios"
       pestanas={pestanas}
       addLabel="Nuevo usuario"
       editLabel="Editar usuario"
-      dialogoKicker="Maestro · usuario"
       nota="El rol decide qué puede hacer la persona en el panel; se arma en la pestaña Roles y permisos. Si el rol es TÉCNICO, hay que vincularlo con un técnico de la lista. Las contraseñas se guardan cifradas: no se pueden consultar, solo reemplazar."
       phBusqueda="Buscar correo o rol…"
       rows={usuarios}

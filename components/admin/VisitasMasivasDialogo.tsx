@@ -8,7 +8,7 @@ import { camposFecha, errorMargen, fechaHastaDe, opciones } from "@/components/a
 import { useReferencias } from "@/lib/ui/referencias";
 import { crearVisitasMasivasAction } from "@/app/actions/admin";
 import { fmtRut, fmtTel, mensajeRut } from "@/lib/ui/formato";
-import { hoyISO } from "@/lib/ui/fecha";
+import { hoyISO, fechaCL } from "@/lib/ui/fecha";
 import { algunoPideHora } from "@/lib/ui/motivos";
 import { cargoVigente } from "@/lib/ui/cargos";
 import { etiquetaPersona, usePersonasLocal } from "@/lib/ui/personas-local";
@@ -242,13 +242,12 @@ export default function VisitasMasivasDialogo({
       return;
     }
     const tecnico = ref.tecnicos.find((t) => String(t.id) === String(form.tecnicoId))?.nombreCompleto ?? "";
-    onHecho(`${n} ${n === 1 ? "visita programada" : "visitas programadas"} · ${tecnico} · ${form.fecha}`, n);
+    onHecho(`${n} ${n === 1 ? "visita programada" : "visitas programadas"} · ${tecnico} · ${fechaCL(String(form.fecha))}`, n);
     onCerrar();
   }
 
   return (
     <Dialogo
-      kicker="Operación · ruta de visitas"
       titulo="Visitas masivas"
       cta={locales.length > 1 ? `Programar ${locales.length} visitas` : "Programar visitas"}
       nota="Sale una visita por local, cada una con su folio y en estado Programada. Lo que escribas dentro de un local reemplaza a lo masivo solo en ese local."
@@ -261,8 +260,8 @@ export default function VisitasMasivasDialogo({
     >
       <div className="mt-5 border border-black/[.3]">
         <div className="flex items-center gap-2.5 px-3.5 py-2.5 bg-[var(--color-surface)] border-b border-[var(--color-divider-soft)]">
-          <div className="font-extrabold text-[11px] tracking-[.11em] uppercase">Locales de la ruta</div>
-          <div className="ml-auto text-[11px] tracking-[.06em] uppercase opacity-66 tabular-nums">
+          <div className="font-extrabold text-cap ">Locales de la ruta</div>
+          <div className="ml-auto text-cap opacity-66 tabular-nums">
             {locales.length} {locales.length === 1 ? "local" : "locales"}
           </div>
         </div>
@@ -277,7 +276,7 @@ export default function VisitasMasivasDialogo({
                   role="checkbox"
                   aria-checked={porMall}
                   onClick={() => setPorMall((v) => !v)}
-                  className="ml-auto flex-none flex items-center gap-1.5 p-0 bg-transparent border-0 cursor-pointer text-[var(--color-text)] text-[11px] tracking-[.06em] uppercase"
+                  className="ml-auto flex-none flex items-center gap-1.5 p-0 bg-transparent border-0 cursor-pointer text-[var(--color-text)] text-cap "
                   style={{ opacity: porMall ? 1 : 0.72 }}
                 >
                   <span className="w-3.5 h-3.5 flex-none border-2 border-current grid place-items-center">
@@ -324,7 +323,7 @@ export default function VisitasMasivasDialogo({
               <button
                 type="button"
                 onClick={() => agregar(...sucursalesLibres.map((s) => s.v))}
-                className="btn btn-secondary min-h-9 px-3 text-[13px]"
+                className="btn btn-secondary min-h-9 px-3 text-meta"
               >
                 Agregar las {sucursalesLibres.length} tiendas del mall
               </button>
@@ -333,7 +332,7 @@ export default function VisitasMasivasDialogo({
         </div>
 
         {locales.length === 0 ? (
-          <div className="px-3.5 py-5 text-[13px] opacity-66">
+          <div className="px-3.5 py-5 text-meta opacity-66">
             {porMall
               ? "Todavía no hay locales. Elige el mall y ve agregando las tiendas que va a visitar el técnico."
               : "Todavía no hay locales. Elige el cliente y ve agregando las sucursales que va a visitar el técnico."}
@@ -349,10 +348,10 @@ export default function VisitasMasivasDialogo({
                 onClick={() => cambiar(l.sucursalId, { abierto: !l.abierto })}
                 className="flex-1 min-w-0 flex items-center gap-2.5 min-h-9 bg-transparent border-0 cursor-pointer text-[var(--color-text)] text-left"
               >
-                <span className="w-6 h-6 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-[11px] tabular-nums">
+                <span className="w-6 h-6 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap tabular-nums">
                   {i + 1}
                 </span>
-                <span className="text-[14px] truncate">{nombreLocal(l)}</span>
+                <span className="text-ui truncate">{nombreLocal(l)}</span>
                 {tienePropio(l) ? <span className="tag tag-accent flex-none">Con detalle propio</span> : null}
                 <svg
                   width="16"
@@ -544,7 +543,7 @@ function CampoLocal({
         />
       )}
       {tipo === "rut" && mensajeRut(valor) ? (
-        <div className="text-[11px] leading-[1.4] mt-1.5 text-[var(--color-accent-800)]">{mensajeRut(valor)}</div>
+        <div className="text-cap leading-[1.4] mt-1.5 text-[var(--color-accent-800)]">{mensajeRut(valor)}</div>
       ) : null}
     </div>
   );

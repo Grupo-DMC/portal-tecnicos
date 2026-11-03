@@ -51,10 +51,10 @@ export function FilaInforme({
   return (
     <div
       className="mt-2.5 border border-black/[.2] p-3"
-      style={inf.error ? { background: "var(--color-accent-100)" } : { background: "var(--color-surface-3)" }}
+      style={inf.error ? { background: "var(--color-danger-100)" } : { background: "var(--color-surface-3)" }}
     >
       <div className="flex flex-wrap items-end gap-3">
-        <span className="w-6 h-6 mb-2.5 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-[11px] tabular-nums">
+        <span className="w-6 h-6 mb-2.5 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap tabular-nums">
           {n}
         </span>
         <div className="field w-[150px]">
@@ -79,7 +79,7 @@ export function FilaInforme({
             ))}
           </select>
         </div>
-        <div className="field flex-1 min-w-[200px] border-l-4 border-[var(--color-text)] pl-2.5">
+        <div className="field flex-1 min-w-[200px] border-l border-[var(--color-line-control)] pl-2.5">
           <label htmlFor={id("motivo")} className="font-extrabold">
             Motivo de la visita
           </label>
@@ -105,7 +105,7 @@ export function FilaInforme({
           <button
             type="button"
             onClick={() => onDuplicar(inf)}
-            className="btn btn-secondary min-h-8 px-2.5 text-[12px]"
+            className="btn btn-secondary min-h-8 px-2.5 text-cap"
             title="Copia este informe con otro día"
           >
             Duplicar
@@ -161,7 +161,7 @@ export function FilaInforme({
             className="input tabular-nums"
           />
           {errorRut ? (
-            <div className="text-[11px] leading-[1.4] mt-1.5 text-[var(--color-accent-800)]">
+            <div className="text-cap leading-[1.4] mt-1.5 text-[var(--color-accent-800)]">
               {errorRut} Se guarda igual, tal como está en el papel.
             </div>
           ) : null}
@@ -180,7 +180,7 @@ export function FilaInforme({
       </div>
 
       {inf.error || inf.repetida ? (
-        <div className="mt-2 sm:pl-9 flex items-center gap-3 flex-wrap text-[12px] text-[var(--color-accent-800)]">
+        <div className="mt-2 sm:pl-9 flex items-center gap-3 flex-wrap text-cap text-[var(--color-accent-800)]">
           {inf.error ? <span>{inf.error}</span> : null}
           {inf.repetida ? (
             <label className="flex items-center gap-1.5 cursor-pointer text-[var(--color-text)]">
@@ -232,7 +232,7 @@ export function TrabajosDelInforme({
               key={t.codigo}
               className="border"
               style={{
-                borderColor: sel ? "var(--color-text)" : "rgba(32,30,29,.3)",
+                borderColor: sel ? "var(--color-text)" : "rgba(31,28,33,.3)",
                 background: sel ? "var(--color-surface)" : "transparent",
               }}
             >
@@ -257,11 +257,11 @@ export function TrabajosDelInforme({
                     </svg>
                   ) : null}
                 </span>
-                <span className="text-[14px] leading-[1.25]" style={{ fontWeight: sel ? 800 : 500 }}>
+                <span className="text-ui leading-[1.25]" style={{ fontWeight: sel ? 800 : 500 }}>
                   {t.nombre}
                 </span>
                 {sel && subsActivos.length ? (
-                  <span className="ml-auto text-[11px] tabular-nums opacity-66 flex-none">
+                  <span className="ml-auto text-cap tabular-nums opacity-66 flex-none">
                     {sel.subs.length}/{subsActivos.length}
                   </span>
                 ) : null}
@@ -269,7 +269,7 @@ export function TrabajosDelInforme({
 
               {sel && subsActivos.length ? (
                 <div className="px-2.5 pb-2.5 pt-1 border-t border-[var(--color-divider-soft)]">
-                  <div className="text-[11px] tracking-[.06em] uppercase opacity-62 mb-1.5">
+                  <div className="text-cap opacity-62 mb-1.5">
                     {t.grupoLabel ?? "Subtrabajos"}
                   </div>
                   <div className="flex flex-wrap gap-1.5">
@@ -307,7 +307,7 @@ export function TrabajosDelInforme({
                                   )
                                 )
                               }
-                              className="w-14 -ml-px px-2 border border-[var(--color-accent)] bg-[var(--color-surface)] text-[13px] tabular-nums text-center"
+                              className="w-14 -ml-px px-2 border border-[var(--color-accent)] bg-[var(--color-surface)] text-meta tabular-nums text-center"
                             />
                           ) : null}
                         </div>
@@ -323,9 +323,9 @@ export function TrabajosDelInforme({
   return (
     <div className="mt-3 sm:ml-9 pl-3 border-l-2 border-black/[.3]">
       <div className="flex items-baseline gap-2 mb-1.5">
-        <span className="text-[11px] tracking-[.09em] uppercase opacity-62">Trabajos realizados (opcional)</span>
+        <span className="text-cap opacity-62">Trabajos realizados (opcional)</span>
         {trabajos.length ? (
-          <span className="text-[11px] font-extrabold tabular-nums">{trabajos.length} marcados</span>
+          <span className="text-cap font-extrabold tabular-nums">{trabajos.length} marcados</span>
         ) : null}
       </div>
       {hayAlgunaSeccion(delMotivo) ? (

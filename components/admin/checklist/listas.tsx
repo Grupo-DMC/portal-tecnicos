@@ -232,7 +232,7 @@ export function ListaTrabajos({ fv }: { fv: ChecklistEditorApi }) {
         ctaExtra={{ label: "Nueva sección", onClick: () => agregarSeccion(setSeccionesTrabajo) }}
       >
         {trabajosSinMotivo.length > 0 ? (
-          <div className="mb-3 px-3.5 py-3 bg-[var(--color-accent-200)] border-l-4 border-[var(--color-accent)] text-[13px] text-[var(--color-accent-800)] max-w-[720px]">
+          <div className="mb-3 px-3.5 py-3 bg-[var(--color-accent-200)] border border-[var(--color-accent-300)] text-meta text-[var(--color-accent-800)] max-w-[720px]">
             {trabajosSinMotivo.length === 1 ? "1 trabajo no está" : `${trabajosSinMotivo.length} trabajos no están`} en
             ningún motivo y el técnico no {trabajosSinMotivo.length === 1 ? "lo" : "los"} ve:{" "}
             {listaCorta(trabajosSinMotivo.map((t) => t.nombre), 5)}. Despliégalo y marca sus motivos, o quítalo.

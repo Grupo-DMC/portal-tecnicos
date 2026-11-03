@@ -44,7 +44,7 @@ export function CajaSeccion({
     <div className="border-2 border-black/[.45] bg-[var(--color-bg)]">
       <div
         className="flex items-center gap-2.5 flex-wrap px-3 py-2.5"
-        style={{ background: abierta ? "#d9d7d6" : "var(--color-surface)" }}
+        style={{ background: abierta ? "#d7d4da" : "var(--color-surface)" }}
       >
         <button
           type="button"
@@ -67,18 +67,18 @@ export function CajaSeccion({
           </svg>
         </button>
         {fija || !onRenombrar ? (
-          <div className="flex-1 min-w-[160px] font-extrabold text-[15px] opacity-80">{nombre}</div>
+          <div className="flex-1 min-w-[160px] font-extrabold text-body opacity-80">{nombre}</div>
         ) : (
           <input
             value={nombre}
             onChange={(e) => onRenombrar(e.target.value)}
             placeholder={phNombre}
-            className="input flex-1 min-w-[160px] min-h-10 font-extrabold text-[15px] bg-[var(--color-bg)]"
+            className="input flex-1 min-w-[160px] min-h-10 font-extrabold text-body bg-[var(--color-bg)]"
             aria-label="Nombre de la sección"
             autoComplete="off"
           />
         )}
-        <span className="text-[11px] leading-[1.2] tracking-[.06em] uppercase opacity-62">{cuenta}</span>
+        <span className="text-cap leading-[1.2] opacity-62">{cuenta}</span>
         {fija ? null : (
           <>
             <button
@@ -103,7 +103,7 @@ export function CajaSeccion({
             </button>
           </>
         )}
-        <button type="button" onClick={onNuevo} className="btn btn-secondary min-h-[34px] px-2.5 text-[12px]">
+        <button type="button" onClick={onNuevo} className="btn btn-secondary min-h-[34px] px-2.5 text-cap">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
             <path d="M12 5v14M5 12h14" />
           </svg>
@@ -148,20 +148,22 @@ export function Bloque({
     <div className="border-t-2 border-[var(--color-divider)] pt-4 mb-11">
       <div className="flex items-end gap-3.5 flex-wrap mb-4">
         <div className="min-w-0">
-          <div className="text-[10px] tracking-[.15em] uppercase text-[var(--color-accent-active)]">{numero}</div>
-          <h2 className="font-extrabold text-[21px] leading-[1.15] tracking-[-.02em] mt-1.5 mb-1">{titulo}</h2>
-          <p className="m-0 text-[13px] opacity-68 max-w-[64ch]">{bajada}</p>
+          <h2 className="font-extrabold text-h3 leading-[1.15] tracking-[-.02em] mb-1">
+            <span className="text-[var(--color-muted)]">{numero} · </span>
+            {titulo}
+          </h2>
+          <p className="m-0 text-meta opacity-68 max-w-[64ch]">{bajada}</p>
         </div>
         <div className="ml-auto flex items-center gap-2 flex-wrap">
           {ctaExtra ? (
-            <button className="btn btn-secondary min-h-10 px-3.5 text-[13px]" onClick={ctaExtra.onClick}>
+            <button className="btn btn-secondary min-h-10 px-3.5 text-meta" onClick={ctaExtra.onClick}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
                 <path d="M12 5v14M5 12h14" />
               </svg>
               <span>{ctaExtra.label}</span>
             </button>
           ) : null}
-          <button className="btn btn-secondary min-h-10 px-3.5 text-[13px]" onClick={onAgregar}>
+          <button className="btn btn-secondary min-h-10 px-3.5 text-meta" onClick={onAgregar}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
               <path d="M12 5v14M5 12h14" />
             </svg>
@@ -274,7 +276,7 @@ export function ModoItem({
         type="button"
         onClick={() => onCambiar(false)}
         title="En el celular sale como una casilla: se marca y listo."
-        className="min-h-10 px-2.5 border border-black/[.3] border-r-0 cursor-pointer text-[11px] leading-none tracking-[.06em] uppercase"
+        className="min-h-10 px-2.5 border border-black/[.3] border-r-0 cursor-pointer text-cap leading-none "
         style={{
           background: permiteCantidad ? "transparent" : "var(--color-text)",
           color: permiteCantidad ? "var(--color-text)" : "var(--color-bg)",
@@ -286,7 +288,7 @@ export function ModoItem({
         type="button"
         onClick={() => onCambiar(true)}
         title="En el celular sale con un contador: se marca y se indica cuántos."
-        className="min-h-10 px-2.5 border border-black/[.3] cursor-pointer text-[11px] leading-none tracking-[.06em] uppercase"
+        className="min-h-10 px-2.5 border border-black/[.3] cursor-pointer text-cap leading-none "
         style={{
           background: permiteCantidad ? "var(--color-text)" : "transparent",
           color: permiteCantidad ? "var(--color-bg)" : "var(--color-text)",
@@ -436,7 +438,7 @@ export function Codigo({ codigo }: { codigo: string | null }) {
   if (!codigo) {
     return (
       <span
-        className="flex-none text-[10px] tracking-[.06em] uppercase opacity-45"
+        className="flex-none text-cap opacity-45"
         title="El código interno se genera solo al guardar, a partir del nombre."
       >
         sin código aún
@@ -445,7 +447,7 @@ export function Codigo({ codigo }: { codigo: string | null }) {
   }
   return (
     <code
-      className="flex-none px-1.5 py-0.5 text-[10px] tracking-[.04em] bg-black/[.06] opacity-70"
+      className="flex-none px-1.5 py-0.5 text-cap tracking-[.04em] bg-black/[.06] opacity-70"
       title="Código interno: con él las visitas y las actas ya firmadas apuntan a esta entrada. Se genera solo y no cambia aunque le cambies el nombre."
     >
       {codigo}
@@ -455,7 +457,7 @@ export function Codigo({ codigo }: { codigo: string | null }) {
 
 export function Numero({ n }: { n: number }) {
   return (
-    <span className="w-6.5 h-6.5 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-xs tabular-nums">
+    <span className="w-6.5 h-6.5 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap tabular-nums">
       {n}
     </span>
   );
@@ -464,7 +466,7 @@ export function Numero({ n }: { n: number }) {
 export function Vacio({ children, grande }: { children: React.ReactNode; grande?: boolean }) {
   return (
     <div
-      className={`border border-dashed border-black/[.4] opacity-70 ${grande ? "p-6.5 text-sm" : "p-3.5 text-[13px]"}`}
+      className={`border border-dashed border-black/[.4] opacity-70 ${grande ? "p-6.5 text-ui" : "p-3.5 text-meta"}`}
     >
       {children}
     </div>

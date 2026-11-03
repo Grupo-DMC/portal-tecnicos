@@ -68,7 +68,7 @@ export default function SolicitudesPasswordView({
 
   return (
     <>
-      <AdminHeader kicker="Maestros · quién entra al sistema" title="Usuarios" pestanas={pestanas} />
+      <AdminHeader title="Usuarios" pestanas={pestanas} />
 
       <div className="pb-10 animate-fade-in">
         <div className="flex items-center gap-2.5 flex-wrap px-4 md:px-7 py-4 border-b border-[var(--color-divider-soft)]">
@@ -101,24 +101,24 @@ export default function SolicitudesPasswordView({
           >
             {soloPendientes ? "Ver también las cerradas" : "Ver solo las pendientes"}
           </button>
-          <div className="ml-auto text-[11px] tracking-[.08em] uppercase opacity-62 tabular-nums">
+          <div className="ml-auto text-cap opacity-62 tabular-nums">
             {pendientes} {pendientes === 1 ? "pendiente" : "pendientes"}
           </div>
         </div>
 
         {entregada ? (
           <div className="mx-4 md:mx-7 mt-5 border-2 border-[var(--color-text)] bg-[var(--color-surface-3)]">
-            <div className="px-4 py-3 border-b border-[var(--color-divider)] font-extrabold text-[15px]">
+            <div className="px-4 py-3 border-b border-[var(--color-divider)] font-extrabold text-body">
               Contraseña asignada a {entregada.email}
             </div>
             <div className="px-4 py-3.5">
-              <div className="text-[10px] tracking-[.12em] uppercase opacity-62 mb-1.5">
+              <div className="text-cap opacity-62 mb-1.5">
                 Anótala ahora — no se puede volver a mostrar
               </div>
-              <code className="inline-block px-3 py-2 bg-[var(--color-bg)] border border-black/[.35] text-base tracking-[.06em]">
+              <code className="inline-block px-3 py-2 bg-[var(--color-bg)] border border-black/[.35] text-lead tracking-[.06em]">
                 {entregada.clave}
               </code>
-              <p className="mt-2.5 mb-0 text-[13px] opacity-70">
+              <p className="mt-2.5 mb-0 text-meta opacity-70">
                 Entrégasela por teléfono o en persona. Al entrar, el sistema le va a pedir que la cambie.
               </p>
               <button className="btn btn-secondary mt-3" onClick={() => setEntregada(null)}>
@@ -154,9 +154,9 @@ export default function SolicitudesPasswordView({
                     )}
                   </td>
                   <td className="max-w-[280px]">
-                    <span className="text-[13px] opacity-75">{s.mensaje || "—"}</span>
+                    <span className="text-meta opacity-75">{s.mensaje || "—"}</span>
                   </td>
-                  <td className="tabular-nums text-[13px]">{fechaHoraLegible(s.creadoEn)}</td>
+                  <td className="tabular-nums text-meta">{fechaHoraLegible(s.creadoEn)}</td>
                   <td>
                     <Tag variant={s.estado === "PENDIENTE" ? "accent" : "neutral"}>
                       {s.estado === "PENDIENTE" ? "Pendiente" : s.estado === "ATENDIDA" ? "Atendida" : "Descartada"}
@@ -167,7 +167,7 @@ export default function SolicitudesPasswordView({
                       <div className="flex gap-2 justify-end items-center">
                         {s.usuarioId === null || s.administrable ? (
                           <button
-                            className="btn btn-primary min-h-9 px-3 text-[13px]"
+                            className="btn btn-primary min-h-9 px-3 text-meta"
                             onClick={() => setDialogo({ solicitud: s, clave: claveSugerida() })}
                             disabled={s.usuarioId === null}
                             title={
@@ -182,14 +182,14 @@ export default function SolicitudesPasswordView({
                           // Su propia cuenta, una de administrador o una con más
                           // permisos: la clave la tiene que poner otra persona.
                           <span
-                            className="text-[12px] opacity-66"
+                            className="text-cap opacity-66"
                             title="Es tu cuenta, una de administrador o una con permisos que tú no tienes."
                           >
                             La atiende un administrador
                           </span>
                         )}
                         <button
-                          className="btn btn-secondary min-h-9 px-3 text-[13px]"
+                          className="btn btn-secondary min-h-9 px-3 text-meta"
                           onClick={() =>
                             setConfirmar({
                               titulo: "¿Descartar esta solicitud?",
@@ -216,8 +216,8 @@ export default function SolicitudesPasswordView({
 
           {filtradas.length === 0 ? (
             <div className="py-14 text-center">
-              <div className="font-extrabold text-[17px] mb-1.5">Nada pendiente</div>
-              <div className="text-[13px] opacity-66">
+              <div className="font-extrabold text-lead mb-1.5">Nada pendiente</div>
+              <div className="text-meta opacity-66">
                 Cuando alguien apriete «Olvidé mi contraseña» en el login, la solicitud aparece acá.
               </div>
             </div>
@@ -230,16 +230,14 @@ export default function SolicitudesPasswordView({
           role="dialog"
           aria-modal="true"
           aria-label="Asignar contraseña temporal"
-          className="fixed inset-0 z-[60] bg-[rgba(45,43,43,.5)] grid place-items-center p-3 sm:p-6"
+          className="fixed inset-0 z-[60] bg-[rgba(31,28,33,.5)] grid place-items-center p-3 sm:p-6"
         >
           <div
             className="w-full max-w-[520px] bg-[var(--color-bg)] border-2 border-[var(--color-text)] animate-up-dlg"
           >
             <div className="px-5.5 py-4.5 border-b-2 border-[var(--color-divider)]">
-              <div className="text-[10px] tracking-[.14em] uppercase text-[var(--color-accent-active)]">
-                Acceso · contraseña temporal
-              </div>
-              <div className="font-extrabold text-[21px] leading-[1.15] mt-1">{dialogo.solicitud.email}</div>
+              <div className="font-extrabold text-h3 leading-[1.15]">Contraseña temporal</div>
+              <div className="text-meta text-[var(--color-muted)] mt-1">{dialogo.solicitud.email}</div>
             </div>
             <div className="p-5.5">
               <div className="field m-0">
@@ -252,7 +250,7 @@ export default function SolicitudesPasswordView({
                   spellCheck={false}
                   className="input tracking-[.08em]"
                 />
-                <div className="text-[11px] leading-[1.4] opacity-66 mt-1.5">
+                <div className="text-cap leading-[1.4] opacity-66 mt-1.5">
                   Mínimo 10 caracteres. Se muestra una sola vez: anótala antes de cerrar. Al entrar, el sistema le
                   pide a la persona que la cambie antes de seguir.
                 </div>
@@ -260,7 +258,7 @@ export default function SolicitudesPasswordView({
               <button
                 type="button"
                 onClick={() => setDialogo({ ...dialogo, clave: claveSugerida() })}
-                className="mt-2 p-0 bg-transparent border-0 text-[var(--color-accent-active)] text-[13px] underline underline-offset-[3px] cursor-pointer"
+                className="mt-2 p-0 bg-transparent border-0 text-[var(--color-accent-active)] text-meta underline underline-offset-[3px] cursor-pointer"
               >
                 Generar otra
               </button>

@@ -1,5 +1,6 @@
 import "server-only";
 import {
+  contarPorReagendar,
   contarProblemasAbiertos,
   getCargaTecnico,
   getCumplimientoRango,
@@ -12,16 +13,17 @@ import {
   rangoFechas,
   type Rango,
 } from "@/lib/data/queries";
-import { hoyISO, inicioMes, inicioSemana } from "@/lib/ui/fecha";
+import { fechaCL, hoyISO, inicioMes, inicioSemana } from "@/lib/ui/fecha";
 import { ESTADO_VISITA_COLOR, ESTADO_VISITA_LABEL } from "@/lib/ui/estado";
 
 export type { Rango };
 
 export async function buildPanelData(rango: Rango, hoy: string = hoyISO()) {
-  const [visitas, visitasHoy, problemasAbiertosTotal] = await Promise.all([
+  const [visitas, visitasHoy, problemasAbiertosTotal, porReagendar] = await Promise.all([
     getVisitasRango(rango, hoy),
     rango === "Hoy" ? Promise.resolve(null) : getVisitasRango("Hoy", hoy),
     contarProblemasAbiertos(),
+    contarPorReagendar(),
   ]);
   const deHoy = visitasHoy ?? visitas;
 
@@ -55,6 +57,7 @@ export async function buildPanelData(rango: Rango, hoy: string = hoyISO()) {
       cerradas,
       pctCumpl,
       reagendas,
+      porReagendar,
       tecnicosHoy,
       problemasAbiertosTotal,
     },
@@ -72,7 +75,7 @@ export async function buildPanelData(rango: Rango, hoy: string = hoyISO()) {
       detalle: `${cerradas} de ${programadas} visitas cerradas dentro de la fecha programada.`,
       rangoTexto:
         rango === "Hoy"
-          ? `Hoy · ${hoy}`
+          ? `Hoy · ${fechaCL(hoy)}`
           : rango === "Semana"
             ? "Semana en curso"
             : new Date(`${hoy}T00:00:00`).toLocaleDateString("es-CL", { month: "long", year: "numeric" }),

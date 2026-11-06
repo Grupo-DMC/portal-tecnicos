@@ -126,6 +126,7 @@ interface FilaSubtrabajo {
   id: number;
   trabajo_id: number;
   etiqueta: string;
+  grupo: string | null;
   orden: number;
   permite_cantidad: boolean;
   activo: boolean;
@@ -141,7 +142,7 @@ export async function listarTrabajos(): Promise<CatalogoTrabajo[]> {
         WHERE t.activo = 1 ORDER BY t.orden, t.id`
     ),
     consulta<FilaSubtrabajo>(
-      `SELECT id, trabajo_id, etiqueta, orden, permite_cantidad, activo
+      `SELECT id, trabajo_id, etiqueta, grupo, orden, permite_cantidad, activo
          FROM dmc.catalogo_trabajo_subtrabajo WHERE activo = 1 ORDER BY orden, id`
     ),
     // Solo los motivos activos: los enlaces de uno dado de baja no cuentan.
@@ -170,6 +171,7 @@ export async function listarTrabajos(): Promise<CatalogoTrabajo[]> {
           id: num(s.id),
           trabajoId: num(s.trabajo_id),
           etiqueta: s.etiqueta,
+          grupo: s.grupo?.trim() || null,
           orden: s.orden,
           permiteCantidad: Boolean(s.permite_cantidad),
           activo: Boolean(s.activo),

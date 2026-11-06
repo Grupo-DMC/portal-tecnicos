@@ -298,6 +298,9 @@ CREATE TABLE dmc.catalogo_trabajo_subtrabajo (
     id          bigint       IDENTITY(1,1) NOT NULL,
     trabajo_id  bigint       NOT NULL,
     etiqueta    nvarchar(80) NOT NULL,          -- "Pórtico 1", "Fuente de poder"…
+    -- NULL = el primer grupo (titulado con catalogo_trabajo.grupo_label);
+    -- con texto = un grupo adicional con ese nombre (migración 031).
+    grupo       nvarchar(60) NULL,
     orden       smallint     NOT NULL CONSTRAINT df_cat_sub_orden DEFAULT (0),
     -- 0 = el técnico solo lo marca; 1 = lo marca y le pone cantidad.
     permite_cantidad bit     NOT NULL CONSTRAINT df_cat_sub_cantidad DEFAULT (0),
@@ -1441,9 +1444,9 @@ GO
 /* =====================================================================
    12. VERSIÓN DEL ESQUEMA
    ===================================================================== */
-/* Este archivo ya trae todo hasta la migración 030. */
+/* Este archivo ya trae todo hasta la migración 031. */
 INSERT INTO dmc.schema_version (version, descripcion)
-VALUES (30, N'Esquema base (incluye las migraciones 002 a 030)');
+VALUES (31, N'Esquema base (incluye las migraciones 002 a 031)');
 GO
 
 

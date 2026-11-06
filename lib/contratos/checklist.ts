@@ -7,6 +7,11 @@ export interface ItemBorrador {
   id: number | null;
   etiqueta: string;
   permiteCantidad: boolean;
+  /**
+   * Solo subtrabajos: el nombre del grupo adicional al que pertenece. Null o
+   * ausente = el primer grupo, el que titula `grupoLabel` del trabajo.
+   */
+  grupo?: string | null;
 }
 
 export interface MotivoBorrador {

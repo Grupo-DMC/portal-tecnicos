@@ -7,6 +7,7 @@ import { fechaHoraCorta } from "@/lib/ui/edicion";
 import { fmtRut, fmtTel } from "@/lib/ui/formato";
 import { trabajosDelMotivo } from "@/lib/ui/motivos";
 import { agruparPorSeccion, hayAlgunaSeccion } from "@/lib/ui/secciones";
+import { gruposDeSubtrabajos } from "@/lib/ui/subtrabajos";
 import SeccionPlegable from "@/components/ui/SeccionPlegable";
 import { BotonAgregar, BotonQuitar, ListaMarcable, Seccion } from "@/components/admin/editar-acta/piezas";
 import type { EditarActaApi } from "@/components/admin/editar-acta/useEditarActa";
@@ -195,12 +196,25 @@ export function SeccionTrabajo({ fv }: { fv: EditarActaApi }) {
                     const cat = catalogoTrabajo.find((c) => c.codigo === t.codigo);
                     // Lo del checklist de hoy más lo que el acta ya traía y
                     // el checklist dejó de ofrecer: eso tampoco se pierde.
-                    const opciones = [
-                      ...(cat?.subtrabajos ?? []).map((x) => ({ etiqueta: x.etiqueta, conCantidad: x.permiteCantidad })),
-                      ...t.subs
-                        .filter((x) => !(cat?.subtrabajos ?? []).some((c) => c.etiqueta === x.etiqueta))
-                        .map((x) => ({ etiqueta: x.etiqueta, conCantidad: x.cantidad > 1 })),
-                    ];
+                    // Cada grupo de subtrabajos del checklist con su nombre; lo
+                    // que el checklist ya no ofrece va al final, aparte.
+                    const grupos = cat
+                      ? gruposDeSubtrabajos(cat).map((g) => ({
+                          clave: g.clave,
+                          titulo: g.titulo,
+                          opciones: g.subtrabajos.map((x) => ({ etiqueta: x.etiqueta, conCantidad: x.permiteCantidad })),
+                        }))
+                      : [];
+                    const retiradas = t.subs
+                      .filter((x) => !(cat?.subtrabajos ?? []).some((c) => c.etiqueta === x.etiqueta))
+                      .map((x) => ({ etiqueta: x.etiqueta, conCantidad: x.cantidad > 1 }));
+                    if (retiradas.length) {
+                      grupos.push({
+                        clave: "__fuera",
+                        titulo: grupos.length ? "Ya no están en el checklist" : (cat?.grupoLabel ?? "Subtrabajos"),
+                        opciones: retiradas,
+                      });
+                    }
                     return (
                       <div key={t.id} className="border border-[var(--color-divider-faint)] bg-[var(--color-surface-3)]">
                         <div className="flex items-center gap-3 pl-4 pr-2 py-2">
@@ -215,14 +229,12 @@ export function SeccionTrabajo({ fv }: { fv: EditarActaApi }) {
                             onClick={() => setTrabajos((prev) => prev.filter((x) => x.id !== t.id))}
                           />
                         </div>
-                        {opciones.length > 0 ? (
-                          <div className="px-4 pb-4">
-                            <div className="text-cap opacity-62 mb-2">
-                              {cat?.grupoLabel ?? "Subtrabajos"}
-                            </div>
-                            <ListaMarcable opciones={opciones} marcados={t.subs} onCambiar={(fn) => cambiarSubs(t.id, fn)} />
+                        {grupos.map((g) => (
+                          <div key={g.clave} className="px-4 pb-4">
+                            <div className="text-cap opacity-62 mb-2">{g.titulo}</div>
+                            <ListaMarcable opciones={g.opciones} marcados={t.subs} onCambiar={(fn) => cambiarSubs(t.id, fn)} />
                           </div>
-                        ) : null}
+                        ))}
                         {t.detalle ? <div className="px-4 pb-3.5 text-meta opacity-70">{t.detalle}</div> : null}
                       </div>
                     );

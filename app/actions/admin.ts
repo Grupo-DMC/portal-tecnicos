@@ -749,6 +749,10 @@ export async function guardarChecklistAction(borradorPedido: BorradorChecklist):
   for (const t of borrador.trabajos) {
     const dup = repetidos(t.subtrabajos.map((o) => o.etiqueta));
     if (dup) return { ok: false, error: `«${dup}» está dos veces dentro de «${t.nombre}».` };
+    // Un grupo adicional con el mismo nombre que el primero se vería dos veces.
+    const primero = t.grupoLabel?.trim().toLowerCase();
+    const igual = primero ? t.subtrabajos.find((o) => o.grupo?.trim().toLowerCase() === primero) : undefined;
+    if (igual) return { ok: false, error: `En «${t.nombre}» hay dos grupos de subtrabajos llamados «${igual.grupo?.trim()}».` };
   }
 
   try {

@@ -137,7 +137,8 @@ async function guardarChecklistEn(ej: Ejecutor, borrador: BorradorChecklist): Pr
       "dmc.catalogo_trabajo_subtrabajo",
       "trabajo_id",
       id,
-      t.subtrabajos
+      t.subtrabajos,
+      true
     );
   }
   desactivados += await desactivarSobrantes(ej, "dmc.catalogo_trabajo", vivosTrabajo);
@@ -414,8 +415,16 @@ async function guardarHijos(
   tabla: "dmc.catalogo_problema_opcion" | "dmc.catalogo_trabajo_subtrabajo",
   columnaPadre: "problema_id" | "trabajo_id",
   padreId: number,
-  items: ItemBorrador[]
+  items: ItemBorrador[],
+  /** Solo subtrabajos: guarda también el grupo adicional de cada uno. */
+  conGrupo = false
 ): Promise<number> {
+  // La columna `grupo` solo existe en la tabla de subtrabajos (migración 031).
+  const setGrupo = conGrupo ? ", grupo = @grupo" : "";
+  const colGrupo = conGrupo ? ", grupo" : "";
+  const valGrupo = conGrupo ? ", @grupo" : "";
+  const paramGrupo = (item: ItemBorrador): Parametro[] =>
+    conGrupo ? [["grupo", sql.NVarChar(60), item.grupo?.trim() || null]] : [];
   // Los ids que de verdad cuelgan de este padre. Uno que no esté acá se trata
   // como alta: no se escribe sobre la fila de otro trabajo por un id inventado.
   const existentes = await ej.consulta<{ id: number }>(`SELECT id FROM ${tabla} WHERE ${columnaPadre} = @padre`, [
@@ -430,13 +439,14 @@ async function guardarHijos(
     if (item.id !== null && idsHijos.has(item.id)) {
       await ej.ejecutar(
         `UPDATE ${tabla}
-            SET etiqueta = @etiqueta, orden = @orden, permite_cantidad = @cantidad, activo = 1
+            SET etiqueta = @etiqueta, orden = @orden, permite_cantidad = @cantidad, activo = 1${setGrupo}
           WHERE id = @id`,
         [
           ["etiqueta", sql.NVarChar(80), etiqueta],
           ["orden", sql.SmallInt, i + 1],
           ["cantidad", sql.Bit, item.permiteCantidad],
           ["id", sql.BigInt, item.id],
+          ...paramGrupo(item),
         ]
       );
       vivos.push(item.id);
@@ -447,14 +457,14 @@ async function guardarHijos(
       `DECLARE @salida TABLE (id bigint);
 
        UPDATE ${tabla}
-          SET orden = @orden, permite_cantidad = @cantidad, activo = 1
+          SET orden = @orden, permite_cantidad = @cantidad, activo = 1${setGrupo}
        OUTPUT INSERTED.id INTO @salida
         WHERE ${columnaPadre} = @padre AND etiqueta = @etiqueta;
 
        IF NOT EXISTS (SELECT 1 FROM @salida)
-         INSERT INTO ${tabla} (${columnaPadre}, etiqueta, orden, permite_cantidad, activo)
+         INSERT INTO ${tabla} (${columnaPadre}, etiqueta, orden, permite_cantidad, activo${colGrupo})
          OUTPUT INSERTED.id INTO @salida
-         VALUES (@padre, @etiqueta, @orden, @cantidad, 1);
+         VALUES (@padre, @etiqueta, @orden, @cantidad, 1${valGrupo});
 
        SELECT id FROM @salida;`,
       [
@@ -462,6 +472,7 @@ async function guardarHijos(
         ["etiqueta", sql.NVarChar(80), etiqueta],
         ["orden", sql.SmallInt, i + 1],
         ["cantidad", sql.Bit, item.permiteCantidad],
+        ...paramGrupo(item),
       ]
     );
     if (fila) vivos.push(num(fila.id));

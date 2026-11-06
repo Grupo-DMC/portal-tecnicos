@@ -12,6 +12,8 @@ const item = z.object({
   permiteCantidad: z.boolean(),
 });
 
+const subtrabajo = item.extend({ grupo: texto(60).nullable().optional() });
+
 const simple = z.object({ id: idOAlta, nombre: texto(80) });
 
 const nombres = arreglo(texto(80), 300);
@@ -40,7 +42,7 @@ export const borradorChecklist = z.object({
       id: idOAlta,
       nombre: texto(80),
       grupoLabel: texto(60).nullable(),
-      subtrabajos: arreglo(item, 300),
+      subtrabajos: arreglo(subtrabajo, 300),
       seccion: texto(80).nullable().optional(),
       motivos: nombres.optional(),
     }),

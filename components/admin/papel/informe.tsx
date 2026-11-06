@@ -4,6 +4,7 @@ import SelectBuscable from "@/components/ui/SelectBuscable";
 import type { FirmanteSugerido } from "@/app/actions/visitas-papel";
 import { trabajoVaConMotivo } from "@/lib/ui/referencias";
 import { trabajosDelMotivo } from "@/lib/ui/motivos";
+import { gruposDeSubtrabajos } from "@/lib/ui/subtrabajos";
 import { agruparPorSeccion, hayAlgunaSeccion } from "@/lib/ui/secciones";
 import SeccionPlegable from "@/components/ui/SeccionPlegable";
 import { fmtRut, mensajeRut } from "@/lib/ui/formato";
@@ -268,12 +269,12 @@ export function TrabajosDelInforme({
               </button>
 
               {sel && subsActivos.length ? (
-                <div className="px-2.5 pb-2.5 pt-1 border-t border-[var(--color-divider-soft)]">
-                  <div className="text-cap opacity-62 mb-1.5">
-                    {t.grupoLabel ?? "Subtrabajos"}
-                  </div>
+                <div className="px-2.5 pb-2.5 pt-1 border-t border-[var(--color-divider-soft)] flex flex-col gap-2.5">
+                  {gruposDeSubtrabajos(t, subsActivos).map((g) => (
+                  <div key={g.clave}>
+                  <div className="text-cap opacity-62 mb-1.5">{g.titulo}</div>
                   <div className="flex flex-wrap gap-1.5">
-                    {subsActivos.map((x) => {
+                    {g.subtrabajos.map((x) => {
                       const sub = sel.subs.find((y) => y.etiqueta === x.etiqueta);
                       return (
                         <div key={x.id} className="flex items-stretch">
@@ -314,6 +315,8 @@ export function TrabajosDelInforme({
                       );
                     })}
                   </div>
+                  </div>
+                  ))}
                 </div>
               ) : null}
             </div>

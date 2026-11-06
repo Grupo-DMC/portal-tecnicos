@@ -188,6 +188,11 @@ export interface CatalogoTrabajoSubtrabajo {
   id: number;
   trabajoId: number;
   etiqueta: string;
+  /**
+   * El grupo al que pertenece dentro del trabajo. Null = el primero, titulado
+   * con `grupoLabel` del trabajo; con texto = un grupo adicional con ese nombre.
+   */
+  grupo: string | null;
   orden: number;
   /** false = el técnico solo lo marca; true = lo marca y le pone cantidad. */
   permiteCantidad: boolean;

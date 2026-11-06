@@ -19,6 +19,17 @@ export interface Item {
   id: number | null;
   etiqueta: string;
   permiteCantidad: boolean;
+  /**
+   * Solo subtrabajos: la `key` del grupo adicional donde va. Null o ausente =
+   * el primer grupo, el que titula `grupoLabel`.
+   */
+  subgrupo?: string | null;
+}
+
+/** Un grupo adicional de subtrabajos de un trabajo, con su propio nombre. */
+export interface Subgrupo {
+  key: string;
+  nombre: string;
 }
 
 export interface Motivo {
@@ -48,7 +59,10 @@ export interface Grupo {
   codigo: string | null;
   nombre: string;
   grupoLabel: string;
+  /** Todos sus subdetalles o subtrabajos; los de un grupo adicional llevan `subgrupo`. */
   items: Item[];
+  /** Solo los trabajos: los grupos de subtrabajos después del primero, en orden. */
+  subgrupos?: Subgrupo[];
   /** Solo los trabajos: la `key` de su sección en la Lista 3. Null = sin sección. */
   seccion?: string | null;
 }
@@ -117,20 +131,76 @@ export function aGruposProblema(lista: CatalogoProblema[]): Grupo[] {
 }
 
 export function aGruposTrabajo(lista: CatalogoTrabajo[], secciones: Seccion[]): Grupo[] {
-  return lista.map((t) => ({
-    key: nuevaClave(),
-    id: t.id,
-    codigo: t.codigo,
-    nombre: t.nombre,
-    grupoLabel: t.grupoLabel ?? "",
-    seccion: claveDeSeccion(secciones, t.seccion),
-    items: t.subtrabajos.map((s) => ({
+  return lista.map((t) => {
+    // Los grupos adicionales salen de los nombres que traen sus subtrabajos.
+    const subgrupos: Subgrupo[] = [];
+    const clavePorNombre = new Map<string, string>();
+    for (const s of t.subtrabajos) {
+      const nombre = s.grupo?.trim();
+      if (!nombre || clavePorNombre.has(nombre.toLowerCase())) continue;
+      const key = nuevaClave();
+      clavePorNombre.set(nombre.toLowerCase(), key);
+      subgrupos.push({ key, nombre });
+    }
+    return {
       key: nuevaClave(),
-      id: s.id,
-      etiqueta: s.etiqueta,
-      permiteCantidad: s.permiteCantidad,
-    })),
-  }));
+      id: t.id,
+      codigo: t.codigo,
+      nombre: t.nombre,
+      grupoLabel: t.grupoLabel ?? "",
+      seccion: claveDeSeccion(secciones, t.seccion),
+      subgrupos,
+      items: t.subtrabajos.map((s) => ({
+        key: nuevaClave(),
+        id: s.id,
+        etiqueta: s.etiqueta,
+        permiteCantidad: s.permiteCantidad,
+        subgrupo: s.grupo?.trim() ? (clavePorNombre.get(s.grupo.trim().toLowerCase()) ?? null) : null,
+      })),
+    };
+  });
+}
+
+/**
+ * Los subtrabajos del trabajo como viajan al servidor: primero los del primer
+ * grupo y después los de cada grupo adicional, cada uno con el nombre de su
+ * grupo. Un subtrabajo de un grupo que ya no existe cae en el primero.
+ */
+export function subtrabajosDelBorrador(t: Grupo) {
+  const subgrupos = t.subgrupos ?? [];
+  const existe = new Set(subgrupos.map((g) => g.key));
+  const delGrupo = (key: string | null) =>
+    t.items.filter((o) => (o.subgrupo && existe.has(o.subgrupo) ? o.subgrupo : null) === key);
+  const nombreDe = new Map(subgrupos.map((g) => [g.key, g.nombre.trim() || null]));
+  return [null, ...subgrupos.map((g) => g.key)].flatMap((key) =>
+    delGrupo(key).map((o) => ({
+      id: o.id,
+      etiqueta: o.etiqueta,
+      permiteCantidad: o.permiteCantidad,
+      grupo: key ? (nombreDe.get(key) ?? null) : null,
+    }))
+  );
+}
+
+/**
+ * Qué impide guardar los grupos de subtrabajos de un trabajo, o null si nada:
+ * un grupo adicional con subtrabajos y sin nombre, o dos grupos con el mismo.
+ */
+export function problemaDeSubgrupos(t: Grupo): string | null {
+  const usados = new Set<string>();
+  const primero = t.grupoLabel.trim().toLowerCase();
+  if (primero) usados.add(primero);
+  for (const g of t.subgrupos ?? []) {
+    const conItems = t.items.some((o) => o.subgrupo === g.key && o.etiqueta.trim());
+    if (!conItems) continue;
+    const nombre = g.nombre.trim().toLowerCase();
+    if (!nombre) return `En «${t.nombre || "Sin nombre"}» hay un grupo de subtrabajos sin nombre.`;
+    if (usados.has(nombre)) {
+      return `En «${t.nombre || "Sin nombre"}» hay dos grupos de subtrabajos llamados «${g.nombre.trim()}».`;
+    }
+    usados.add(nombre);
+  }
+  return null;
 }
 
 /**

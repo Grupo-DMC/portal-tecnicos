@@ -6,6 +6,7 @@ import SeccionPlegable from "@/components/ui/SeccionPlegable";
 import { Campo, Contador, PasoTitulo, entradaSheet } from "@/components/mobile/formulario/piezas";
 import type { FormularioVisitaApi } from "@/components/mobile/formulario/useFormularioVisita";
 import { nuevoId } from "@/components/mobile/formulario/ids";
+import { gruposDeSubtrabajos } from "@/lib/ui/subtrabajos";
 
 // Las hojas que suben desde abajo para agregar un trabajo realizado o un
 // problema.
@@ -71,11 +72,13 @@ export function HojaTrabajo({ fv }: { fv: FormularioVisitaApi }) {
               </div>
             </div>
 
-            {trbSel && trbSel.subtrabajos.length > 0 ? (
-              <div>
-                <PasoTitulo n="2" texto={trbSel.grupoLabel ?? "Subtrabajos"} />
+            {/* Un paso por grupo: el trabajo puede repartir sus subtrabajos
+                en varios grupos, cada uno con su nombre. */}
+            {trbSel && trbSel.subtrabajos.length > 0 ? gruposDeSubtrabajos(trbSel).map((grupoSub, k) => (
+              <div key={grupoSub.clave}>
+                <PasoTitulo n={String(k + 2)} texto={grupoSub.titulo} />
                 <div className="flex flex-col gap-1.5">
-                  {trbSel.subtrabajos.map((s) => {
+                  {grupoSub.subtrabajos.map((s) => {
                     const marcado = nt.subs.find((x) => x.etiqueta === s.etiqueta);
                     const activo = !!marcado;
                     return (
@@ -130,7 +133,7 @@ export function HojaTrabajo({ fv }: { fv: FormularioVisitaApi }) {
                   })}
                 </div>
               </div>
-            ) : null}
+            )) : null}
 
             <button
               onClick={() => {

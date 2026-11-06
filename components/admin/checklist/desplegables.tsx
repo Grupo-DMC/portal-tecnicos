@@ -5,12 +5,16 @@ import SelectBuscable, { type OpcionSelect } from "@/components/ui/SelectBuscabl
 import type { ConfirmarCfg } from "@/components/ui/Confirmar";
 import {
   type Grupo,
+  type Item,
   type MotivoConTrabajos,
   type Seccion,
+  type Subgrupo,
   listaCorta,
   mover,
+  moverEn,
   nuevaClave,
   reubicar,
+  reubicarEn,
 } from "@/components/admin/checklist/modelo";
 import {
   Arrastrable,
@@ -50,6 +54,7 @@ export function Desplegable({
   alerta,
   quitarLabel = "Quitar de la lista",
   nota,
+  conSubgrupos = false,
 }: {
   /** La manilla de arrastre, que pone el contenedor Arrastrable. Null = no se reordena. */
   agarre: React.ReactNode;
@@ -79,24 +84,157 @@ export function Desplegable({
   quitarLabel?: string;
   /** Una línea arriba de los subdetalles, al desplegar. */
   nota?: React.ReactNode;
+  /** Solo trabajos: permite repartir los subtrabajos en varios grupos con nombre. */
+  conSubgrupos?: boolean;
 }) {
-  const [nueva, setNueva] = useState("");
+  // El texto de "nuevo subdetalle" de cada grupo: "" el primero, la clave del
+  // grupo adicional los demás.
+  const [nuevas, setNuevas] = useState<Record<string, string>>({});
+  const subgrupos = conSubgrupos ? (grupo.subgrupos ?? []) : [];
+  const enGrupo = (sub: string | null) => (o: Item) => (o.subgrupo ?? null) === sub;
 
-  function agregarItem() {
-    const etiqueta = nueva.trim();
+  function agregarItem(sub: string | null) {
+    const etiqueta = (nuevas[sub ?? ""] ?? "").trim();
     if (!etiqueta) return onAviso(`Escribe el ${etiquetaSingular} antes de agregarlo`);
+    // La etiqueta es única en todo el trabajo, no solo en su grupo: el acta
+    // guarda el subtrabajo marcado por su etiqueta.
     if (grupo.items.some((o) => o.etiqueta.trim().toLowerCase() === etiqueta.toLowerCase())) {
-      return onAviso(`Ese ${etiquetaSingular} ya está en la lista`);
+      return onAviso(
+        subgrupos.length
+          ? `Ese ${etiquetaSingular} ya está en este trabajo (en este u otro grupo)`
+          : `Ese ${etiquetaSingular} ya está en la lista`
+      );
     }
     onCambiar((g) => ({
       ...g,
       // El técnico necesita un título para el grupo: si no lo pusieron, se deja
       // uno genérico al aparecer el primer subdetalle.
-      grupoLabel: g.grupoLabel || (etiquetaSingular === "subtrabajo" ? "Subtrabajo" : "Detalle"),
-      items: [...g.items, { key: nuevaClave(), id: null, etiqueta, permiteCantidad: false }],
+      grupoLabel: sub ? g.grupoLabel : g.grupoLabel || (etiquetaSingular === "subtrabajo" ? "Subtrabajo" : "Detalle"),
+      items: [...g.items, { key: nuevaClave(), id: null, etiqueta, permiteCantidad: false, subgrupo: sub }],
     }));
-    setNueva("");
+    setNuevas((prev) => ({ ...prev, [sub ?? ""]: "" }));
   }
+
+  function agregarSubgrupo() {
+    const key = nuevaClave();
+    onCambiar((g) => ({ ...g, subgrupos: [...(g.subgrupos ?? []), { key, nombre: "" }] }));
+  }
+
+  function quitarSubgrupo(sub: Subgrupo) {
+    const cuantos = grupo.items.filter(enGrupo(sub.key)).length;
+    const quitar = () =>
+      onCambiar((g) => ({
+        ...g,
+        subgrupos: (g.subgrupos ?? []).filter((x) => x.key !== sub.key),
+        items: g.items.filter((o) => o.subgrupo !== sub.key),
+      }));
+    if (cuantos === 0) return quitar();
+    onConfirmarQuitarItem({
+      titulo: "¿Quitar este grupo?",
+      texto: `«${sub.nombre.trim() || "Sin nombre"}» y sus ${cuantos} ${cuantos === 1 ? etiquetaSingular : etiquetaPlural} dejan de aparecer dentro de «${grupo.nombre}». No se borran: las actas ya firmadas los siguen mostrando. El cambio se aplica al guardar.`,
+      cta: "Quitar grupo",
+      accion: quitar,
+    });
+  }
+
+  /** La lista de un grupo con su fila para agregar. `sub` null = el primer grupo. */
+  const listaDe = (sub: string | null) => {
+    const propios = grupo.items.filter(enGrupo(sub));
+    const clave = sub ?? "";
+    return (
+      <>
+        <div className="flex flex-col gap-2 mt-4 max-w-[640px]">
+          {propios.map((o, j) => (
+            // Cada grupo es su propio corral: un subdetalle no se puede
+            // arrastrar desde acá hasta otro grupo, tipo o trabajo.
+            <Arrastrable
+              key={o.key}
+              grupo={`sub-${grupo.key}-${clave}`}
+              indice={j}
+              total={propios.length}
+              bloqueado={false}
+              onReordenar={(desde, ranura) =>
+                onCambiar((g) => ({ ...g, items: reubicarEn(g.items, enGrupo(sub), desde, ranura) }))
+              }
+              onMover={(d) => onCambiar((g) => ({ ...g, items: moverEn(g.items, enGrupo(sub), j, d) }))}
+              className="flex gap-2 items-center"
+            >
+              {(agarreItem) => (
+                <>
+                  {agarreItem}
+                  <input
+                    value={o.etiqueta}
+                    onChange={(e) =>
+                      onCambiar((g) => ({
+                        ...g,
+                        items: g.items.map((x) => (x.key === o.key ? { ...x, etiqueta: e.target.value } : x)),
+                      }))
+                    }
+                    placeholder={phNueva}
+                    className="input flex-1 min-w-0 min-h-10 bg-[var(--color-bg)]"
+                    aria-label={etiquetaSingular}
+                    autoComplete="off"
+                  />
+                  <ModoItem
+                    permiteCantidad={o.permiteCantidad}
+                    onCambiar={(v) =>
+                      onCambiar((g) => ({
+                        ...g,
+                        items: g.items.map((x) => (x.key === o.key ? { ...x, permiteCantidad: v } : x)),
+                      }))
+                    }
+                  />
+                  <button
+                    onClick={() =>
+                      onConfirmarQuitarItem({
+                        titulo: `¿Quitar este ${etiquetaSingular}?`,
+                        texto: `«${o.etiqueta || "Sin nombre"}» deja de aparecer dentro de «${grupo.nombre}». No se borra: las actas ya firmadas lo siguen mostrando. El cambio se aplica al guardar.`,
+                        cta: `Quitar ${etiquetaSingular}`,
+                        accion: () => onCambiar((g) => ({ ...g, items: g.items.filter((x) => x.key !== o.key) })),
+                      })
+                    }
+                    className="btn btn-icon w-10 h-10 flex-none border border-black/[.3]"
+                    aria-label={`Quitar ${etiquetaSingular}`}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                      <path d="M6 6l12 12M18 6L6 18" />
+                    </svg>
+                  </button>
+                </>
+              )}
+            </Arrastrable>
+          ))}
+          {propios.length === 0 ? (
+            <div className="px-3.5 py-2.5 border border-dashed border-black/[.35] text-meta opacity-68">
+              {sub ? `Grupo sin ${etiquetaPlural}: agrega al menos uno o quita el grupo.` : vacioSub}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex gap-2 mt-3 max-w-[640px]">
+          <input
+            value={nuevas[clave] ?? ""}
+            onChange={(e) => setNuevas((prev) => ({ ...prev, [clave]: e.target.value }))}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return;
+              e.preventDefault();
+              agregarItem(sub);
+            }}
+            placeholder={phNueva}
+            className="input flex-1 min-w-0 bg-[var(--color-bg)]"
+            aria-label={`Nuevo ${etiquetaSingular}`}
+            autoComplete="off"
+          />
+          <button onClick={() => agregarItem(sub)} className="btn btn-secondary shrink-0">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            <span>Agregar</span>
+          </button>
+        </div>
+      </>
+    );
+  };
 
   return (
     <div className="border border-black/[.35] bg-[var(--color-surface-3)]">
@@ -217,104 +355,79 @@ export function Desplegable({
               </p>
             </div>
           ) : null}
-          <label className="block text-cap opacity-62 mb-1.5">{tituloSub}</label>
-          <input
-            value={grupo.grupoLabel}
-            onChange={(e) => onCambiar((g) => ({ ...g, grupoLabel: e.target.value }))}
-            placeholder={phSub}
-            className="input max-w-[420px] min-h-10 bg-[var(--color-bg)]"
-            autoComplete="off"
-          />
-
-          <div className="flex flex-col gap-2 mt-4 max-w-[640px]">
-            {grupo.items.map((o, j) => (
-              // Cada grupo es su propio corral: un subdetalle no se puede
-              // arrastrar desde acá hasta otro tipo o trabajo.
-              <Arrastrable
-                key={o.key}
-                grupo={`sub-${grupo.key}`}
-                indice={j}
-                total={grupo.items.length}
-                bloqueado={false}
-                onReordenar={(desde, ranura) =>
-                  onCambiar((g) => ({ ...g, items: reubicar(g.items, desde, ranura) }))
-                }
-                onMover={(d) => onCambiar((g) => ({ ...g, items: mover(g.items, j, d) }))}
-                className="flex gap-2 items-center"
-              >
-                {(agarreItem) => (
-              <>
-                {agarreItem}
+          {conSubgrupos ? (
+            <div className="flex flex-col gap-3.5">
+              <div className="border border-black/[.25] bg-[var(--color-surface)] px-3 pt-3 pb-3.5">
+                <label className="block text-cap opacity-62 mb-1.5">
+                  {subgrupos.length ? "Grupo 1 · nombre" : tituloSub}
+                </label>
                 <input
-                  value={o.etiqueta}
-                  onChange={(e) =>
-                    onCambiar((g) => ({
-                      ...g,
-                      items: g.items.map((x) => (x.key === o.key ? { ...x, etiqueta: e.target.value } : x)),
-                    }))
-                  }
-                  placeholder={phNueva}
-                  className="input flex-1 min-w-0 min-h-10 bg-[var(--color-bg)]"
-                  aria-label={etiquetaSingular}
+                  value={grupo.grupoLabel}
+                  onChange={(e) => onCambiar((g) => ({ ...g, grupoLabel: e.target.value }))}
+                  placeholder={phSub}
+                  className="input max-w-[420px] min-h-10 bg-[var(--color-bg)]"
+                  aria-label={subgrupos.length ? "Nombre del grupo 1" : tituloSub}
                   autoComplete="off"
                 />
-                <ModoItem
-                  permiteCantidad={o.permiteCantidad}
-                  onCambiar={(v) =>
-                    onCambiar((g) => ({
-                      ...g,
-                      items: g.items.map((x) => (x.key === o.key ? { ...x, permiteCantidad: v } : x)),
-                    }))
-                  }
-                />
-                <button
-                  onClick={() =>
-                    onConfirmarQuitarItem({
-                      titulo: `¿Quitar este ${etiquetaSingular}?`,
-                      texto: `«${o.etiqueta || "Sin nombre"}» deja de aparecer dentro de «${grupo.nombre}». No se borra: las actas ya firmadas lo siguen mostrando. El cambio se aplica al guardar.`,
-                      cta: `Quitar ${etiquetaSingular}`,
-                      accion: () => onCambiar((g) => ({ ...g, items: g.items.filter((x) => x.key !== o.key) })),
-                    })
-                  }
-                  className="btn btn-icon w-10 h-10 flex-none border border-black/[.3]"
-                  aria-label={`Quitar ${etiquetaSingular}`}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-                    <path d="M6 6l12 12M18 6L6 18" />
-                  </svg>
-                </button>
-              </>
-                )}
-              </Arrastrable>
-            ))}
-            {grupo.items.length === 0 ? (
-              <div className="px-3.5 py-2.5 border border-dashed border-black/[.35] text-meta opacity-68">
-                {vacioSub}
+                {listaDe(null)}
               </div>
-            ) : null}
-          </div>
-
-          <div className="flex gap-2 mt-3 max-w-[640px]">
-            <input
-              value={nueva}
-              onChange={(e) => setNueva(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key !== "Enter") return;
-                e.preventDefault();
-                agregarItem();
-              }}
-              placeholder={phNueva}
-              className="input flex-1 min-w-0 bg-[var(--color-bg)]"
-              aria-label={`Nuevo ${etiquetaSingular}`}
-              autoComplete="off"
-            />
-            <button onClick={agregarItem} className="btn btn-secondary shrink-0">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-              <span>Agregar</span>
-            </button>
-          </div>
+              {subgrupos.map((sg, k) => (
+                <div key={sg.key} className="border border-black/[.25] bg-[var(--color-surface)] px-3 pt-3 pb-3.5">
+                  <label className="block text-cap opacity-62 mb-1.5">Grupo {k + 2} · nombre</label>
+                  <div className="flex gap-2 items-center max-w-[640px]">
+                    <input
+                      value={sg.nombre}
+                      onChange={(e) =>
+                        onCambiar((g) => ({
+                          ...g,
+                          subgrupos: (g.subgrupos ?? []).map((x) =>
+                            x.key === sg.key ? { ...x, nombre: e.target.value } : x
+                          ),
+                        }))
+                      }
+                      placeholder="Ej: Cables cambiados"
+                      className="input flex-1 min-w-0 max-w-[420px] min-h-10 bg-[var(--color-bg)]"
+                      aria-label={`Nombre del grupo ${k + 2}`}
+                      autoComplete="off"
+                    />
+                    <button
+                      onClick={() => quitarSubgrupo(sg)}
+                      className="btn btn-icon w-10 h-10 flex-none border border-black/[.3] ml-auto"
+                      aria-label={`Quitar el grupo ${k + 2}`}
+                      title="Quitar este grupo con sus subtrabajos"
+                    >
+                      <IconoBasura />
+                    </button>
+                  </div>
+                  {listaDe(sg.key)}
+                </div>
+              ))}
+              <div>
+                <button onClick={agregarSubgrupo} className="btn btn-secondary">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  <span>Agregar otro grupo de {etiquetaPlural}</span>
+                </button>
+                <p className="m-0 mt-1.5 text-cap opacity-62 max-w-[72ch]">
+                  Cada grupo sale en el celular con su nombre y sus propias opciones. Un mismo {etiquetaSingular} no
+                  puede repetirse en dos grupos del trabajo.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <label className="block text-cap opacity-62 mb-1.5">{tituloSub}</label>
+              <input
+                value={grupo.grupoLabel}
+                onChange={(e) => onCambiar((g) => ({ ...g, grupoLabel: e.target.value }))}
+                placeholder={phSub}
+                className="input max-w-[420px] min-h-10 bg-[var(--color-bg)]"
+                autoComplete="off"
+              />
+              {listaDe(null)}
+            </>
+          )}
         </div>
       ) : null}
     </div>
@@ -506,6 +619,7 @@ export function MotivoDesplegable({
                           ? `Este trabajo también está en ${listaCorta(otros.map((m) => m.nombre))}. El nombre y los subtrabajos que cambies acá cambian allá también; si este motivo necesita una versión distinta, clónalo.`
                           : undefined
                       }
+                      conSubgrupos
                       etiquetaSingular="subtrabajo"
                       etiquetaPlural="subtrabajos"
                       tituloSub="Título del subtrabajo"

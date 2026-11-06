@@ -38,7 +38,9 @@ import {
   moverEn,
   nombreDeCopia,
   nuevaClave,
+  problemaDeSubgrupos,
   reubicarEn,
+  subtrabajosDelBorrador,
 } from "@/components/admin/checklist/modelo";
 import { Arrastrable } from "@/components/admin/checklist/piezas";
 
@@ -244,7 +246,7 @@ export function useChecklistEditor({
       nombre: t.nombre,
       grupoLabel: t.grupoLabel.trim() || null,
       seccion: nombreDeSeccion(seccionesTrabajo, t.seccion),
-      subtrabajos: t.items.map((o) => ({ id: o.id, etiqueta: o.etiqueta, permiteCantidad: o.permiteCantidad })),
+      subtrabajos: subtrabajosDelBorrador(t),
     })),
     internos: internos.map((m) => ({ id: m.id, nombre: m.nombre })),
     pendientes: pendientes.map((m) => ({ id: m.id, nombre: m.nombre })),
@@ -290,6 +292,10 @@ export function useChecklistEditor({
   function pedirGuardar() {
     if (!sucio) return aviso("No hay cambios que guardar");
     if (vacios > 0) return aviso("Hay entradas sin nombre. Escríbelas o quítalas antes de guardar.");
+    for (const t of trabajos) {
+      const problema = problemaDeSubgrupos(t);
+      if (problema) return aviso(problema);
+    }
 
     const lineas = [
       `Van a quedar ${motivos.length} motivos, ${tipos.length} tipos de problema, ${trabajos.length} trabajos, ${internos.length} ítems del comentario interno, ${pendientes.length} pasos de gestión de pendientes y ${gestionProblemas.length} de gestión de problemas, y ${estadosProblema.length} estados de problema.`,
@@ -494,8 +500,11 @@ export function useChecklistEditor({
       nombre: nombreDeCopia(grupo.nombre, lista.map((g) => g.nombre)),
       grupoLabel: grupo.grupoLabel,
       seccion: grupo.seccion,
-      // Los subdetalles van sin id: son filas nuevas colgando de la copia.
+      // Los subdetalles van sin id: son filas nuevas colgando de la copia. Los
+      // grupos adicionales conservan su clave: solo tiene que ser única dentro
+      // del trabajo.
       items: grupo.items.map((o) => ({ ...o, key: nuevaClave(), id: null })),
+      subgrupos: grupo.subgrupos?.map((g) => ({ ...g })),
     };
     const posicion = lista.findIndex((g) => g.key === grupo.key);
     editar(set, (prev) => {
@@ -626,6 +635,7 @@ export function useChecklistEditor({
                       editar(setTrabajos, (prev) => prev.map((x) => (x.key === t.key ? { ...x, seccion: k } : x))),
                   }}
                   enMotivos={{ lista: motivos, onAlternar: (motivoKey) => alternarEnMotivo(motivoKey, t.key) }}
+                  conSubgrupos
                   etiquetaSingular="subtrabajo"
                   etiquetaPlural="subtrabajos"
                   tituloSub="Título del subtrabajo"

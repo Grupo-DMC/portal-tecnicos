@@ -68,3 +68,14 @@ vi.mock("@/lib/data/usuarios", async (importar) => {
 vi.mock("@/lib/log", () => ({
   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
+
+// La campanita: anotar lo que pasa es de mejor esfuerzo y no forma parte de lo
+// que prueban las acciones. Se simula para que ninguna llegue al pool; quien
+// quiera mirar qué se anotó importa `registrarActividad` y lo inspecciona.
+vi.mock("@/lib/data/actividad", () => ({
+  registrarActividad: vi.fn(async () => undefined),
+  bandejaDe: vi.fn(async () => ({ items: [], noLeidas: 0, configuracion: { niveles: {}, verPropios: true } })),
+  marcarLeidas: vi.fn(async () => undefined),
+  guardarConfiguracion: vi.fn(async () => undefined),
+  leerConfiguracion: vi.fn(async () => ({ niveles: {}, verPropios: true, leidoHasta: 0 })),
+}));

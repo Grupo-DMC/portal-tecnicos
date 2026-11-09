@@ -1,6 +1,7 @@
 "use server";
 
 import { auditar } from "@/lib/data/auditoria";
+import { registrarActividad } from "@/lib/data/actividad";
 import { log } from "@/lib/log";
 import { revalidatePath } from "next/cache";
 import { sesionCon } from "@/lib/auth";
@@ -67,6 +68,12 @@ export interface ResultadoAdmin {
   folio?: string;
 }
 
+/** «V-1, V-2, V-3 y 4 más»: los folios de una operación sobre varias visitas. */
+function listaDeFolios(folios: string[]): string {
+  const vistos = folios.slice(0, 3).join(", ");
+  return folios.length > 3 ? `${vistos} y ${folios.length - 3} más` : vistos;
+}
+
 function revalidarPanel(folio?: string) {
   revalidatePath("/admin", "layout");
   if (folio) revalidatePath(`/admin/visitas/${folio}`);
@@ -129,6 +136,7 @@ export async function crearVisitaAction(datosPedidos: DatosVisita): Promise<Resu
 
   try {
     const visita = await crearVisita(datos, sesion.usuario.id, { exigirAviso: true });
+    await registrarActividad(sesion, { tipo: "visita.alta", texto: `agendó la visita ${visita.folio}`, folio: visita.folio });
     revalidarPanel(visita.folio);
     return { ok: true, folio: visita.folio };
   } catch (err) {
@@ -270,7 +278,16 @@ export async function crearVisitasMasivasAction(visitasPedidas: DatosVisita[]): 
     }
   }
 
-  if (folios.length > 0) revalidarPanel();
+  if (folios.length > 0) {
+    await registrarActividad(sesion, {
+      tipo: "visita.alta",
+      texto: folios.length === 1 ? `agendó la visita ${folios[0]}` : `agendó ${folios.length} visitas de una vez`,
+      folio: folios.length === 1 ? folios[0] : null,
+      detalle: folios.length === 1 ? null : listaDeFolios(folios),
+      enlace: folios.length === 1 ? null : "/admin/visitas",
+    });
+    revalidarPanel();
+  }
   return { ok: fallidas.length === 0, error, folios, fallidas };
 }
 
@@ -301,6 +318,7 @@ export async function editarVisitaAction(folioPedido: string, datosPedidos: Dato
   } catch (err) {
     return comoError(err, "editarVisita");
   }
+  await registrarActividad(sesion, { tipo: "visita.cambio", texto: `corrigió la visita ${folio}`, folio });
   revalidarPanel(folio);
   return { ok: true, folio };
 }
@@ -338,6 +356,11 @@ export async function reprogramarVisitaAction(pedido: {
   } catch (err) {
     return comoError(err, "reprogramarVisita");
   }
+  await registrarActividad(sesion, {
+    tipo: "visita.cambio",
+    texto: `reprogramó la visita ${input.folio} para el ${input.fecha.split("-").reverse().join("-")}`,
+    folio: input.folio,
+  });
   revalidarPanel(input.folio);
   return { ok: true, folio: input.folio };
 }
@@ -377,6 +400,7 @@ export async function cancelarVisitaAdminAction(pedido: {
   } catch (err) {
     return comoError(err, "cancelarVisitaPorAdmin");
   }
+  await registrarActividad(sesion, { tipo: "visita.cancelacion", texto: `canceló por admin la visita ${input.folio}`, folio: input.folio });
   revalidarPanel(input.folio);
   return { ok: true, folio: input.folio };
 }
@@ -401,6 +425,7 @@ export async function liberarVisitaAction(folioPedido: string): Promise<Resultad
   } catch (err) {
     return comoError(err, "liberarVisita");
   }
+  await registrarActividad(sesion, { tipo: "visita.cambio", texto: `liberó la visita ${folio}`, folio });
   revalidarPanel(folio);
   return { ok: true, folio };
 }
@@ -438,6 +463,13 @@ export async function eliminarVisitaAction(pedido: {
     return comoError(err, "eliminarVisita");
   }
   await auditar(sesion, { accion: "visita.eliminar", entidad: "visita", entidadId: input.folio });
+  await registrarActividad(sesion, {
+    tipo: "visita.eliminacion",
+    texto: `eliminó la visita ${input.folio}`,
+    folio: input.folio,
+    // Ya no está en la lista: el enlace llevaría a una visita que no se ve.
+    enlace: "/admin/visitas",
+  });
   revalidarPanel();
   return { ok: true, folio: input.folio };
 }
@@ -474,6 +506,24 @@ function tandaInvalida(folios: string[]): string | null {
   if (folios.length > MAXIMO_POR_TANDA) return "Son demasiadas visitas de una vez.";
   if (new Set(folios).size !== folios.length) return "Hay una visita repetida en la selección.";
   return null;
+}
+
+/** Una sola notificación por tanda: «modificó 12 visitas», con los primeros folios. */
+async function registrarLote(
+  sesion: { usuario: { id: number; email: string } },
+  tipo: string,
+  verbo: string,
+  hechas: string[]
+) {
+  if (hechas.length === 0) return;
+  const una = hechas.length === 1;
+  await registrarActividad(sesion, {
+    tipo,
+    texto: una ? `${verbo} la visita ${hechas[0]}` : `${verbo} ${hechas.length} visitas a la vez`,
+    folio: una ? hechas[0] : null,
+    detalle: una ? null : listaDeFolios(hechas),
+    enlace: una && tipo !== "visita.eliminacion" ? null : "/admin/visitas",
+  });
 }
 
 async function aplicarEnLote(
@@ -539,11 +589,13 @@ export async function modificarVisitasAction(
   }
 
   const motivos = await listarMotivos();
-  return aplicarEnLote(
+  const res = await aplicarEnLote(
     items.map((x) => x.folio),
     "modificarVisitas",
     (folio, i) => modificarVisita(folio, limpios[i], sesion.usuario.id, motivos)
   );
+  await registrarLote(sesion, "visita.cambio", "modificó", res.hechas);
+  return res;
 }
 
 /** «Cancelar por admin» sobre varias: cada una con su motivo (el común o el suyo). */
@@ -560,11 +612,13 @@ export async function cancelarVisitasAdminAction(itemsPedidos: { folio: string; 
     return loteRechazado(`${sinMotivo.folio}: escribe por qué se cierra la visita, queda en la bitácora.`);
   }
 
-  return aplicarEnLote(
+  const res = await aplicarEnLote(
     items.map((x) => x.folio),
     "cancelarVisitas",
     (folio, i) => cancelarVisitaPorAdmin({ folio, motivo: items[i].motivo.trim(), usuarioId: sesion.usuario.id })
   );
+  await registrarLote(sesion, "visita.cancelacion", "canceló por admin", res.hechas);
+  return res;
 }
 
 /**
@@ -588,11 +642,13 @@ export async function eliminarVisitasAction(pedido: {
     return loteRechazado(`La confirmación no coincide. Escribe «ELIMINAR ${input.total}» tal cual.`);
   }
 
-  return aplicarEnLote(input.folios, "eliminarVisitas", async (folio) => {
+  const res = await aplicarEnLote(input.folios, "eliminarVisitas", async (folio) => {
     const fallo = await eliminarVisita({ folio, confirmacionFolio: folio, usuarioId: sesion.usuario.id });
     if (!fallo) await auditar(sesion, { accion: "visita.eliminar", entidad: "visita", entidadId: folio, detalle: { lote: true } });
     return fallo;
   });
+  await registrarLote(sesion, "visita.eliminacion", "eliminó", res.hechas);
+  return res;
 }
 
 export async function actualizarProblemaAction(pedido: {
@@ -625,6 +681,12 @@ export async function actualizarProblemaAction(pedido: {
   } catch (err) {
     return comoError(err, "actualizarProblema");
   }
+  await registrarActividad(sesion, {
+    tipo: "problema.cambio",
+    texto: `dejó un problema en «${input.estado.toLowerCase().replace(/_/g, " ")}»`,
+    folio: input.visitaFolio ?? null,
+    enlace: "/admin/problemas",
+  });
   revalidarPanel();
   return { ok: true };
 }
@@ -652,6 +714,12 @@ export async function marcarGestionPendienteAction(pedido: {
   } catch (err) {
     return comoError(err, "marcarGestionPendiente");
   }
+  await registrarActividad(sesion, {
+    tipo: "gestion.pendiente",
+    texto: `${input.marcado ? "marcó" : "desmarcó"} un paso de gestión de la visita ${input.folio}`,
+    folio: input.folio,
+    enlace: "/admin/reagendas",
+  });
   revalidatePath("/admin/reagendas");
   return { ok: true, folio: input.folio };
 }
@@ -679,6 +747,11 @@ export async function marcarGestionProblemaAction(pedido: {
   } catch (err) {
     return comoError(err, "marcarGestionProblema");
   }
+  await registrarActividad(sesion, {
+    tipo: "gestion.problema",
+    texto: `${input.marcado ? "marcó" : "desmarcó"} un paso de gestión de un problema`,
+    enlace: "/admin/problemas",
+  });
   revalidatePath("/admin/problemas");
   return { ok: true };
 }
@@ -713,6 +786,11 @@ export async function enviarActaAction(pedido: {
   } catch (err) {
     return comoError(err, "enviarActa");
   }
+  await registrarActividad(sesion, {
+    tipo: "acta.cambio",
+    texto: `envió el acta de la visita ${input.folio} a ${input.para.slice(0, 120)}`,
+    folio: input.folio,
+  });
   revalidarPanel(input.folio);
   return { ok: true, folio: input.folio };
 }
@@ -793,6 +871,7 @@ export async function guardarChecklistAction(borradorPedido: BorradorChecklist):
   try {
     const resumen = await guardarChecklist(borrador);
     await auditar(sesion, { accion: "checklist.editar", entidad: "checklist", detalle: { ...resumen } });
+    await registrarActividad(sesion, { tipo: "maestro.checklist", texto: "guardó cambios en el checklist", enlace: "/admin/checklist" });
     revalidarChecklist();
     return { ok: true, resumen };
   } catch (err) {
@@ -807,6 +886,7 @@ export async function guardarPlantillaChecklistAction(): Promise<ResultadoCheckl
   try {
     const plantilla = await guardarPlantilla(PLANTILLA_PROPIA, sesion.usuario.id);
     await auditar(sesion, { accion: "checklist.plantilla_guardar", entidad: "checklist" });
+    await registrarActividad(sesion, { tipo: "maestro.checklist", texto: "guardó el checklist como plantilla", enlace: "/admin/checklist" });
     return { ok: true, plantilla };
   } catch (err) {
     return errorChecklist(err, "guardarPlantilla");
@@ -820,6 +900,7 @@ export async function reiniciarChecklistAction(): Promise<ResultadoChecklist> {
   try {
     const resumen = await aplicarPlantilla(PLANTILLA_PROPIA);
     await auditar(sesion, { accion: "checklist.plantilla_aplicar", entidad: "checklist", detalle: { ...resumen } });
+    await registrarActividad(sesion, { tipo: "maestro.checklist", texto: "volvió el checklist a la plantilla", enlace: "/admin/checklist" });
     revalidarChecklist();
     return { ok: true, resumen, plantilla: await getPlantilla(PLANTILLA_PROPIA) };
   } catch (err) {
@@ -851,6 +932,11 @@ export async function atenderSolicitudPasswordAction(
       entidad: "usuario",
       entidadId: atendida.usuarioId,
       detalle: { solicitudId: id },
+    });
+    await registrarActividad(sesion, {
+      tipo: "cuenta.cambio",
+      texto: "entregó una contraseña temporal",
+      enlace: "/admin/usuarios?vista=contrasenas",
     });
   } catch (err) {
     return comoError(err, "atenderSolicitudPassword");

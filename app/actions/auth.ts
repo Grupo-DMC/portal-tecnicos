@@ -11,6 +11,7 @@ import {
 } from "@/lib/auth";
 import { crearSolicitudPassword } from "@/lib/data/solicitudes-password";
 import { auditar } from "@/lib/data/auditoria";
+import { registrarActividad } from "@/lib/data/actividad";
 import { liberarReservasDelUsuario } from "@/lib/data/reservas";
 import { log } from "@/lib/log";
 import { cambiarPasswordPropia } from "@/lib/data/usuarios";
@@ -90,6 +91,13 @@ export async function solicitarPasswordAction(
 
   try {
     await crearSolicitudPassword(email, mensaje || null, await ipDeLaPeticion());
+    // Sin cuenta detrás: quien pide no tiene sesión. Solo lo ve quien atiende contraseñas.
+    await registrarActividad(null, {
+      tipo: "cuenta.password",
+      texto: "Se pidió una contraseña nueva",
+      detalle: email.slice(0, 160),
+      enlace: "/admin/usuarios?vista=contrasenas",
+    });
   } catch (err) {
     log.error("solicitarPassword", { err });
     return { ok: false, error: "No se pudo registrar la solicitud. Inténtalo otra vez en un momento." };

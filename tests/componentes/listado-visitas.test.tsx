@@ -73,10 +73,11 @@ describe("listado de visitas", () => {
     expect(screen.getByText("2 registros")).toBeInTheDocument();
   });
 
-  it("una visita sin hora lo dice; con margen de días muestra el rango", () => {
+  it("con margen de días muestra el rango; la tabla ya no tiene columna Hora", () => {
     pintar(tabla({}, [visitaFalsa({ horaProgramada: null, fechaHasta: "2026-10-30" })]));
-    expect(screen.getByText("Sin hora")).toBeInTheDocument();
     expect(screen.getByText("26/10/2026 → 30/10/2026")).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Hora" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Sin hora")).not.toBeInTheDocument();
   });
 
   it("marca las visitas eliminadas y las editadas", () => {

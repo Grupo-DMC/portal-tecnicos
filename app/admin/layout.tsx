@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { getSesion, rutaSinSesion } from "@/lib/auth";
 import { cargarReferencias } from "@/lib/data/referencias";
 import { contarMenu } from "@/lib/data/queries";
+import { getPerfil } from "@/lib/data/cuenta";
+import { nombreVisible, urlFotoUsuario } from "@/lib/ui/cuenta";
 import { UsuarioLocalProvider } from "@/lib/ui/usuario-local";
 import { ReferenciasProvider } from "@/lib/ui/referencias";
 import AdminSidebar from "@/components/admin/AdminSidebar";
@@ -15,16 +17,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!sesion) redirect(await rutaSinSesion());
   if (sesion.usuario.rol === "TECNICO") redirect("/tecnico");
 
-  const [referencias, conteos] = await Promise.all([
+  const [referencias, conteos, perfil] = await Promise.all([
     cargarReferencias(sesion.usuario.rol, sesion.permisos),
     contarMenu(),
+    getPerfil(sesion.usuario.id),
   ]);
 
-  const nombreCoordinador = sesion.usuario.email
-    .split("@")[0]
-    .split(".")
-    .map((p) => (p ? p[0].toUpperCase() + p.slice(1) : p))
-    .join(" ");
+  // El nombre y la foto que la persona puso en Mi cuenta; sin nombre, el del correo.
+  const nombreCoordinador = nombreVisible(perfil?.nombre, sesion.usuario.email);
+  const fotoCoordinador = urlFotoUsuario(sesion.usuario.id, perfil?.fotoVersion ?? null);
 
   // El menú solo ofrece los módulos que el rol puede abrir.
   // Usuarios aloja también la pestaña Técnicos: se ofrece con cualquiera de los dos permisos.
@@ -42,7 +43,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)] lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">
         <AdminSidebar
           nombre={nombreCoordinador}
+          foto={fotoCoordinador}
           rol={sesion.rolNombre}
+          usuarioId={sesion.usuario.id}
+          permisos={sesion.permisos}
           operacion={[
             { href: "/admin", label: "Panel", n: "" },
             { href: "/admin/visitas", label: "Visitas", n: conteos.visitas },

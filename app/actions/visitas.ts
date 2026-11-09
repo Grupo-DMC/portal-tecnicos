@@ -21,6 +21,7 @@ import { participaEnVisita } from "@/lib/ui/estado";
 import { borrarBorrador } from "@/lib/data/borradores";
 import { estadoDeReserva, liberarReserva } from "@/lib/data/reservas";
 import { textoActaEnCurso, type ReservaAjena } from "@/lib/reserva";
+import { registrarActividad } from "@/lib/data/actividad";
 import type { EstadoVisita } from "@/lib/types";
 import { validar } from "@/lib/validacion/comun";
 import { actaEntrada } from "@/lib/validacion/actas";
@@ -87,6 +88,7 @@ export async function iniciarVisitaAction(folioPedido: string): Promise<Resultad
   } catch (err) {
     return comoError(err, "iniciarVisita");
   }
+  await registrarActividad(sesion, { tipo: "tecnico.inicio", texto: `inició la visita ${folio}`, folio });
   revalidar(folio);
   return { ok: true };
 }
@@ -122,6 +124,14 @@ export async function guardarActaAction(entradaPedida: ActaEntrada): Promise<Res
     });
     if (!res.ok) {
       return { ok: false, error: res.error, reservaAjena: res.reservaAjena, cerradaPorOtro: res.cerradaPorOtro };
+    }
+    // Si la visita ya estaba cerrada (el acta llegó y se perdió la respuesta) ya se avisó la primera vez.
+    if (equipo.estado !== "COMPLETADA") {
+      await registrarActividad(sesion, {
+        tipo: "tecnico.cierre",
+        texto: `completó la visita ${entrada.folio} y cerró el acta`,
+        folio: entrada.folio,
+      });
     }
     // Quien firmó queda en la lista de la tienda para la próxima visita. El
     // acta ya está confirmada: si esto falla no puede devolverse "No se pudo
@@ -206,6 +216,18 @@ export async function cambiarEstadoVisitaAction(pedido: {
   }
   // La visita sale de la agenda del técnico: la reserva ya no sirve.
   await liberarReserva(input.folio, contexto.sesion.usuario.id);
+  const motivoCorto = motivo.length > 90 ? `${motivo.slice(0, 89)}…` : motivo;
+  const que =
+    input.estado === "REAGENDADA"
+      ? `reagendó la visita ${input.folio} para el ${String(input.fechaNueva).split("-").reverse().join("-")}`
+      : input.estado === "PENDIENTE"
+        ? `dejó pendiente la visita ${input.folio}`
+        : `canceló la visita ${input.folio}`;
+  await registrarActividad(contexto.sesion, {
+    tipo: "tecnico.estado",
+    texto: `${que}: «${motivoCorto}»`,
+    folio: input.folio,
+  });
   revalidar(input.folio);
   return { ok: true };
 }
@@ -276,6 +298,11 @@ export async function crearVisitaTecnicoAction(pedido: {
       { tecnicoId: sesion.tecnico.id, usuarioId: sesion.usuario.id }
     );
     if ("error" in res) return { ok: false, error: res.error };
+    await registrarActividad(sesion, {
+      tipo: "tecnico.alta",
+      texto: `agregó en terreno la visita ${res.folio}`,
+      folio: res.folio,
+    });
     revalidar(res.folio);
     return { ok: true, folio: res.folio };
   } catch (err) {

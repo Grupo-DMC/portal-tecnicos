@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { sesionCon } from "@/lib/auth";
 import { AlcanceInexistente, guardarContacto, type DatosContacto } from "@/lib/data/contactos";
 import { log } from "@/lib/log";
+import { registrarActividad } from "@/lib/data/actividad";
 import { problemaDeCargos } from "@/lib/ui/contactos";
 import { validar } from "@/lib/validacion/comun";
 import { entradaContacto } from "@/lib/validacion/contactos";
@@ -18,7 +19,8 @@ export interface ResultadoContacto {
 }
 
 export async function guardarContactoAction(idPedido: number | null, datosPedidos: DatosContacto): Promise<ResultadoContacto> {
-  if (!(await sesionCon(`contactos.${idPedido === null ? "crear" : "editar"}`))) {
+  const sesion = await sesionCon(`contactos.${idPedido === null ? "crear" : "editar"}`);
+  if (!sesion) {
     return { ok: false, error: "No tienes permiso para editar contactos." };
   }
   const entrada = validar(entradaContacto, { id: idPedido, datos: datosPedidos }, "guardarContacto");
@@ -35,6 +37,12 @@ export async function guardarContactoAction(idPedido: number | null, datosPedido
       nombre: datos.nombre.trim(),
       email: datos.email?.trim() || null,
       telefono: datos.telefono?.trim() || null,
+    });
+    await registrarActividad(sesion, {
+      tipo: "maestro.contactos",
+      texto: `${id === null ? "creó" : "editó"} el contacto`,
+      detalle: datos.nombre.trim(),
+      enlace: "/admin/contactos",
     });
     revalidatePath("/admin", "layout");
     return { ok: true, id: guardado };

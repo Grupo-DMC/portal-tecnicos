@@ -8,6 +8,8 @@ import { logoutAction } from "@/app/actions/auth";
 import { prepararSalida } from "@/lib/ui/salir";
 import { useUsuarioLocal } from "@/lib/ui/usuario-local";
 import { Toast, useToast } from "@/components/ui/Toast";
+import { iniciales } from "@/lib/ui/cuenta";
+import Campanita from "@/components/admin/Campanita";
 
 interface NavItem {
   href: string;
@@ -21,12 +23,20 @@ export default function AdminSidebar({
   operacion,
   maestros,
   nombre,
+  foto = null,
   rol,
+  usuarioId,
+  permisos,
 }: {
   operacion: NavItem[];
   maestros: NavItem[];
   nombre: string;
+  /** URL de la foto de perfil (Mi cuenta), o null para mostrar las iniciales. */
+  foto?: string | null;
   rol: string;
+  usuarioId: number;
+  /** Para la campanita: qué notificaciones puede recibir. */
+  permisos: string[];
 }) {
   const pathname = usePathname();
   const { toast, aviso } = useToast();
@@ -35,6 +45,16 @@ export default function AdminSidebar({
   // Solo cuenta en el celular: ahí el menú es un cajón que se abre y se cierra.
   const [abierto, setAbierto] = useState(false);
   const pendientes = [...operacion, ...maestros].reduce((n, item) => n + (item.pendientes ?? 0), 0);
+  // La campanita es una sola (una sola consulta periódica): en el celular va en
+  // la barra de arriba y desde lg en la cabecera del menú.
+  const [escritorio, setEscritorio] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const ver = () => setEscritorio(mq.matches);
+    ver();
+    mq.addEventListener("change", ver);
+    return () => mq.removeEventListener("change", ver);
+  }, []);
 
   // Al elegir una sección el cajón se cierra solo.
   useEffect(() => {
@@ -50,12 +70,7 @@ export default function AdminSidebar({
       document.body.style.overflow = previo;
     };
   }, [abierto]);
-  const iniciales = nombre
-    .split(" ")
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
+  const enCuenta = pathname === "/admin/cuenta";
 
   function NavButton({ item }: { item: NavItem }) {
     // "/admin" es la raíz de todo: solo cuenta cuando se está exactamente en el panel.
@@ -106,6 +121,7 @@ export default function AdminSidebar({
         </button>
         <Image src="/DMC-logo.png" alt="Grupo dMC" width={75} height={32} />
         <div className="ml-auto text-cap opacity-62 truncate">{rol}</div>
+        {!escritorio ? <Campanita usuarioId={usuarioId} permisos={permisos} variante="barra" /> : null}
       </div>
 
       {abierto ? (
@@ -128,6 +144,11 @@ export default function AdminSidebar({
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>
         </button>
+        {escritorio ? (
+          <div className="absolute top-4 right-4">
+            <Campanita usuarioId={usuarioId} permisos={permisos} variante="menu" />
+          </div>
+        ) : null}
         <Image src="/DMC-logo.png" alt="Grupo dMC" width={124} height={53} />
         <div className="text-cap opacity-62 mt-3">
           Sistema de técnicos · Coordinación
@@ -146,15 +167,31 @@ export default function AdminSidebar({
         ))}
       </div>
 
-      <div className="border-t-2 border-[var(--color-divider)] px-5 pt-3.5 pb-3 flex items-center gap-2.5">
-        <div className="w-[34px] h-[34px] shrink-0 bg-[var(--color-text)] text-[var(--color-bg)] grid place-items-center font-extrabold text-meta">
-          {iniciales}
+      {/* Quién está en el panel; lleva a Mi cuenta. */}
+      <Link
+        href="/admin/cuenta"
+        aria-current={enCuenta ? "page" : undefined}
+        title="Mi cuenta"
+        className={`border-t-2 border-[var(--color-divider)] px-5 pt-3.5 pb-3 flex items-center gap-2.5 ${
+          enCuenta ? "bg-[var(--color-accent-200)] text-[var(--color-accent-800)]" : "hover:bg-[rgba(31,28,33,.05)]"
+        }`}
+      >
+        <div className="w-[34px] h-[34px] shrink-0 bg-[var(--color-text)] text-[var(--color-bg)] grid place-items-center font-extrabold text-meta overflow-hidden">
+          {foto ? (
+            // eslint-disable-next-line @next/next/no-img-element -- ruta propia con sesión; next/image no aporta acá
+            <img src={foto} alt="" width={34} height={34} className="w-full h-full object-cover" />
+          ) : (
+            iniciales(nombre)
+          )}
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="font-extrabold text-meta whitespace-nowrap overflow-hidden text-ellipsis">{nombre}</div>
-          <div className="text-cap opacity-62">{rol}</div>
+          <div className="text-cap opacity-62">{rol} · Mi cuenta</div>
         </div>
-      </div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" className="shrink-0 opacity-50" aria-hidden="true">
+          <path d="M9 6l6 6-6 6" />
+        </svg>
+      </Link>
       <div className="px-4 pb-4">
         <button
           type="button"

@@ -77,6 +77,14 @@ describe("proxy: la puerta de entrada", () => {
     const r = await proxy(peticion("/admin", { [COOKIE_SESION]: viejo, [COOKIE_EXPIRA]: "9999999999" }));
     expect(r.headers.getSetCookie().some((c) => c.startsWith(`${COOKIE_SESION}=`))).toBe(true);
   });
+
+  it("la consulta de la campanita exige sesión pero no la renueva", async () => {
+    expect((await proxy(peticion("/api/notificaciones"))).status).toBe(401);
+    const viejo = await firmarToken(5, 2, Date.now() - 5 * 60 * 1000);
+    const r = await proxy(peticion("/api/notificaciones", { [COOKIE_SESION]: viejo }));
+    expect(r.status).toBe(200);
+    expect(r.headers.getSetCookie()).toEqual([]);
+  });
 });
 
 describe("proxy: a qué rutas se aplica (config.matcher)", () => {

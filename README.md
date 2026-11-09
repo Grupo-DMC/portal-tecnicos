@@ -16,8 +16,15 @@ dar seguimiento, y una vista móvil para que el técnico registre el trabajo y c
 - **Panel de escritorio** (`/admin`): visitas (agenda individual, masiva y acciones sobre varias a la
   vez, con margen de días), clientes, marcas, sucursales, malls, técnicos, usuarios y roles,
   checklist, contactos, problemas, reagendas y accesos.
+- **Mi cuenta** (`/admin/cuenta`, desde la ficha del usuario al pie del menú): nombre, correo,
+  teléfono, foto de perfil y cambio de contraseña pidiendo la actual (migración 034).
 - **Vista móvil del técnico** (`/tecnico`): sus visitas del día, el formulario del acta con fotos y
   videos desde la cámara del celular, firma, y pedir edición a coordinación.
+- **Campanita de notificaciones** en el panel: lo que pasa en el sistema (el técnico cierra un acta,
+  reagenda o pide corregir; coordinación agenda, edita o elimina; cambios en los maestros) y tus
+  propios cambios. Cada cuenta elige por tipo si le **avisa** (número rojo y, si lo activa, aviso del
+  navegador), solo lo **muestra** o lo **oculta**; cada tipo exige el permiso del módulo. Catálogo en
+  `lib/notificaciones.ts`, registro en `lib/data/actividad.ts` (migración 035).
 - **Acta en PDF** por visita, con las partes editadas resaltadas y quién las modificó.
 - **Sucursales y malls**: una sucursal puede estar en un mall; con mall y marca su nombre se arma solo
   («Cliente · Marca · Mall»). El alta masiva permite mezclar clientes y marcas en una misma carga, y

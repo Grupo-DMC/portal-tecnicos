@@ -23,6 +23,7 @@ import {
   type DatosUsuario,
 } from "@/lib/data/maestros";
 import { auditar, diferencia } from "@/lib/data/auditoria";
+import { registrarActividad, type ActorActividad } from "@/lib/data/actividad";
 import { log } from "@/lib/log";
 import { eliminarRol, guardarPermisosCelular, guardarRol, leerRol, type Cuenta, type DatosRol } from "@/lib/data/roles";
 import { motivoCuentaAjena, normalizarPermisos, puedeAdministrarCuenta, tiene } from "@/lib/permisos";
@@ -94,8 +95,14 @@ function revalidar() {
   revalidatePath("/admin", "layout");
 }
 
+/** «creó el cliente» / «editó el cliente», con el nombre del registro de detalle. */
+function anotar(sesion: ActorActividad, tipo: string, alta: boolean, que: string, detalle: string, enlace: string) {
+  return registrarActividad(sesion, { tipo, texto: `${alta ? "creó" : "editó"} ${que}`, detalle: detalle.trim() || null, enlace });
+}
+
 export async function guardarClienteAction(idPedido: number | null, datosPedidos: DatosCliente): Promise<ResultadoMaestro> {
-  if (!(await sesionMaestro("clientes", idPedido))) return { ok: false, error: "No tienes permiso para editar clientes." };
+  const sesion = await sesionMaestro("clientes", idPedido);
+  if (!sesion) return { ok: false, error: "No tienes permiso para editar clientes." };
   const entrada = validar(entradaCliente, { id: idPedido, datos: datosPedidos }, "guardarCliente");
   if (!entrada.ok) return { ok: false, error: entrada.error };
   const { id, datos } = entrada.datos;
@@ -113,12 +120,14 @@ export async function guardarClienteAction(idPedido: number | null, datosPedidos
   } catch (err) {
     return { ok: false, error: mensajeDeError(err, "guardarCliente") };
   }
+  await anotar(sesion, "maestro.clientes", id === null, "el cliente", datos.nombreFantasia || datos.razonSocial, "/admin/clientes");
   revalidar();
   return { ok: true, id: guardadoId };
 }
 
 export async function guardarMarcaAction(idPedido: number | null, datosPedidos: DatosMarca): Promise<ResultadoMaestro> {
-  if (!(await sesionMaestro("marcas", idPedido))) return { ok: false, error: "No tienes permiso para editar marcas." };
+  const sesion = await sesionMaestro("marcas", idPedido);
+  if (!sesion) return { ok: false, error: "No tienes permiso para editar marcas." };
   const entrada = validar(entradaMarca, { id: idPedido, datos: datosPedidos }, "guardarMarca");
   if (!entrada.ok) return { ok: false, error: entrada.error };
   const { id, datos } = entrada.datos;
@@ -129,12 +138,14 @@ export async function guardarMarcaAction(idPedido: number | null, datosPedidos: 
   } catch (err) {
     return { ok: false, error: mensajeDeError(err, "guardarMarca") };
   }
+  await anotar(sesion, "maestro.clientes", id === null, "la marca", datos.nombre, "/admin/clientes");
   revalidar();
   return { ok: true, id: guardadoId };
 }
 
 export async function guardarMallAction(idPedido: number | null, datosPedidos: DatosMall): Promise<ResultadoMaestro> {
-  if (!(await sesionMaestro("malls", idPedido))) return { ok: false, error: "No tienes permiso para editar malls." };
+  const sesion = await sesionMaestro("malls", idPedido);
+  if (!sesion) return { ok: false, error: "No tienes permiso para editar malls." };
   const entrada = validar(entradaMall, { id: idPedido, datos: datosPedidos }, "guardarMall");
   if (!entrada.ok) return { ok: false, error: entrada.error };
   const { id, datos } = entrada.datos;
@@ -147,13 +158,15 @@ export async function guardarMallAction(idPedido: number | null, datosPedidos: D
   } catch (err) {
     return { ok: false, error: mensajeDeError(err, "guardarMall") };
   }
+  await anotar(sesion, "maestro.sucursales", id === null, "el mall", datos.nombre, "/admin/malls");
   revalidar();
   return { ok: true, id: guardadoId };
 }
 
 /** Las tiendas del mall: la lista completa, tal como quedó en el diálogo. */
 export async function guardarTiendasMallAction(mallIdPedido: number, sucursalIdsPedidos: number[]): Promise<ResultadoMaestro> {
-  if (!(await sesionCon("malls.editar"))) return { ok: false, error: "No tienes permiso para editar malls." };
+  const sesion = await sesionCon("malls.editar");
+  if (!sesion) return { ok: false, error: "No tienes permiso para editar malls." };
   const entrada = validar(
     entradaTiendasMall,
     { mallId: mallIdPedido, sucursalIds: sucursalIdsPedidos },
@@ -168,12 +181,18 @@ export async function guardarTiendasMallAction(mallIdPedido: number, sucursalIds
   } catch (err) {
     return { ok: false, error: mensajeDeError(err, "ponerTiendasDeMall") };
   }
+  await registrarActividad(sesion, {
+    tipo: "maestro.sucursales",
+    texto: `cambió las tiendas de un mall (quedó con ${ids.length})`,
+    enlace: "/admin/malls",
+  });
   revalidar();
   return { ok: true };
 }
 
 export async function guardarSucursalAction(idPedido: number | null, datosPedidos: DatosSucursal): Promise<ResultadoMaestro> {
-  if (!(await sesionMaestro("sucursales", idPedido))) return { ok: false, error: "No tienes permiso para editar sucursales." };
+  const sesion = await sesionMaestro("sucursales", idPedido);
+  if (!sesion) return { ok: false, error: "No tienes permiso para editar sucursales." };
   const entrada = validar(entradaSucursal, { id: idPedido, datos: datosPedidos }, "guardarSucursal");
   if (!entrada.ok) return { ok: false, error: entrada.error };
   const { id, datos } = entrada.datos;
@@ -197,6 +216,7 @@ export async function guardarSucursalAction(idPedido: number | null, datosPedido
   } catch (err) {
     return { ok: false, error: mensajeDeError(err, "guardarSucursal") };
   }
+  await anotar(sesion, "maestro.sucursales", id === null, "la sucursal", datos.nombre, "/admin/sucursales");
   revalidar();
   return { ok: true, id: guardadoId };
 }
@@ -205,7 +225,8 @@ export async function guardarSucursalAction(idPedido: number | null, datosPedido
 export async function crearSucursalesLoteAction(
   filasPedidas: DatosSucursalLote[]
 ): Promise<ResultadoMaestro & { creadas?: number }> {
-  if (!(await sesionCon("sucursales.crear"))) return { ok: false, error: "No tienes permiso para crear sucursales." };
+  const sesion = await sesionCon("sucursales.crear");
+  if (!sesion) return { ok: false, error: "No tienes permiso para crear sucursales." };
   const entrada = validar(entradaSucursalesLote, { filas: filasPedidas }, "crearSucursalesLote");
   if (!entrada.ok) return { ok: false, error: entrada.error };
   const { filas } = entrada.datos;
@@ -215,6 +236,12 @@ export async function crearSucursalesLoteAction(
   }
   try {
     const creadas = await crearSucursalesLote(filas);
+    await registrarActividad(sesion, {
+      tipo: "maestro.sucursales",
+      texto: creadas === 1 ? "creó una sucursal" : `creó ${creadas} sucursales de una vez`,
+      detalle: filas.slice(0, 3).map((f) => f.nombre.trim()).join(", ") + (filas.length > 3 ? ` y ${filas.length - 3} más` : ""),
+      enlace: "/admin/sucursales",
+    });
     revalidar();
     return { ok: true, creadas };
   } catch (err) {
@@ -223,7 +250,8 @@ export async function crearSucursalesLoteAction(
 }
 
 export async function guardarTecnicoAction(idPedido: number | null, datosPedidos: DatosTecnico): Promise<ResultadoMaestro> {
-  if (!(await sesionMaestro("tecnicos", idPedido))) return { ok: false, error: "No tienes permiso para editar técnicos." };
+  const sesion = await sesionMaestro("tecnicos", idPedido);
+  if (!sesion) return { ok: false, error: "No tienes permiso para editar técnicos." };
   const entrada = validar(entradaTecnico, { id: idPedido, datos: datosPedidos }, "guardarTecnico");
   if (!entrada.ok) return { ok: false, error: entrada.error };
   const { id, datos } = entrada.datos;
@@ -236,6 +264,14 @@ export async function guardarTecnicoAction(idPedido: number | null, datosPedidos
   } catch (err) {
     return { ok: false, error: mensajeDeError(err, "guardarTecnico") };
   }
+  await anotar(
+    sesion,
+    "maestro.tecnicos",
+    id === null,
+    "el técnico",
+    `${datos.nombres} ${datos.apellidoPaterno}`,
+    "/admin/usuarios?vista=tecnicos"
+  );
   revalidar();
   return { ok: true };
 }
@@ -287,6 +323,7 @@ export async function guardarUsuarioAction(
     // sigue con un token nuevo y las demás quedan cerradas.
     if (guardado.id === sesion.usuario.id) await crearSesion(guardado.id, guardado.sesionVersion);
     await auditarUsuario(sesion, guardado.id, previa as Cuenta | null, datos);
+    await anotar(sesion, "cuenta.cambio", id === null, "la cuenta", datos.email, "/admin/usuarios");
   } catch (err) {
     return { ok: false, error: mensajeDeError(err, "guardarUsuario") };
   }
@@ -355,6 +392,7 @@ export async function guardarRolAction(idPedido: number | null, datosPedidos: Da
     }
     const antes = id === null ? null : await leerRol(id);
     const guardadoId = await guardarRol(id, { nombre, descripcion: datos.descripcion, permisos });
+    await anotar(sesion, "cuenta.cambio", id === null, "el rol", nombre, "/admin/usuarios?vista=roles");
     await auditar(sesion, {
       accion: id === null ? "rol.alta" : "rol.editar",
       entidad: "rol",
@@ -384,6 +422,12 @@ export async function eliminarRolAction(idPedido: number): Promise<ResultadoMaes
     const fallo = await eliminarRol(id);
     if (fallo) return { ok: false, error: fallo };
     await auditar(sesion, { accion: "rol.eliminar", entidad: "rol", entidadId: id, detalle: { nombre: rol?.nombre } });
+    await registrarActividad(sesion, {
+      tipo: "cuenta.cambio",
+      texto: "eliminó el rol",
+      detalle: rol?.nombre ?? null,
+      enlace: "/admin/usuarios?vista=roles",
+    });
   } catch (err) {
     return { ok: false, error: mensajeDeError(err, "eliminarRol") };
   }
@@ -401,6 +445,11 @@ export async function guardarPermisosCelularAction(permisosPedidos: string[]): P
   try {
     await guardarPermisosCelular(permisos);
     await auditar(sesion, { accion: "permisos_celular.editar", entidad: "permisos_celular", detalle: { permisos } });
+    await registrarActividad(sesion, {
+      tipo: "cuenta.cambio",
+      texto: "cambió los permisos del celular de los técnicos",
+      enlace: "/admin/usuarios?vista=roles",
+    });
   } catch (err) {
     return { ok: false, error: mensajeDeError(err, "guardarPermisosCelular") };
   }

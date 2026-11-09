@@ -16,6 +16,8 @@ import { log } from "@/lib/log";
 export type AccionAuditoria =
   | "password.cambio"
   | "password.reseteo"
+  | "cuenta.editar"
+  | "cuenta.foto"
   | "usuario.alta"
   | "usuario.editar"
   | "usuario.desactivar"

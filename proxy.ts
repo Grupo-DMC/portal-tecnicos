@@ -24,6 +24,14 @@ import { CSP_CABECERA, CSP_RUTA_REPORTE, construirCsp, generarNonce } from "@/li
 
 const PUBLICAS = new Set(["/login", CSP_RUTA_REPORTE]);
 
+/**
+ * Rutas que el navegador consulta solo, sin que nadie haga nada: la campanita
+ * del panel pregunta cada medio minuto. Exigen sesión como cualquier otra,
+ * pero no la renuevan; si lo hicieran, dejar el panel abierto la mantendría
+ * viva para siempre.
+ */
+export const RUTAS_SIN_RENOVAR = new Set(["/api/notificaciones"]);
+
 export async function proxy(req: NextRequest) {
   // El nonce viaja a Next en la cabecera de la petición (así lo marca en sus
   // scripts) y la política sale en la respuesta. Va en todas las respuestas
@@ -49,6 +57,7 @@ export async function proxy(req: NextRequest) {
     // también se renueva, para que el navegador sepa cuándo vence. Lo mismo un
     // token sin versión: se vuelve a firmar con la 0, que es con la que valía.
     // La versión se copia tal cual; compararla con la base es cosa de getSesion.
+    if (RUTAS_SIN_RENOVAR.has(pathname)) return respuesta;
     if (tocaRenovar(token) || !req.cookies.get(COOKIE_EXPIRA) || token.sinVersion) {
       try {
         const nuevo = await firmarToken(token.uid, token.sv);

@@ -6,6 +6,7 @@ import { getSesion, sesionCon } from "@/lib/auth";
 import { tiene } from "@/lib/permisos";
 import { editarActa, habilitarEdicionTecnico, pedirEdicionActa, type ResultadoEdicion } from "@/lib/data/ediciones";
 import { auditar } from "@/lib/data/auditoria";
+import { registrarActividad } from "@/lib/data/actividad";
 import { entradaFolio } from "@/lib/validacion/visitas";
 import type { EdicionActaEntrada } from "@/lib/contratos/acta";
 import { validar } from "@/lib/validacion/comun";
@@ -60,7 +61,14 @@ export async function editarActaTecnicoAction(entradaPedida: EdicionActaEntrada)
       origen: "MOVIL",
       sinPlazo: false,
     });
-    if (res.ok) revalidar(entrada.folio);
+    if (res.ok) {
+      await registrarActividad(sesion, {
+        tipo: "tecnico.correccion",
+        texto: `corrigió el acta de la visita ${entrada.folio}`,
+        folio: entrada.folio,
+      });
+      revalidar(entrada.folio);
+    }
     return res;
   } catch (err) {
     return comoError(err, "editarActa (técnico)");
@@ -84,7 +92,14 @@ export async function editarActaAdminAction(entradaPedida: EdicionActaEntrada): 
       origen: "WEB",
       sinPlazo: true,
     });
-    if (res.ok) revalidar(entrada.folio);
+    if (res.ok) {
+      await registrarActividad(sesion, {
+        tipo: "acta.cambio",
+        texto: `editó el acta de la visita ${entrada.folio}`,
+        folio: entrada.folio,
+      });
+      revalidar(entrada.folio);
+    }
     return res;
   } catch (err) {
     return comoError(err, "editarActa (panel)");
@@ -105,6 +120,11 @@ export async function permitirEditarTecnicoAction(folioPedido: string): Promise<
     return comoError(err, "permitirEditarTecnico");
   }
   await auditar(sesion, { accion: "acta.habilitar_tecnico", entidad: "visita", entidadId: entrada.datos });
+  await registrarActividad(sesion, {
+    tipo: "acta.cambio",
+    texto: `le abrió al técnico la corrección del acta de la visita ${entrada.datos}`,
+    folio: entrada.datos,
+  });
   revalidar(entrada.datos);
   return { ok: true };
 }
@@ -128,6 +148,11 @@ export async function pedirEdicionActaAction(
     return { ok: false, error: "No se pudo enviar el pedido. Revisa la señal e inténtalo otra vez." };
   }
   await auditar(sesion, { accion: "acta.pedir_edicion", entidad: "visita", entidadId: entrada.datos });
+  await registrarActividad(sesion, {
+    tipo: "tecnico.pedido",
+    texto: `pidió permiso para corregir el acta de la visita ${entrada.datos}${motivo ? `: «${motivo.slice(0, 90)}»` : ""}`,
+    folio: entrada.datos,
+  });
   revalidar(entrada.datos);
   return { ok: true };
 }

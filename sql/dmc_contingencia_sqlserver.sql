@@ -185,6 +185,9 @@ CREATE TABLE dmc.usuario (
     -- TECNICO entra por el celular.
     rol_id            bigint         NULL,
     tecnico_id        bigint         NULL,
+    -- Lo llena la propia persona en «Mi cuenta» (migración 034).
+    nombre            nvarchar(120)  NULL,
+    telefono          nvarchar(30)   NULL,
     activo            bit            NOT NULL CONSTRAINT df_usuario_activo DEFAULT (1),
     ultimo_acceso_en  datetime2(0)   NULL,
     -- Va dentro del token de sesión: subirlo cierra las sesiones abiertas.
@@ -205,6 +208,20 @@ CREATE TABLE dmc.usuario (
 );
 GO
 CREATE UNIQUE INDEX uq_usuario_tecnico ON dmc.usuario (tecnico_id) WHERE tecnico_id IS NOT NULL;
+GO
+
+-- Foto de perfil (migración 034). Aparte de dmc.usuario para que la lectura de
+-- la sesión, que corre en cada petición, no arrastre los bytes.
+CREATE TABLE dmc.usuario_foto (
+    usuario_id     bigint          NOT NULL,
+    mime           varchar(40)     NOT NULL,
+    contenido      varbinary(max)  NOT NULL,
+    actualizado_en datetime2(0)    NOT NULL CONSTRAINT df_usuario_foto_actualizado DEFAULT (SYSDATETIME()),
+    CONSTRAINT pk_usuario_foto         PRIMARY KEY (usuario_id),
+    CONSTRAINT fk_usuario_foto_usuario FOREIGN KEY (usuario_id) REFERENCES dmc.usuario (id) ON DELETE CASCADE,
+    CONSTRAINT ck_usuario_foto_mime    CHECK (mime IN ('image/jpeg','image/png','image/webp')),
+    CONSTRAINT ck_usuario_foto_tamano  CHECK (DATALENGTH(contenido) BETWEEN 1 AND 1048576)
+);
 GO
 
 /* =====================================================================
@@ -1186,6 +1203,42 @@ GO
 CREATE INDEX ix_auditoria_usuario ON dmc.auditoria (usuario_id, creado_en DESC) WHERE usuario_id IS NOT NULL;
 GO
 
+-- Campanita de notificaciones (migración 035). dmc.actividad es lo que se
+-- hizo en el sistema; la app lee solo los últimos 30 días. Sin FK a
+-- dmc.usuario, como la auditoría. Las preferencias guardan solo lo que la
+-- persona cambió: lo demás vale el defecto de lib/notificaciones.ts.
+CREATE TABLE dmc.actividad (
+    id                bigint         IDENTITY(1,1) NOT NULL,
+    creado_en         datetime2(0)   NOT NULL CONSTRAINT df_actividad_creado DEFAULT (SYSDATETIME()),
+    tipo              varchar(40)    NOT NULL,
+    actor_usuario_id  bigint         NULL,
+    actor_nombre      nvarchar(160)  NULL,
+    de_tecnico        bit            NOT NULL CONSTRAINT df_actividad_tecnico DEFAULT (0),
+    texto             nvarchar(300)  NOT NULL,
+    detalle           nvarchar(300)  NULL,
+    enlace            nvarchar(200)  NULL,
+    CONSTRAINT pk_actividad PRIMARY KEY (id)
+);
+GO
+CREATE INDEX ix_actividad_creado ON dmc.actividad (creado_en DESC) INCLUDE (tipo, actor_usuario_id);
+GO
+CREATE TABLE dmc.notificacion_usuario (
+    usuario_id      bigint        NOT NULL,
+    leido_hasta     bigint        NOT NULL CONSTRAINT df_notif_usuario_leido DEFAULT (0),
+    ver_propios     bit           NOT NULL CONSTRAINT df_notif_usuario_propios DEFAULT (1),
+    actualizado_en  datetime2(0)  NOT NULL CONSTRAINT df_notif_usuario_act DEFAULT (SYSDATETIME()),
+    CONSTRAINT pk_notificacion_usuario PRIMARY KEY (usuario_id)
+);
+GO
+CREATE TABLE dmc.notificacion_preferencia (
+    usuario_id  bigint       NOT NULL,
+    tipo        varchar(40)  NOT NULL,
+    nivel       varchar(8)   NOT NULL,
+    CONSTRAINT pk_notificacion_preferencia PRIMARY KEY (usuario_id, tipo),
+    CONSTRAINT ck_notificacion_preferencia_nivel CHECK (nivel IN ('AVISAR', 'MOSTRAR', 'OCULTAR'))
+);
+GO
+
 -- Versión del esquema (migración 025): una fila por migración aplicada; la
 -- versión es la mayor. La app la compara con la que necesita en /api/salud.
 CREATE TABLE dmc.schema_version (
@@ -1446,9 +1499,14 @@ GO
 /* =====================================================================
    12. VERSIÓN DEL ESQUEMA
    ===================================================================== */
-/* Este archivo ya trae todo hasta la migración 032. */
+/* Este archivo ya trae todo hasta la migración 034 (la 033 solo renombra
+   sucursales existentes: en una base nueva no hay nada que renombrar). */
 INSERT INTO dmc.schema_version (version, descripcion)
-VALUES (32, N'Esquema base (incluye las migraciones 002 a 032)');
+VALUES (34, N'Esquema base (incluye las migraciones 002 a 034)');
+GO
+/* Y las tablas de la campanita (migración 035). */
+INSERT INTO dmc.schema_version (version, descripcion)
+VALUES (35, N'Campanita de notificaciones: actividad y preferencias por cuenta');
 GO
 
 

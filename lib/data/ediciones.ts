@@ -23,6 +23,7 @@ import {
   listarTrabajos,
 } from "@/lib/data/catalogos";
 import { rutLimpio } from "@/lib/ui/formato";
+import { SECCION_EDICION } from "@/lib/ui/edicion";
 import type { EstadoVisita, OrigenRegistro, Visita } from "@/lib/types";
 
 // Edición del acta ya cerrada.
@@ -57,13 +58,7 @@ export interface ContextoEdicion {
   sinPlazo: boolean;
 }
 
-const SECCION = {
-  responsable: "Responsable de tienda",
-  trabajo: "Motivo y trabajo realizado",
-  problemas: "Problemas detectados",
-  interno: "Comentario interno",
-  media: "Fotos y video",
-} as const;
+const SECCION = SECCION_EDICION;
 
 const PLAZO_VENCIDO = `Ya pasó el plazo de ${DIAS_PARA_EDITAR === 1 ? "un día" : `${DIAS_PARA_EDITAR} días`} para editar esta acta desde el celular. Pídele el cambio a coordinación.`;
 const EDITADA_POR_OTRO = "Esta acta se editó mientras la tenías abierta. Vuelve a abrirla para ver cómo quedó.";

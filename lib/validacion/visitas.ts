@@ -85,6 +85,15 @@ export const entradaReprogramar = z.object({
 /** Qué sucursal mira el aviso; con folio, sin los problemas ya vinculados a esa visita. */
 export const entradaProblemasSinResolver = z.object({ sucursalId: idPositivo, folio: folio.optional() });
 
+/** Qué día, en qué local y con quién se agenda, para avisar si choca con otra visita. */
+export const entradaConflictosAgenda = z.object({
+  sucursalId: idPositivo,
+  fecha: fechaISO,
+  tecnicoId: idPositivo.nullable(),
+  ayudanteId: idPositivo.nullable(),
+  folio: folio.optional(),
+});
+
 export const entradaCancelarAdmin = z.object({ folio, motivo: textoLibre });
 
 export const entradaEliminarVisita = z.object({ folio, confirmacionFolio: texto(16) });

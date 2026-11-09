@@ -6,6 +6,23 @@ import type { Visita, VisitaEdicion } from "@/lib/types";
 // editor del panel. Los dos parten de lo que quedó guardado en la base, no de
 // un borrador.
 
+/**
+ * Las partes del acta que se anotan en una edición. El servidor las escribe en
+ * `visita_edicion.secciones` y el panel las lee para marcar cada parte editada.
+ */
+export const SECCION_EDICION = {
+  responsable: "Responsable de tienda",
+  trabajo: "Motivo y trabajo realizado",
+  problemas: "Problemas detectados",
+  interno: "Comentario interno",
+  media: "Fotos y video",
+} as const;
+
+/** Quién tocó el acta, dicho como lo lee quien mira el panel. */
+export function quienModifico(e: VisitaEdicion): string {
+  return e.origen === "MOVIL" ? "Modificado por el técnico" : "Modificado desde el panel";
+}
+
 export interface ActaEnFormulario {
   respNombre: string;
   respRut: string;

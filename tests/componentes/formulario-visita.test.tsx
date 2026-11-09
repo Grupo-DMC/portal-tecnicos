@@ -6,6 +6,7 @@ const acciones = vi.hoisted(() => ({
   crearVisitaAction: vi.fn(),
   editarVisitaAction: vi.fn(),
   problemasSinResolverAction: vi.fn(),
+  conflictosAgendaAction: vi.fn(),
   reprogramarVisitaAction: vi.fn(),
   cancelarVisitaAdminAction: vi.fn(),
   eliminarVisitaAction: vi.fn(),
@@ -62,6 +63,7 @@ beforeEach(() => {
   onHecho.mockReset();
   onCerrar.mockReset();
   acciones.problemasSinResolverAction.mockResolvedValue({ ok: true, problemas: [] });
+  acciones.conflictosAgendaAction.mockResolvedValue({ ok: true, conflictos: [] });
   acciones.personasDelLocalAction.mockResolvedValue([]);
   acciones.crearVisitaAction.mockResolvedValue({ ok: true, folio: "V-9" });
   acciones.editarVisitaAction.mockResolvedValue({ ok: true, folio: "V-1" });
@@ -197,6 +199,32 @@ describe("Nueva visita (panel)", () => {
     await waitFor(() => expect(onHecho).toHaveBeenCalledWith("El ayudante no puede ser el mismo técnico asignado."));
     expect(onCerrar).not.toHaveBeenCalled();
     expect(dlg().getByLabelText("Qué se necesita hacer")).toHaveValue("Revisar las antenas del acceso");
+  });
+});
+
+describe("alerta de agenda al agendar", () => {
+  it("avisa cuando el mismo técnico ya tiene ese local el mismo día", async () => {
+    acciones.conflictosAgendaAction.mockResolvedValue({
+      ok: true,
+      conflictos: [
+        { tipo: "MISMO_TECNICO", alcance: "LOCAL", folio: "V-0100", estado: "PROGRAMADA", tecnico: "Ana", ayudante: null, cliente: "Cliente", sucursal: "Local 1", mall: null, repetidos: ["Ana"] },
+      ],
+    });
+    abrir();
+    expect(await screen.findByText(/posible trabajo duplicado/)).toBeInTheDocument();
+    expect(screen.getByText(/Ana ya tiene agendado este local/)).toBeInTheDocument();
+  });
+
+  it("avisa cuando otros técnicos van al mismo mall sin ser ayudantes uno del otro", async () => {
+    acciones.conflictosAgendaAction.mockResolvedValue({
+      ok: true,
+      conflictos: [
+        { tipo: "OTRO_TECNICO", alcance: "MALL", folio: "V-0101", estado: "PROGRAMADA", tecnico: "Luis", ayudante: null, cliente: "Cliente", sucursal: "Local 2", mall: "Mall Sur", repetidos: [] },
+      ],
+    });
+    abrir();
+    expect(await screen.findByText(/Otros técnicos van al mismo local o mall/)).toBeInTheDocument();
+    expect(screen.getByText(/mismo mall \(Mall Sur\)/)).toBeInTheDocument();
   });
 });
 

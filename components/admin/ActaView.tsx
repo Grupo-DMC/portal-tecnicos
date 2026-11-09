@@ -23,12 +23,12 @@ import { textoFechaVisita, fechaCL } from "@/lib/ui/fecha";
 import { nombreProblema, nombreTrabajo, puede, useReferencias } from "@/lib/ui/referencias";
 import { reloj } from "@/lib/ui/video";
 import { descargarZip, extensionDe, type ArchivoADescargar } from "@/lib/ui/descarga";
-import { resumenEdicion } from "@/lib/ui/edicion";
+import { SECCION_EDICION, quienModifico, resumenEdicion } from "@/lib/ui/edicion";
 import { esInformePapel } from "@/lib/ui/papel";
 import { nombreArchivoActa, nombreZipMultimedia } from "@/lib/ui/nombre-acta";
 import { textoMall } from "@/lib/ui/ubicacion";
 import { urlVisitasRecordada } from "@/lib/ui/filtro-recordado";
-import type { Visita } from "@/lib/types";
+import type { Visita, VisitaEdicion } from "@/lib/types";
 import { AdjuntosVista } from "@/components/ui/AdjuntosTrabajo";
 
 const AVISO_ESTADO: Record<string, string> = {
@@ -115,6 +115,13 @@ export default function ActaView({
   const duracion = ejec && !papel ? minutosEntre(ejec.horaInicio, ejec.horaTermino) : null;
   const firma = visita.firmas?.[0];
   const ediciones = visita.ediciones ?? [];
+  // La última edición que tocó cada parte del acta: esa parte se resalta y dice quién la cambió.
+  const ultimaPorSeccion = new Map<string, VisitaEdicion>();
+  for (const e of ediciones) for (const sec of e.secciones) ultimaPorSeccion.set(sec, e);
+  const editada = (sec: string) => ultimaPorSeccion.get(sec);
+  /** Marco de una parte editada: una barra de color al costado. */
+  const resalte = (sec: string) =>
+    editada(sec) ? "border-l-4 border-l-[var(--color-accent)] bg-[var(--color-accent-100)]" : "";
   // Editar el acta ya cerrada: solo con el permiso, y sin plazo.
   const editableActa = cerrada && permite("visitas.editarActa");
   const [habilitando, setHabilitando] = useState(false);
@@ -473,9 +480,10 @@ export default function ActaView({
           ) : null}
 
           {hayInterno ? (
-            <div className="px-5 py-5 border-b border-black/[.2] bg-[var(--color-accent-100)]">
+            <div className={`px-5 py-5 border-b border-black/[.2] bg-[var(--color-accent-100)] ${editada(SECCION_EDICION.interno) ? "border-l-4 border-l-[var(--color-accent)]" : ""}`}>
               <div className="text-cap text-[var(--color-accent-active)] mb-2">
                 Comentario interno del técnico · no va en el acta al cliente
+                <MarcaEdicion edicion={editada(SECCION_EDICION.interno)} />
               </div>
               {internos.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5 mb-2.5">
@@ -554,8 +562,11 @@ export default function ActaView({
           ) : null}
 
           {ejec?.observaciones ? (
-            <div className="px-5 py-5 border-b border-black/[.2]">
-              <div className="text-cap opacity-66">Observaciones del técnico</div>
+            <div className={`px-5 py-5 border-b border-black/[.2] ${resalte(SECCION_EDICION.trabajo)}`}>
+              <div className="text-cap opacity-66">
+                Observaciones del técnico
+                <MarcaEdicion edicion={editada(SECCION_EDICION.trabajo)} />
+              </div>
               <div className="text-lead leading-[1.45] mt-1.5 max-w-[74ch]">{ejec.observaciones}</div>
             </div>
           ) : null}
@@ -566,8 +577,9 @@ export default function ActaView({
                 <>
                   <div className="text-cap opacity-66 mb-3">
                     Trabajo realizado ({visita.trabajos.length})
+                    <MarcaEdicion edicion={editada(SECCION_EDICION.trabajo)} />
                   </div>
-                  <div className="flex flex-col gap-2.5 mb-6.5">
+                  <div className={`flex flex-col gap-2.5 mb-6.5 ${editada(SECCION_EDICION.trabajo) ? "border-l-4 border-l-[var(--color-accent)] pl-3" : ""}`}>
                     {visita.trabajos.map((t) => (
                       <div key={t.id} className="border border-black/[.35] bg-white px-4.5 py-3.5">
                         {t.motivoCodigo ? (
@@ -597,6 +609,7 @@ export default function ActaView({
 
               <div className="text-cap opacity-66 mb-3">
                 Problemas levantados ({visita.problemas?.length ?? 0})
+                <MarcaEdicion edicion={editada(SECCION_EDICION.problemas)} />
               </div>
               {visita.problemas && visita.problemas.length > 0 ? (
                 <div className="flex flex-col gap-3.5">
@@ -692,6 +705,7 @@ export default function ActaView({
               <div className="flex items-center gap-3 flex-wrap mt-6.5 mb-3">
                 <div className="text-cap opacity-66">
                   Fotos del trabajo ({fotosCliente.length})
+                  <MarcaEdicion edicion={editada(SECCION_EDICION.media)} />
                 </div>
                 {fotosCliente.length > 0 ? (
                   <button
@@ -743,6 +757,7 @@ export default function ActaView({
               <div className="flex items-center gap-3 flex-wrap mt-6.5 mb-3">
                 <div className="text-cap opacity-66">
                   Videos del trabajo ({videosCliente.length})
+                  <MarcaEdicion edicion={editada(SECCION_EDICION.media)} />
                 </div>
                 {videosCliente.length > 0 ? (
                   <button
@@ -801,6 +816,11 @@ export default function ActaView({
                   <div className="text-cap opacity-62">
                     Responsable de tienda · {cerrada ? firma?.rut ?? "—" : "sin firmar"}
                   </div>
+                  {editada(SECCION_EDICION.responsable) ? (
+                    <div className="mt-1.5">
+                      <MarcaEdicion edicion={editada(SECCION_EDICION.responsable)} />
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -1172,5 +1192,16 @@ function CorreoDialogo({
         setAdjuntos((prev) => prev.map((a, j) => (j === i ? { ...a, incluido: !a.incluido } : a)))
       }
     />
+  );
+}
+
+/** «Modificado por el técnico · Ana · 13/08/2026 a las 08:30», junto al título de la parte editada. */
+function MarcaEdicion({ edicion }: { edicion: VisitaEdicion | undefined }) {
+  if (!edicion) return null;
+  return (
+    <span className="inline-flex items-center gap-1.5 flex-wrap ml-2 align-middle">
+      <Tag variant="accent">{quienModifico(edicion)}</Tag>
+      <span className="text-cap opacity-66 normal-case tabular-nums">{resumenEdicion(edicion)}</span>
+    </span>
   );
 }

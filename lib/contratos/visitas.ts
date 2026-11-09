@@ -68,3 +68,26 @@ export interface CambiosVisita {
   trabajoSolicitado?: string;
   indicacionesAcceso?: string;
 }
+
+/**
+ * Otra visita del mismo día que choca con la que se está agendando.
+ *
+ * MISMO_TECNICO: alguien de la visita (asignado o ayudante) ya tiene agendado
+ * ese local ese día: se duplica el trabajo.
+ * OTRO_TECNICO: otros técnicos, sin ir de ayudantes uno del otro, van al mismo
+ * local o al mismo mall el mismo día.
+ */
+export interface ConflictoAgenda {
+  tipo: "MISMO_TECNICO" | "OTRO_TECNICO";
+  /** Dónde coinciden: el mismo local o solo el mismo mall. */
+  alcance: "LOCAL" | "MALL";
+  folio: string;
+  estado: string;
+  tecnico: string;
+  ayudante: string | null;
+  cliente: string;
+  sucursal: string;
+  mall: string | null;
+  /** Quién de la visita que se agenda está en la otra (solo MISMO_TECNICO). */
+  repetidos: string[];
+}

@@ -26,6 +26,7 @@ import { AdjuntosVista, SelectorAdjuntos } from "@/components/ui/AdjuntosTrabajo
 import { borrarAdjuntoAction } from "@/app/actions/adjuntos";
 import { useAdjuntosPendientes } from "@/lib/ui/adjuntos";
 import AvisoProblemas, { useAvisoProblemas } from "@/components/admin/AvisoProblemas";
+import AvisoAgenda, { useConflictosAgenda } from "@/components/admin/AvisoAgenda";
 import type { Visita } from "@/lib/types";
 
 /** Opciones de los selectores, derivadas de los maestros que baja el layout. */
@@ -214,6 +215,14 @@ export default function VisitaDialogo({
   // se avisa y se pregunta si la visita es para resolverlos.
   const avisoProblemas = useAvisoProblemas(visita ? null : Number(form.sucursalId) || null, {
     origenId: origen?.problemaId,
+  });
+  // Y siempre: si otra visita del mismo día se pisa con esta, se alerta.
+  const conflictos = useConflictosAgenda({
+    sucursalId: Number(form.sucursalId) || null,
+    fecha: String(form.fecha ?? ""),
+    tecnicoId: Number(form.tecnicoId) || null,
+    ayudanteId: Number(form.ayudanteId) || null,
+    folio: visita?.folio,
   });
 
   // Una visita puede venir por varias cosas a la vez. El primero marcado es el
@@ -466,6 +475,7 @@ export default function VisitaDialogo({
       onGuardar={guardar}
       guardando={guardando}
     >
+      <AvisoAgenda conflictos={conflictos} fecha={String(form.fecha ?? "")} />
       <AvisoProblemas aviso={avisoProblemas} deshabilitado={guardando} />
       <div className="mt-4 flex flex-col gap-3">
         <AdjuntosVista
@@ -506,6 +516,17 @@ export function ReprogramarDialogo({
   const [guardando, setGuardando] = useState(false);
   // Sin los que esta visita ya venía a resolver: de esos ya se respondió.
   const avisoProblemas = useAvisoProblemas(visita.sucursalId, { folio: visita.folio });
+  const conflictos = useConflictosAgenda({
+    sucursalId: visita.sucursalId,
+    fecha: String(form.fecha ?? ""),
+    tecnicoId: Number(form.tecnicoId) || null,
+    // Al reprogramar el ayudante sigue siendo el de la visita, salvo que pase a ser el asignado.
+    ayudanteId:
+      visita.tecnicoAyudanteId && String(visita.tecnicoAyudanteId) !== String(form.tecnicoId)
+        ? visita.tecnicoAyudanteId
+        : null,
+    folio: visita.folio,
+  });
 
   const esInstalacion = algunoPideHora(visita.motivosCodigos, ref.motivos);
 
@@ -559,6 +580,7 @@ export function ReprogramarDialogo({
       onGuardar={guardar}
       guardando={guardando}
     >
+      <AvisoAgenda conflictos={conflictos} fecha={String(form.fecha ?? "")} />
       <AvisoProblemas aviso={avisoProblemas} deshabilitado={guardando} />
     </Dialogo>
   );

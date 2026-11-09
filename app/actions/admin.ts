@@ -15,7 +15,8 @@ import {
   registrarEnvioActa,
   reprogramarVisita,
 } from "@/lib/data/visitas";
-import type { AvisoProblemas, CambiosVisita, DatosVisita, ProblemaSinResolver } from "@/lib/contratos/visitas";
+import type { AvisoProblemas, CambiosVisita, ConflictoAgenda, DatosVisita, ProblemaSinResolver } from "@/lib/contratos/visitas";
+import { conflictosDeAgenda } from "@/lib/data/conflictos-agenda";
 import { ErrorDeAviso, problemasSinResolver, sucursalesConProblemas } from "@/lib/data/avisos-problema";
 import { marcarGestionPendiente } from "@/lib/data/pendientes";
 import { marcarGestionProblema } from "@/lib/data/problemas";
@@ -42,6 +43,7 @@ import {
   datosVisita,
   entradaActualizarProblema,
   entradaCancelarAdmin,
+  entradaConflictosAgenda,
   entradaCancelarVisitas,
   entradaEditarVisita,
   entradaEliminarVisita,
@@ -152,6 +154,30 @@ export async function problemasSinResolverAction(pedido: {
   } catch (err) {
     log.error("problemasSinResolver", { err });
     return { ok: false, error: "No se pudieron revisar los problemas de la sucursal.", problemas: [] };
+  }
+}
+
+/**
+ * Las visitas del mismo día que chocan con la que se agenda: el mismo técnico
+ * en el mismo local, u otros técnicos en el mismo local o mall. Solo avisa.
+ */
+export async function conflictosAgendaAction(pedido: {
+  sucursalId: number;
+  fecha: string;
+  tecnicoId: number | null;
+  ayudanteId: number | null;
+  folio?: string;
+}): Promise<{ ok: boolean; conflictos: ConflictoAgenda[] }> {
+  const sesion = (await sesionCon("visitas.crear")) ?? (await sesionCon("visitas.editar")) ?? (await sesionCon("visitas.reprogramar"));
+  if (!sesion) return { ok: false, conflictos: [] };
+  const entrada = validar(entradaConflictosAgenda, pedido, "conflictosAgenda");
+  if (!entrada.ok) return { ok: false, conflictos: [] };
+  try {
+    return { ok: true, conflictos: await conflictosDeAgenda(entrada.datos) };
+  } catch (err) {
+    // Es un aviso de cortesía: si falla, agendar sigue funcionando.
+    log.error("conflictosAgenda", { err });
+    return { ok: false, conflictos: [] };
   }
 }
 

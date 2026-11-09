@@ -416,7 +416,7 @@ export default function VisitasTable({
           className={`px-4 md:px-7 overflow-x-auto transition-opacity ${cargando ? "opacity-50" : ""}`}
           aria-busy={cargando}
         >
-          <table className="table table-fixed min-w-[980px] max-md:min-w-0 tabla-apilable">
+          <table className="table table-fixed min-w-[900px] max-md:min-w-0 tabla-apilable">
             <colgroup>
               {conCasillas ? <col style={{ width: 44 }} /> : null}
               <col style={{ width: 124 }} />
@@ -443,7 +443,6 @@ export default function VisitasTable({
                 ) : null}
                 <th>Folio</th>
                 <th>Fecha</th>
-                <th>Hora</th>
                 <th>Cliente</th>
                 <th>Sucursal</th>
                 <th>Técnico</th>
@@ -471,9 +470,6 @@ export default function VisitasTable({
                   ) : null}
                   <td data-c="folio" className="font-semibold tabular-nums whitespace-nowrap">{v.folio}</td>
                   <td data-c="fecha" className="tabular-nums opacity-65 whitespace-nowrap">{textoFechaVisita(v)}</td>
-                  <td data-c="hora" className={`tabular-nums whitespace-nowrap ${v.horaProgramada ? "opacity-90" : "opacity-45"}`}>
-                    {v.horaProgramada ?? "Sin hora"}
-                  </td>
                   <td data-c="cliente">
                     <Recorte
                       texto={

@@ -532,7 +532,6 @@ textarea.input {
   .tabla-apilable td[data-c="cliente"] { grid-column: 2 / span 2; grid-row: 2; font-weight: 600; }
   .tabla-apilable td[data-c="sucursal"] { grid-column: 2 / span 2; grid-row: 3; }
   .tabla-apilable td[data-c="fecha"] { grid-column: 2; grid-row: 4; font-size: 13px; }
-  .tabla-apilable td[data-c="hora"] { grid-column: 3; grid-row: 4; justify-self: end; font-size: 13px; }
   .tabla-apilable td[data-c="tecnico"] { grid-column: 2 / span 2; grid-row: 5; font-size: 13px; }
   .tabla-apilable td[data-c="motivo"] { display: none; }
   .tabla-apilable td[data-c="motivo-tecnico"] { grid-column: 2 / span 2; grid-row: 6; font-size: 13px; }

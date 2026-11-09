@@ -8,6 +8,7 @@ import SelectConAlta from "@/components/ui/SelectConAlta";
 import { crearSucursalesLoteAction } from "@/app/actions/maestros";
 import { conMismaDireccion } from "@/lib/ui/direcciones";
 import { sinTildes } from "@/lib/ui/formato";
+import { nombreLocal } from "@/lib/ui/nombre-local";
 import { useReferencias } from "@/lib/ui/referencias";
 import { REGIONES } from "@/lib/ui/regiones";
 import type { Cliente, Mall, Sucursal } from "@/lib/types";
@@ -21,6 +22,8 @@ interface Nueva {
   direccion: string;
   comuna: string;
   region: string;
+  /** El nombre lo escribió la persona: deja de seguir a «Cliente · Marca · Mall». */
+  manual: boolean;
 }
 
 /**
@@ -53,6 +56,7 @@ export default function SucursalesLoteDialogo({
     direccion: "",
     comuna: "",
     region: REGIONES[0],
+    manual: false,
   });
 
   const opcClientes = clientes
@@ -93,20 +97,34 @@ export default function SucursalesLoteDialogo({
     });
   }
 
+  /** Con mall, el nombre es «Cliente · Marca · Mall» salvo que la persona lo haya escrito. */
+  function nombreDe(n: Nueva): string {
+    if (n.manual || !n.mallId) return n.nombre;
+    const mall = malls.find((m) => String(m.id) === n.mallId);
+    if (!mall) return n.nombre;
+    return nombreLocal({
+      cliente: clientes.find((c) => String(c.id) === clienteSel)?.nombreFantasia,
+      marca: marcas.find((m) => String(m.id) === marcaSel)?.nombre,
+      sucursal: "",
+      mall: mall.nombre,
+    });
+  }
+
   const delCliente = sucursales.filter((s) => String(s.clienteId) === clienteSel);
 
   function cambiar(key: number, campo: keyof Nueva, valor: string) {
     setNuevas((prev) =>
       prev.map((n) => {
         if (n.key !== key) return n;
+        if (campo === "nombre") return { ...n, nombre: valor, manual: true };
         if (campo !== "mallId") return { ...n, [campo]: valor };
         // Como en el alta de una sucursal: el mall le pone nombre y ubicación.
         const mall = malls.find((m) => String(m.id) === valor);
-        if (!mall) return { ...n, mallId: valor };
+        if (!mall) return { ...n, mallId: valor, ...(n.manual ? null : { nombre: "" }) };
         return {
           ...n,
           mallId: valor,
-          nombre: mall.nombre,
+          ...(n.manual ? null : { nombre: mall.nombre }),
           direccion: mall.direccion,
           ...(mall.comuna ? { comuna: mall.comuna } : null),
           ...(mall.region ? { region: mall.region } : null),
@@ -120,14 +138,15 @@ export default function SucursalesLoteDialogo({
     if (!clienteSel) return "Elige el cliente.";
     if (!marcaSel) return "Elige la marca.";
     if (nuevas.length === 0) return "Agrega al menos una sucursal.";
-    const nombres = new Set(delCliente.map((s) => sinTildes(s.nombre.trim())));
+    const nombres = new Set(delCliente.filter((s) => String(s.marcaId) === marcaSel).map((s) => sinTildes(s.nombre.trim())));
     const codigos = new Set(delCliente.map((s) => (s.codigo ?? "").trim().toLowerCase()).filter(Boolean));
     for (const [i, n] of nuevas.entries()) {
       const cual = `Sucursal ${i + 1}`;
-      if (!n.nombre.trim()) return `${cual}: falta el nombre.`;
+      const nombreFinal = nombreDe(n).trim();
+      if (!nombreFinal) return `${cual}: falta el nombre.`;
       if (!n.direccion.trim() || !n.comuna.trim()) return `${cual}: faltan la dirección o la comuna.`;
-      const nombre = sinTildes(n.nombre.trim());
-      if (nombres.has(nombre)) return `${cual}: el cliente ya tiene (o repites) «${n.nombre.trim()}».`;
+      const nombre = sinTildes(nombreFinal);
+      if (nombres.has(nombre)) return `${cual}: el cliente ya tiene (o repites) «${nombreFinal}».`;
       nombres.add(nombre);
       const codigo = n.codigo.trim().toLowerCase();
       if (codigo) {
@@ -143,7 +162,7 @@ export default function SucursalesLoteDialogo({
     const vistas: { nombre: string; direccion: string; comuna: string }[] = [...delCliente];
     for (const [i, n] of nuevas.entries()) {
       const otra = conMismaDireccion(vistas, n.direccion, n.comuna);
-      if (otra) return `Sucursal ${i + 1} («${n.nombre.trim()}»): «${otra.nombre}» ya está en «${otra.direccion}».`;
+      if (otra) return `Sucursal ${i + 1} («${nombreDe(n).trim()}»): «${otra.nombre}» ya está en «${otra.direccion}».`;
       vistas.push(n);
     }
     return null;
@@ -179,7 +198,7 @@ export default function SucursalesLoteDialogo({
       Number(marcaSel),
       nuevas.map((n) => ({
         mallId: Number(n.mallId) || null,
-        nombre: n.nombre.trim(),
+        nombre: nombreDe(n).trim(),
         codigo: n.codigo.trim() || null,
         direccion: n.direccion.trim(),
         comuna: n.comuna.trim(),
@@ -201,7 +220,7 @@ export default function SucursalesLoteDialogo({
           ? `Crear ${nuevas.length} sucursales`
           : "Crear sucursal"
       }
-      nota="Al elegir un mall, la sucursal toma su nombre, dirección, comuna y región. Nada se guarda hasta confirmar: entonces se crean todas juntas."
+      nota="Al elegir un mall, la sucursal se llama «Cliente · Marca · Mall» y toma su dirección, comuna y región. Nada se guarda hasta confirmar: entonces se crean todas juntas."
       campos={[]}
       form={{}}
       onCampo={() => {}}
@@ -253,7 +272,7 @@ export default function SucursalesLoteDialogo({
           type="button"
           aria-expanded={!grupoPlegado}
           onClick={() => alternarGrupo(g.id)}
-          className="w-full flex items-center gap-2.5 min-h-10 px-3.5 bg-transparent border-2 border-[var(--color-text)] cursor-pointer text-left text-[var(--color-text)]"
+          className="w-full flex items-center gap-3 min-h-12 px-3.5 py-2 bg-[var(--color-text)] text-[var(--color-bg)] border-0 cursor-pointer text-left"
         >
           <svg
             width="16"
@@ -261,16 +280,21 @@ export default function SucursalesLoteDialogo({
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2.2"
+            strokeWidth="2.4"
             className="flex-none transition-transform"
             style={{ transform: `rotate(${grupoPlegado ? -90 : 0}deg)` }}
           >
             <path d="M6 9l6 6 6-6" />
           </svg>
-          <span className="font-extrabold text-cap truncate">
-            {mallDelGrupo ? mallDelGrupo.nombre : "Sin mall · a la calle"}
+          <span className="min-w-0">
+            <span className="block text-cap uppercase tracking-wider opacity-66">
+              {mallDelGrupo ? "Mall" : "A la calle"}
+            </span>
+            <span className="block font-extrabold text-ui truncate">
+              {mallDelGrupo ? mallDelGrupo.nombre : "Sin mall"}
+            </span>
           </span>
-          <span className="ml-auto flex-none text-cap opacity-66">
+          <span className="ml-auto flex-none text-cap font-bold tabular-nums border border-current px-2 py-0.5">
             {g.filas.length} {g.filas.length === 1 ? "sucursal" : "sucursales"}
           </span>
         </button>
@@ -278,11 +302,12 @@ export default function SucursalesLoteDialogo({
       {g.filas.map(({ n, i }) => {
         const plegada = plegadas.has(n.key);
         const mall = malls.find((m) => String(m.id) === n.mallId);
-        const titulo = mall ? mall.nombre : "Sin mall · a la calle";
-        // Plegado no se ve el formulario: el nombre de la sucursal ayuda a ubicar el bloque.
-        const subtitulo = n.nombre.trim() && n.nombre.trim() !== mall?.nombre ? n.nombre.trim() : `Sucursal ${i + 1}`;
+        const titulo = nombreDe(n).trim() || `Sucursal ${i + 1}`;
+        // Plegado no se ve el formulario: la ubicación ayuda a ubicar el bloque.
+        const subtitulo = [n.direccion.trim(), n.comuna.trim()].filter(Boolean).join(", ");
+        const incompleta = !nombreDe(n).trim() || !n.direccion.trim() || !n.comuna.trim();
         return (
-        <div key={n.key} className="mt-5 border border-black/[.3]">
+        <div key={n.key} className="mt-3 border border-black/[.3] border-l-4 border-l-[var(--color-text)]">
           <div className="flex items-center gap-2.5 pr-3.5 bg-[var(--color-surface)] border-b border-[var(--color-divider-soft)]">
             <button
               type="button"
@@ -303,10 +328,14 @@ export default function SucursalesLoteDialogo({
               >
                 <path d="M6 9l6 6 6-6" />
               </svg>
-              <span className="min-w-0">
-                <span className="block font-extrabold text-cap truncate">{titulo}</span>
-                <span className="block text-cap opacity-66 truncate">{subtitulo}</span>
+              <span className="w-6 h-6 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap tabular-nums">
+                {i + 1}
               </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-extrabold text-ui truncate">{titulo}</span>
+                <span className="block text-cap opacity-66 truncate">{subtitulo || "Falta la dirección"}</span>
+              </span>
+              {incompleta ? <span className="tag tag-outline flex-none">Falta completar</span> : null}
             </button>
             {nuevas.length > 1 ? (
               <button
@@ -344,7 +373,7 @@ export default function SucursalesLoteDialogo({
               <input
                 id={`sl-n-${n.key}`}
                 className="input"
-                value={n.nombre}
+                value={nombreDe(n)}
                 onChange={(e) => cambiar(n.key, "nombre", e.target.value)}
                 autoComplete="off"
               />

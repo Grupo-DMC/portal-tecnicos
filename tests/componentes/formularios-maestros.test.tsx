@@ -282,7 +282,7 @@ describe("formulario de sucursal", () => {
     const u = await abrir();
     await u.click(within(dialogo()).getByLabelText("Mall (opcional)"));
     await u.click(await screen.findByRole("option", { name: "Mall Plaza Norte" }));
-    expect(within(dialogo()).getByLabelText("Nombre de la sucursal")).toHaveValue("Mall Plaza Norte");
+    expect(within(dialogo()).getByLabelText("Nombre de la sucursal")).toHaveValue("Uno · Marca Uno · Mall Plaza Norte");
     expect(within(dialogo()).getByLabelText("Dirección")).toHaveValue("Av. Américo Vespucio 1737");
     expect(within(dialogo()).getByLabelText("Comuna")).toHaveValue("Huechuraba");
   });
@@ -416,7 +416,7 @@ describe("carga masiva de sucursales", () => {
     const u = abrir();
     await u.click(within(dialogo()).getByLabelText("Mall (opcional)"));
     await u.click(await screen.findByRole("option", { name: "Mall Plaza Norte" }));
-    expect(within(dialogo()).getByLabelText("Nombre de la sucursal")).toHaveValue("Mall Plaza Norte");
+    expect(within(dialogo()).getByLabelText("Nombre de la sucursal")).toHaveValue("Uno · Marca Uno · Mall Plaza Norte");
     expect(within(dialogo()).getByLabelText("Dirección")).toHaveValue("Av. Américo Vespucio 1737");
     expect(within(dialogo()).getByLabelText("Comuna")).toHaveValue("Huechuraba");
   });

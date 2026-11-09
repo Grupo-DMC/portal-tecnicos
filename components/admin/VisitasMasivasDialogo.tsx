@@ -11,6 +11,7 @@ import { fmtRut, fmtTel, mensajeRut } from "@/lib/ui/formato";
 import { hoyISO, fechaCL } from "@/lib/ui/fecha";
 import { algunoPideHora } from "@/lib/ui/motivos";
 import { cargoVigente } from "@/lib/ui/cargos";
+import { nombreLocal as nombreDeLocal } from "@/lib/ui/nombre-local";
 import { etiquetaPersona, usePersonasLocal } from "@/lib/ui/personas-local";
 import type { DatosVisita } from "@/lib/contratos/visitas";
 
@@ -97,6 +98,15 @@ export default function VisitasMasivasDialogo({
   // Solo las sucursales del cliente (o las tiendas del mall) elegido que
   // todavía no están en la ruta. En un mall hay tiendas de varios clientes:
   // ahí cada una se nombra con el suyo.
+  /** «Cliente · Marca · Sucursal» (o mall): igual que en el listado de sucursales. */
+  const nombreDeSucursal = (s: (typeof ref.sucursales)[number]) =>
+    nombreDeLocal({
+      cliente: ref.clientes.find((c) => c.id === s.clienteId)?.nombreFantasia,
+      marca: ref.marcas.find((m) => m.id === s.marcaId)?.nombre,
+      sucursal: s.nombre,
+      mall: ref.malls.find((m) => m.id === s.mallId)?.nombre,
+    });
+
   const sucursalesLibres = ref.sucursales
     .filter(
       (s) =>
@@ -104,12 +114,7 @@ export default function VisitasMasivasDialogo({
         (porMall ? String(s.mallId ?? "") === mallSel : String(s.clienteId) === clienteSel) &&
         !locales.some((l) => l.sucursalId === String(s.id))
     )
-    .map((s) => ({
-      v: String(s.id),
-      t: porMall
-        ? `${ref.clientes.find((c) => c.id === s.clienteId)?.nombreFantasia ?? ""} · ${s.nombre}`
-        : s.nombre,
-    }));
+    .map((s) => ({ v: String(s.id), t: nombreDeSucursal(s) }));
 
   const campos: CampoDef[] = [
     { k: "tecnicoId", label: "Técnico asignado", tipo: "select", buscable: true, opciones: opc.tecnicos },
@@ -185,9 +190,8 @@ export default function VisitasMasivasDialogo({
   }
 
   function nombreLocal(l: LocalRuta): string {
-    const cliente = ref.clientes.find((c) => String(c.id) === l.clienteId)?.nombreFantasia ?? "";
-    const sucursal = ref.sucursales.find((s) => String(s.id) === l.sucursalId)?.nombre ?? "";
-    return `${cliente} · ${sucursal}`;
+    const s = ref.sucursales.find((x) => String(x.id) === l.sucursalId);
+    return s ? nombreDeSucursal(s) : "";
   }
 
   async function guardar() {

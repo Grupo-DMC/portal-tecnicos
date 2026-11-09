@@ -120,7 +120,7 @@ export default function SucursalesTable({
       modulo="sucursales"
       addLabel="Nueva sucursal"
       editLabel="Editar sucursal"
-      nota="La sucursal siempre pertenece a un cliente y no se puede dejar sin él. El mall es opcional: elegirlo le pone a la sucursal la ubicación del mall y, si es nueva, también su nombre."
+      nota="La sucursal siempre pertenece a un cliente y no se puede dejar sin él. El mall es opcional: elegirlo le pone a la sucursal la ubicación del mall y, si es nueva, también su nombre: «Cliente · Marca · Mall»."
       phBusqueda="Buscar sucursal, comuna, mall, código…"
       rows={sucursales}
       filtros={{
@@ -350,17 +350,29 @@ export default function SucursalesTable({
         const otra = conMismaDireccion(delCliente, String(f.direccion), String(f.comuna));
         return otra ? `El cliente ya tiene la sucursal «${otra.nombre}» en «${otra.direccion}».` : null;
       }}
-      // La ubicación sigue al mall siempre. El nombre solo en un alta: una
+      // La ubicación sigue al mall siempre. El nombre, en un alta con mall, es
+      // «Cliente · Marca · Mall» y se rehace si cambia alguno de los tres: una
       // sucursal que ya existe no cambia de nombre por moverla de mall.
-      alCambiar={(k, v, _f, id): Record<string, string | boolean> | null => {
+      alCambiar={(k, v, f, id): Record<string, string | boolean> | null => {
+        const sig = { ...f, [k]: v };
         // Otro cliente, otras marcas: la elegida ya no vale.
-        if (k === "clienteId") return { marcaId: marcaInicial(String(v)) };
-        if (k !== "mallId") return null;
-        const mall = malls.find((m) => String(m.id) === v);
-        if (!mall) return null;
+        const marcaId = k === "clienteId" ? marcaInicial(String(v)) : String(sig.marcaId ?? "");
+        const mall = malls.find((m) => String(m.id) === String(sig.mallId));
+        const nombre =
+          id === null && mall
+            ? nombreLocal({
+                cliente: clientes.find((c) => String(c.id) === String(sig.clienteId))?.nombreFantasia,
+                marca: marcas.find((m) => String(m.id) === marcaId)?.nombre,
+                sucursal: "",
+                mall: mall.nombre,
+              })
+            : null;
+        if (k === "clienteId") return { marcaId, ...(nombre ? { nombre } : null) };
+        if (k === "marcaId") return nombre ? { nombre } : null;
+        if (k !== "mallId" || !mall) return null;
         // Los malls de antes de la migración 012 no tienen comuna ni región: ahí se deja lo escrito.
         return {
-          ...(id === null ? { nombre: mall.nombre } : null),
+          ...(nombre ? { nombre } : null),
           direccion: mall.direccion,
           ...(mall.comuna ? { comuna: mall.comuna } : null),
           ...(mall.region ? { region: mall.region } : null),

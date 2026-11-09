@@ -42,13 +42,17 @@ export async function modificarVisita(
 
   const fecha = cambios.fecha ?? v.fechaProgramada;
   const hora = cambios.hora ?? v.horaProgramada;
+  if (cambios.fechaHasta && cambios.fechaHasta <= fecha) {
+    return { error: "En el margen de días, la fecha «hasta» tiene que ser posterior a la primera." };
+  }
   const motivosAntes = v.motivosCodigos.length ? v.motivosCodigos : [v.motivoCodigo];
   const motivosAhora = cambios.motivosCodigos?.length ? [...new Set(cambios.motivosCodigos)] : motivosAntes;
   const trabajo = cambios.trabajoSolicitado?.trim() || v.trabajoSolicitado;
   const acceso = cambios.indicacionesAcceso?.trim() || v.indicacionesAcceso;
 
   const cambiaFecha = fecha !== v.fechaProgramada;
-  const mueve = cambiaFecha || hora !== v.horaProgramada || tecnicoId !== v.tecnicoId || ayudanteId !== v.tecnicoAyudanteId;
+  const cambiaMargen = Boolean(cambios.fechaHasta) && cambios.fechaHasta !== v.fechaHasta;
+  const mueve = cambiaFecha || cambiaMargen || hora !== v.horaProgramada || tecnicoId !== v.tecnicoId || ayudanteId !== v.tecnicoAyudanteId;
   const cambiaDetalle =
     motivosAhora.join("|") !== motivosAntes.join("|") ||
     trabajo !== v.trabajoSolicitado ||
@@ -67,7 +71,7 @@ export async function modificarVisita(
   // Una reagendada, pendiente o cancelada con fecha nueva se reprograma: queda
   // el registro del cambio de fecha y vuelve a Programada.
   const reprograma = cambiaFecha && VUELVE_A_PROGRAMADA.includes(v.estado);
-  const soloReprograma = reprograma && !cambiaDetalle && ayudanteId === v.tecnicoAyudanteId;
+  const soloReprograma = reprograma && !cambiaDetalle && !cambiaMargen && ayudanteId === v.tecnicoAyudanteId;
   if (soloReprograma) {
     if (!(await reprogramarVisita({ folio, tecnicoId, fecha, hora, usuarioId }))) {
       return { error: "No encontramos esa visita." };
@@ -85,7 +89,11 @@ export async function modificarVisita(
     fechaProgramada: fecha,
     // Reprogramar deja un día fijo; si no, el margen sigue mientras termine
     // después de la fecha nueva.
-    fechaHasta: !reprograma && v.fechaHasta && v.fechaHasta > fecha ? v.fechaHasta : null,
+    fechaHasta: cambios.fechaHasta
+      ? cambios.fechaHasta
+      : !reprograma && v.fechaHasta && v.fechaHasta > fecha
+        ? v.fechaHasta
+        : null,
     horaProgramada: hora,
     trabajoSolicitado: trabajo,
     indicacionesAcceso: acceso,

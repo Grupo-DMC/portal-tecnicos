@@ -282,11 +282,11 @@ describe("filtros del listado (viven en la URL: cambiar uno es navegar)", () => 
 });
 
 describe("botones según permisos", () => {
-  it("quien puede crear ve «Nueva visita», «Visitas masivas» y «Visitas en papel»", () => {
+  it("quien puede crear ve «Nueva visita» y «Visitas masivas»; «Visitas en papel» está desactivada", () => {
     pintar(tabla(), { permisos: PERMISOS_TOTALES });
     expect(screen.getByRole("button", { name: /Nueva visita/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Visitas masivas/ })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Visitas en papel/ })).toHaveAttribute("href", "/admin/visitas/papel");
+    expect(screen.queryByRole("link", { name: /Visitas en papel/ })).toBeNull();
   });
 
   it("quien solo puede ver no ve ninguno de crear", () => {

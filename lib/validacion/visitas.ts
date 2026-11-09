@@ -109,6 +109,7 @@ export const cambiosVisita = z.object({
   tecnicoId: idElegible.optional(),
   tecnicoAyudanteId: idElegible.nullable().optional(),
   fecha: fechaOVacia.optional(),
+  fechaHasta: fechaOVacia.optional(),
   hora: horaOVacia.optional(),
   motivosCodigos: arreglo(codigo, 30).optional(),
   trabajoSolicitado: textoLibre.optional(),

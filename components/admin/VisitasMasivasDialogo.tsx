@@ -352,7 +352,7 @@ export default function VisitasMasivasDialogo({
                 onClick={() => cambiar(l.sucursalId, { abierto: !l.abierto })}
                 className="flex-1 min-w-0 flex items-center gap-2.5 min-h-9 bg-transparent border-0 cursor-pointer text-[var(--color-text)] text-left"
               >
-                <span className="w-6 h-6 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap tabular-nums">
+                <span className="w-6 h-6 flex-none grid place-items-center bg-[var(--color-accent)] text-white font-extrabold text-cap tabular-nums">
                   {i + 1}
                 </span>
                 <span className="text-ui truncate">{nombreLocal(l)}</span>

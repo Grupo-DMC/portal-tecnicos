@@ -282,7 +282,8 @@ describe("formulario de sucursal", () => {
     const u = await abrir();
     await u.click(within(dialogo()).getByLabelText("Mall (opcional)"));
     await u.click(await screen.findByRole("option", { name: "Mall Plaza Norte" }));
-    expect(within(dialogo()).getByLabelText("Nombre de la sucursal")).toHaveValue("Uno · Marca Uno · Mall Plaza Norte");
+    // Con mall y marca el nombre se arma solo: el campo ya no se pide.
+    expect(within(dialogo()).queryByLabelText("Nombre de la sucursal")).toBeNull();
     expect(within(dialogo()).getByLabelText("Dirección")).toHaveValue("Av. Américo Vespucio 1737");
     expect(within(dialogo()).getByLabelText("Comuna")).toHaveValue("Huechuraba");
   });
@@ -344,7 +345,7 @@ describe("carga masiva de sucursales", () => {
 
   it("parte con el cliente elegido y su primera marca, y avisa cuántas sucursales ya tiene", () => {
     abrir();
-    expect(screen.getByText("Ya tiene 1 sucursal: no se pueden repetir nombres ni códigos.")).toBeInTheDocument();
+    expect(screen.getByText("Ya tiene 1 sucursal.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Crear sucursal" })).toBeInTheDocument();
   });
 
@@ -363,9 +364,9 @@ describe("carga masiva de sucursales", () => {
     await llenar(u, 1, { nombre: "Tienda B", direccion: "Calle B 2", comuna: "Maipú" });
     await u.click(within(dialogo()).getByRole("button", { name: "Crear 2 sucursales" }));
     await waitFor(() => expect(acciones.crearSucursalesLoteAction).toHaveBeenCalledTimes(1));
-    expect(acciones.crearSucursalesLoteAction).toHaveBeenCalledWith(1, 2, [
-      { mallId: null, nombre: "Tienda A", codigo: "A-1", direccion: "Calle A 1", comuna: "Santiago", region: "Arica y Parinacota" },
-      { mallId: null, nombre: "Tienda B", codigo: null, direccion: "Calle B 2", comuna: "Maipú", region: "Arica y Parinacota" },
+    expect(acciones.crearSucursalesLoteAction).toHaveBeenCalledWith([
+      { clienteId: 1, marcaId: 2, mallId: null, nombre: "Tienda A", codigo: "A-1", direccion: "Calle A 1", comuna: "Santiago", region: "Arica y Parinacota" },
+      { clienteId: 1, marcaId: 2, mallId: null, nombre: "Tienda B", codigo: null, direccion: "Calle B 2", comuna: "Maipú", region: "Arica y Parinacota" },
     ]);
     await waitFor(() => expect(alHacer).toHaveBeenCalledWith("2 sucursales creadas", true));
     expect(alCerrar).toHaveBeenCalled();
@@ -416,9 +417,26 @@ describe("carga masiva de sucursales", () => {
     const u = abrir();
     await u.click(within(dialogo()).getByLabelText("Mall (opcional)"));
     await u.click(await screen.findByRole("option", { name: "Mall Plaza Norte" }));
-    expect(within(dialogo()).getByLabelText("Nombre de la sucursal")).toHaveValue("Uno · Marca Uno · Mall Plaza Norte");
+    expect(within(dialogo()).queryByLabelText("Nombre de la sucursal")).toBeNull();
     expect(within(dialogo()).getByLabelText("Dirección")).toHaveValue("Av. Américo Vespucio 1737");
     expect(within(dialogo()).getByLabelText("Comuna")).toHaveValue("Huechuraba");
+  });
+
+  it("cada tarjeta tiene su cliente y marca: una carga puede mezclar varios clientes", async () => {
+    acciones.crearSucursalesLoteAction.mockResolvedValue({ ok: true, creadas: 2 });
+    const u = abrir();
+    await u.click(screen.getByRole("button", { name: /Agregar otra sucursal/ }));
+    await llenar(u, 0, { nombre: "Tienda A", direccion: "Calle A 1", comuna: "Santiago" });
+    await llenar(u, 1, { nombre: "Tienda B", direccion: "Calle B 2", comuna: "Maipú" });
+    await u.click(within(dialogo()).getAllByLabelText("Cliente")[1]);
+    await u.click(await screen.findByRole("option", { name: "Dos" }));
+    await u.click(within(dialogo()).getByRole("button", { name: "Crear 2 sucursales" }));
+    await waitFor(() => expect(acciones.crearSucursalesLoteAction).toHaveBeenCalledTimes(1));
+    const filas = acciones.crearSucursalesLoteAction.mock.calls[0][0];
+    expect(filas.map((f: { clienteId: number; marcaId: number }) => [f.clienteId, f.marcaId])).toEqual([
+      [1, 2],
+      [2, 3],
+    ]);
   });
 
   it("«Quitar» saca una tarjeta", async () => {

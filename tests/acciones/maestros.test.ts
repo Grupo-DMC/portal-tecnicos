@@ -270,6 +270,8 @@ describe("sucursales", () => {
 
   describe("crearSucursalesLoteAction (carga masiva)", () => {
     const fila = (extra: Record<string, unknown> = {}) => ({
+      clienteId: 1,
+      marcaId: 2,
       mallId: null,
       nombre: "Tienda 1",
       codigo: null,
@@ -281,17 +283,17 @@ describe("sucursales", () => {
 
     it("crea todas y devuelve cuántas", async () => {
       vi.mocked(crearSucursalesLote).mockResolvedValue(2);
-      expect(await acc.crearSucursalesLoteAction(1, 2, [fila(), fila({ nombre: "Tienda 2" })] as never)).toEqual({ ok: true, creadas: 2 });
-      expect(crearSucursalesLote).toHaveBeenCalledWith(1, 2, expect.arrayContaining([expect.objectContaining({ nombre: "Tienda 2" })]));
+      expect(await acc.crearSucursalesLoteAction([fila(), fila({ nombre: "Tienda 2" })] as never)).toEqual({ ok: true, creadas: 2 });
+      expect(crearSucursalesLote).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ nombre: "Tienda 2" })]));
     });
 
     it("sin filas no hay nada por crear", async () => {
-      expect((await acc.crearSucursalesLoteAction(1, 2, [])).error).toBe("No hay sucursales por crear.");
+      expect((await acc.crearSucursalesLoteAction([])).error).toBe("No hay sucursales por crear.");
     });
 
     it("una fila incompleta frena todo el lote (nada queda a medias)", async () => {
       for (const campo of ["nombre", "direccion", "comuna", "region"]) {
-        const r = await acc.crearSucursalesLoteAction(1, 2, [fila(), fila({ [campo]: " " })] as never);
+        const r = await acc.crearSucursalesLoteAction([fila(), fila({ [campo]: " " })] as never);
         expect(r.error, campo).toBe("Cada sucursal necesita nombre, dirección, comuna y región.");
       }
       expect(crearSucursalesLote).not.toHaveBeenCalled();
@@ -299,13 +301,13 @@ describe("sucursales", () => {
 
     it("rechaza lotes de más de 1000 filas", async () => {
       const mil1 = Array.from({ length: 1001 }, (_, i) => fila({ nombre: `T${i}` }));
-      expect((await acc.crearSucursalesLoteAction(1, 2, mil1 as never)).ok).toBe(false);
+      expect((await acc.crearSucursalesLoteAction(mil1 as never)).ok).toBe(false);
       expect(crearSucursalesLote).not.toHaveBeenCalled();
     });
 
     it("si la base falla, informa sin éxito parcial", async () => {
       vi.mocked(crearSucursalesLote).mockRejectedValue(new Error("constraint uq_sucursal_codigo"));
-      const r = await acc.crearSucursalesLoteAction(1, 2, [fila()] as never);
+      const r = await acc.crearSucursalesLoteAction([fila()] as never);
       expect(r).toEqual({ ok: false, error: "Ya existe una sucursal con ese código." });
     });
   });

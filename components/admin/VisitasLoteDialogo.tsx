@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Tag from "@/components/Tag";
 import Dialogo, { CasillasMultiples, leerChecks, type CampoDef, type FormValores } from "@/components/admin/Dialogo";
 import SelectBuscable from "@/components/ui/SelectBuscable";
-import { opciones } from "@/components/admin/VisitaDialogos";
+import { camposFecha, opciones } from "@/components/admin/VisitaDialogos";
 import {
   cancelarVisitasAdminAction,
   eliminarVisitasAction,
@@ -25,6 +25,8 @@ interface Propio {
   tecnicoId: string;
   ayudanteId: string;
   fecha: string;
+  /** Margen de días: el último día. Vacío = usa el de arriba, si hay. */
+  fechaHasta: string;
   hora: string;
   motivoCodigo: string;
   trabajo: string;
@@ -40,7 +42,7 @@ interface Fila {
   propio: Propio;
 }
 
-const PROPIOS = ["tecnicoId", "ayudanteId", "fecha", "hora", "motivoCodigo", "trabajo", "acceso", "motivo"] as const;
+const PROPIOS = ["tecnicoId", "ayudanteId", "fecha", "fechaHasta", "hora", "motivoCodigo", "trabajo", "acceso", "motivo"] as const;
 type CampoPropio = (typeof PROPIOS)[number];
 
 const SIN_PROPIO: Propio = {
@@ -48,6 +50,7 @@ const SIN_PROPIO: Propio = {
   tecnicoId: "",
   ayudanteId: "",
   fecha: "",
+  fechaHasta: "",
   hora: "",
   motivoCodigo: "",
   trabajo: "",
@@ -94,6 +97,8 @@ export default function VisitasLoteDialogo({
     tecnicoId: "",
     ayudanteId: "",
     fecha: "",
+    margen: false,
+    fechaHasta: "",
     hora: "",
     motivoCodigo: "",
     trabajo: "",
@@ -128,7 +133,11 @@ export default function VisitasLoteDialogo({
             buscable: true,
             opciones: [{ v: "", t: "No cambiar" }, ...opcAyudante(String(form.tecnicoId))],
           },
-          { k: "fecha", label: "Nueva fecha · para todas", tipo: "date", ayuda: "Vacía = cada visita conserva la suya." },
+          ...camposFecha(form, "Vacía = cada visita conserva la suya.").map((c) => ({
+            ...c,
+            label: c.k === "fecha" ? (form.margen === true ? "Desde · para todas" : "Nueva fecha · para todas") : "Hasta · para todas",
+            ...(c.k === "fechaHasta" ? { ayuda: undefined } : null),
+          })),
           { k: "hora", label: "Nueva hora · para todas", tipo: "time", ayuda: "Vacía = cada visita conserva la suya." },
           {
             k: "motivoCodigo",
@@ -196,6 +205,7 @@ export default function VisitasLoteDialogo({
     const tecnico = p.tecnicoId || String(form.tecnicoId);
     const ayudante = p.ayudanteId || String(form.ayudanteId);
     const fecha = p.fecha || String(form.fecha);
+    const hasta = p.fechaHasta || (form.margen === true ? String(form.fechaHasta) : "");
     const hora = p.hora || String(form.hora);
     const motivos = leerChecks(p.motivoCodigo).length ? leerChecks(p.motivoCodigo) : leerChecks(form.motivoCodigo);
     const trabajo = p.trabajo.trim() || String(form.trabajo).trim();
@@ -207,10 +217,14 @@ export default function VisitasLoteDialogo({
       cambios.tecnicoAyudanteId = ayudante === VA_SOLO ? null : Number(ayudante);
     }
     if (fecha) cambios.fecha = fecha;
+    if (hasta) cambios.fechaHasta = hasta;
     if (hora) cambios.hora = hora;
     if (motivos.length) cambios.motivosCodigos = motivos;
     if (trabajo) cambios.trabajoSolicitado = trabajo;
     if (acceso) cambios.indicacionesAcceso = acceso;
+    if (form.margen === true && !String(form.fechaHasta) && !p.fechaHasta) {
+      return "marcaste margen de días: falta la fecha «hasta».";
+    }
     return Object.keys(cambios).length ? cambios : "no tiene ningún cambio. Ponle uno, arriba o dentro de ella, o quítala de la lista.";
   }
 
@@ -419,6 +433,7 @@ export default function VisitasLoteDialogo({
                   />
                 </div>
                 <CampoFila folio={v.folio} k="fecha" valor={p.fecha} label="Nueva fecha · solo esta" tipo="date" onCambiar={cambiar} />
+                <CampoFila folio={v.folio} k="fechaHasta" valor={p.fechaHasta} label="Hasta (margen de días) · solo esta" tipo="date" onCambiar={cambiar} />
                 <CampoFila folio={v.folio} k="hora" valor={p.hora} label="Nueva hora · solo esta" tipo="time" onCambiar={cambiar} />
                 <div className="field min-w-0 sm:col-span-2">
                   <label>Motivo de la visita · solo esta</label>

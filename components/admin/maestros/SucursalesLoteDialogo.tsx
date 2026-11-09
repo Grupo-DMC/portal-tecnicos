@@ -16,20 +16,21 @@ import type { Cliente, Mall, Sucursal } from "@/lib/types";
 /** Una sucursal por crear, todavía en pantalla. `mallId` "" = sin mall. */
 interface Nueva {
   key: number;
+  /** Cada sucursal lleva su cliente y su marca: en una misma carga pueden ser varios. */
+  clienteId: string;
+  marcaId: string;
   mallId: string;
   nombre: string;
   codigo: string;
   direccion: string;
   comuna: string;
   region: string;
-  /** El nombre lo escribió la persona: deja de seguir a «Cliente · Marca · Mall». */
-  manual: boolean;
 }
 
 /**
  * Alta masiva de sucursales de un cliente. Mismos campos y misma forma que el
- * formulario de una sucursal, repetidos en una tarjeta por tienda. Nada se
- * guarda hasta confirmar: ahí entran todas juntas.
+ * formulario de una sucursal, repetidos en una tarjeta por tienda, cada una con
+ * su cliente y su marca. Nada se guarda hasta confirmar: ahí entran todas juntas.
  */
 export default function SucursalesLoteDialogo({
   sucursales,
@@ -48,16 +49,6 @@ export default function SucursalesLoteDialogo({
 }) {
   const { marcas } = useReferencias();
   const contador = useRef(0);
-  const vacia = (): Nueva => ({
-    key: ++contador.current,
-    mallId: "",
-    nombre: "",
-    codigo: "",
-    direccion: "",
-    comuna: "",
-    region: REGIONES[0],
-    manual: false,
-  });
 
   const opcClientes = clientes
     .filter((c) => c.activo)
@@ -68,12 +59,24 @@ export default function SucursalesLoteDialogo({
   ];
   const opcRegiones = REGIONES.map((r) => ({ v: r, t: r }));
 
-  const [clienteSel, setClienteSel] = useState(
-    opcClientes.some((o) => o.v === clienteInicial) ? clienteInicial : (opcClientes[0]?.v ?? "")
-  );
   const marcasDe = (cliente: string) => marcas.filter((m) => m.activo && String(m.clienteId) === cliente);
-  const [marcaSel, setMarcaSel] = useState(() => String(marcasDe(clienteSel)[0]?.id ?? ""));
-  const [nuevas, setNuevas] = useState<Nueva[]>(() => [vacia()]);
+  const clienteDeInicio = opcClientes.some((o) => o.v === clienteInicial) ? clienteInicial : (opcClientes[0]?.v ?? "");
+  /** Una tarjeta nueva repite el cliente y la marca de la anterior: lo común es cargar varias del mismo. */
+  const vacia = (clienteId: string, marcaId: string): Nueva => ({
+    key: ++contador.current,
+    clienteId,
+    marcaId,
+    mallId: "",
+    nombre: "",
+    codigo: "",
+    direccion: "",
+    comuna: "",
+    region: REGIONES[0],
+  });
+
+  const [nuevas, setNuevas] = useState<Nueva[]>(() => [
+    vacia(clienteDeInicio, String(marcasDe(clienteDeInicio)[0]?.id ?? "")),
+  ]);
   const [guardando, setGuardando] = useState(false);
   /** Los bloques plegados, por `key`: solo se ve el título del mall. */
   const [plegadas, setPlegadas] = useState<Set<number>>(() => new Set());
@@ -97,34 +100,33 @@ export default function SucursalesLoteDialogo({
     });
   }
 
-  /** Con mall, el nombre es «Cliente · Marca · Mall» salvo que la persona lo haya escrito. */
+  /** Con mall y marca, el nombre es «Cliente · Marca · Mall» y no se pide; sin mall lo escribe la persona. */
   function nombreDe(n: Nueva): string {
-    if (n.manual || !n.mallId) return n.nombre;
     const mall = malls.find((m) => String(m.id) === n.mallId);
-    if (!mall) return n.nombre;
+    if (!mall || !n.marcaId) return n.nombre;
     return nombreLocal({
-      cliente: clientes.find((c) => String(c.id) === clienteSel)?.nombreFantasia,
-      marca: marcas.find((m) => String(m.id) === marcaSel)?.nombre,
+      cliente: clientes.find((c) => String(c.id) === n.clienteId)?.nombreFantasia,
+      marca: marcas.find((m) => String(m.id) === n.marcaId)?.nombre,
       sucursal: "",
       mall: mall.nombre,
     });
   }
 
-  const delCliente = sucursales.filter((s) => String(s.clienteId) === clienteSel);
+  const delCliente = (cliente: string) => sucursales.filter((s) => String(s.clienteId) === cliente);
 
   function cambiar(key: number, campo: keyof Nueva, valor: string) {
     setNuevas((prev) =>
       prev.map((n) => {
         if (n.key !== key) return n;
-        if (campo === "nombre") return { ...n, nombre: valor, manual: true };
+        // Otro cliente, otras marcas: la elegida ya no vale.
+        if (campo === "clienteId") return { ...n, clienteId: valor, marcaId: String(marcasDe(valor)[0]?.id ?? "") };
         if (campo !== "mallId") return { ...n, [campo]: valor };
-        // Como en el alta de una sucursal: el mall le pone nombre y ubicación.
+        // Como en el alta de una sucursal: el mall le pone ubicación (y nombre, si hay marca).
         const mall = malls.find((m) => String(m.id) === valor);
-        if (!mall) return { ...n, mallId: valor, ...(n.manual ? null : { nombre: "" }) };
+        if (!mall) return { ...n, mallId: valor };
         return {
           ...n,
           mallId: valor,
-          ...(n.manual ? null : { nombre: mall.nombre }),
           direccion: mall.direccion,
           ...(mall.comuna ? { comuna: mall.comuna } : null),
           ...(mall.region ? { region: mall.region } : null),
@@ -135,23 +137,27 @@ export default function SucursalesLoteDialogo({
 
   /** El texto del primer problema, o null si todo está listo para guardar. */
   function problema(): string | null {
-    if (!clienteSel) return "Elige el cliente.";
-    if (!marcaSel) return "Elige la marca.";
     if (nuevas.length === 0) return "Agrega al menos una sucursal.";
-    const nombres = new Set(delCliente.filter((s) => String(s.marcaId) === marcaSel).map((s) => sinTildes(s.nombre.trim())));
-    const codigos = new Set(delCliente.map((s) => (s.codigo ?? "").trim().toLowerCase()).filter(Boolean));
+    // Los nombres no se repiten dentro de un cliente y marca; los códigos, dentro de un cliente.
+    const nombres = new Set(sucursales.map((s) => `${s.clienteId}|${s.marcaId}|${sinTildes(s.nombre.trim())}`));
+    const codigos = new Set(
+      sucursales.filter((s) => s.codigo?.trim()).map((s) => `${s.clienteId}|${(s.codigo ?? "").trim().toLowerCase()}`)
+    );
     for (const [i, n] of nuevas.entries()) {
       const cual = `Sucursal ${i + 1}`;
+      if (!n.clienteId) return `${cual}: elige el cliente.`;
+      if (!n.marcaId) return `${cual}: elige la marca.`;
       const nombreFinal = nombreDe(n).trim();
       if (!nombreFinal) return `${cual}: falta el nombre.`;
       if (!n.direccion.trim() || !n.comuna.trim()) return `${cual}: faltan la dirección o la comuna.`;
-      const nombre = sinTildes(nombreFinal);
+      const nombre = `${n.clienteId}|${n.marcaId}|${sinTildes(nombreFinal)}`;
       if (nombres.has(nombre)) return `${cual}: el cliente ya tiene (o repites) «${nombreFinal}».`;
       nombres.add(nombre);
       const codigo = n.codigo.trim().toLowerCase();
       if (codigo) {
-        if (codigos.has(codigo)) return `${cual}: el código ${n.codigo.trim()} ya existe (o está repetido).`;
-        codigos.add(codigo);
+        const clave = `${n.clienteId}|${codigo}`;
+        if (codigos.has(clave)) return `${cual}: el código ${n.codigo.trim()} ya existe (o está repetido).`;
+        codigos.add(clave);
       }
     }
     return null;
@@ -159,11 +165,20 @@ export default function SucursalesLoteDialogo({
 
   /** Avisa de una dirección que el cliente ya tiene (o que se repite en esta carga). */
   function advertencia(): string | null {
-    const vistas: { nombre: string; direccion: string; comuna: string }[] = [...delCliente];
+    const vistas: { clienteId: string; nombre: string; direccion: string; comuna: string }[] = sucursales.map((s) => ({
+      clienteId: String(s.clienteId),
+      nombre: s.nombre,
+      direccion: s.direccion,
+      comuna: s.comuna,
+    }));
     for (const [i, n] of nuevas.entries()) {
-      const otra = conMismaDireccion(vistas, n.direccion, n.comuna);
+      const otra = conMismaDireccion(
+        vistas.filter((v) => v.clienteId === n.clienteId),
+        n.direccion,
+        n.comuna
+      );
       if (otra) return `Sucursal ${i + 1} («${nombreDe(n).trim()}»): «${otra.nombre}» ya está en «${otra.direccion}».`;
-      vistas.push(n);
+      vistas.push({ clienteId: n.clienteId, nombre: nombreDe(n), direccion: n.direccion, comuna: n.comuna });
     }
     return null;
   }
@@ -194,9 +209,9 @@ export default function SucursalesLoteDialogo({
     if (error) return onHecho(error, false);
     setGuardando(true);
     const res = await crearSucursalesLoteAction(
-      Number(clienteSel),
-      Number(marcaSel),
       nuevas.map((n) => ({
+        clienteId: Number(n.clienteId),
+        marcaId: Number(n.marcaId),
         mallId: Number(n.mallId) || null,
         nombre: nombreDe(n).trim(),
         codigo: n.codigo.trim() || null,
@@ -220,7 +235,7 @@ export default function SucursalesLoteDialogo({
           ? `Crear ${nuevas.length} sucursales`
           : "Crear sucursal"
       }
-      nota="Al elegir un mall, la sucursal se llama «Cliente · Marca · Mall» y toma su dirección, comuna y región. Nada se guarda hasta confirmar: entonces se crean todas juntas."
+      nota="Cada sucursal lleva su cliente y su marca: puedes cargar de varios clientes a la vez. Al elegir un mall, la sucursal se llama «Cliente · Marca · Mall» y toma su dirección, comuna y región. Nada se guarda hasta confirmar: entonces se crean todas juntas."
       campos={[]}
       form={{}}
       onCampo={() => {}}
@@ -228,41 +243,6 @@ export default function SucursalesLoteDialogo({
       onGuardar={intentar}
       guardando={guardando}
     >
-      <div className="field min-w-0">
-        <label htmlFor="sl-cliente">Cliente</label>
-        <SelectConAlta
-          alta="cliente"
-          id="sl-cliente"
-          valor={clienteSel}
-          opciones={opcClientes}
-          onChange={(v) => {
-            setClienteSel(v);
-            setMarcaSel(String(marcasDe(v)[0]?.id ?? ""));
-          }}
-          ariaLabel="Cliente"
-        />
-        {clienteSel ? (
-          <div className="text-cap leading-[1.4] opacity-66 mt-1.5">
-            {delCliente.length === 0
-              ? "Todavía no tiene sucursales."
-              : `Ya tiene ${delCliente.length} ${delCliente.length === 1 ? "sucursal" : "sucursales"}: no se pueden repetir nombres ni códigos.`}
-          </div>
-        ) : null}
-      </div>
-
-      <div className="field min-w-0 mt-4">
-        <label htmlFor="sl-marca">Marca</label>
-        <SelectConAlta
-          alta="marca"
-          clienteId={clienteSel}
-          id="sl-marca"
-          valor={marcaSel}
-          opciones={marcasDe(clienteSel).map((m) => ({ v: String(m.id), t: m.nombre }))}
-          onChange={setMarcaSel}
-          ariaLabel="Marca"
-        />
-      </div>
-
       {grupos.map((g) => {
         const mallDelGrupo = malls.find((m) => String(m.id) === g.id);
         const grupoPlegado = gruposPlegados.has(g.id);
@@ -272,7 +252,7 @@ export default function SucursalesLoteDialogo({
           type="button"
           aria-expanded={!grupoPlegado}
           onClick={() => alternarGrupo(g.id)}
-          className="w-full flex items-center gap-3 min-h-12 px-3.5 py-2 bg-[var(--color-text)] text-[var(--color-bg)] border-0 cursor-pointer text-left"
+          className="w-full flex items-center gap-3 min-h-12 px-3.5 py-2 bg-[var(--color-accent)] text-white border-0 cursor-pointer text-left"
         >
           <svg
             width="16"
@@ -301,13 +281,12 @@ export default function SucursalesLoteDialogo({
         <div className={grupoPlegado ? "hidden" : "block"}>
       {g.filas.map(({ n, i }) => {
         const plegada = plegadas.has(n.key);
-        const mall = malls.find((m) => String(m.id) === n.mallId);
         const titulo = nombreDe(n).trim() || `Sucursal ${i + 1}`;
         // Plegado no se ve el formulario: la ubicación ayuda a ubicar el bloque.
         const subtitulo = [n.direccion.trim(), n.comuna.trim()].filter(Boolean).join(", ");
         const incompleta = !nombreDe(n).trim() || !n.direccion.trim() || !n.comuna.trim();
         return (
-        <div key={n.key} className="mt-3 border border-black/[.3] border-l-4 border-l-[var(--color-text)]">
+        <div key={n.key} className="mt-3 border border-black/[.3] border-l-4 border-l-[var(--color-accent)]">
           <div className="flex items-center gap-2.5 pr-3.5 bg-[var(--color-surface)] border-b border-[var(--color-divider-soft)]">
             <button
               type="button"
@@ -328,7 +307,7 @@ export default function SucursalesLoteDialogo({
               >
                 <path d="M6 9l6 6 6-6" />
               </svg>
-              <span className="w-6 h-6 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap tabular-nums">
+              <span className="w-6 h-6 flex-none grid place-items-center bg-[var(--color-accent)] text-white font-extrabold text-cap tabular-nums">
                 {i + 1}
               </span>
               <span className="min-w-0 flex-1">
@@ -355,6 +334,36 @@ export default function SucursalesLoteDialogo({
             id={`sl-bloque-${n.key}`}
             className={`${plegada ? "hidden" : "grid"} grid-cols-1 sm:grid-cols-2 gap-4 p-3.5 sm:p-4`}
           >
+            <div className="field min-w-0">
+              <label htmlFor={`sl-cli-${n.key}`}>Cliente</label>
+              <SelectConAlta
+                alta="cliente"
+                id={`sl-cli-${n.key}`}
+                valor={n.clienteId}
+                opciones={opcClientes}
+                onChange={(v) => cambiar(n.key, "clienteId", v)}
+                ariaLabel="Cliente"
+              />
+              {n.clienteId ? (
+                <div className="text-cap leading-[1.4] opacity-66 mt-1.5">
+                  {delCliente(n.clienteId).length === 0
+                    ? "Todavía no tiene sucursales."
+                    : `Ya tiene ${delCliente(n.clienteId).length} ${delCliente(n.clienteId).length === 1 ? "sucursal" : "sucursales"}.`}
+                </div>
+              ) : null}
+            </div>
+            <div className="field min-w-0">
+              <label htmlFor={`sl-mar-${n.key}`}>Marca</label>
+              <SelectConAlta
+                alta="marca"
+                clienteId={n.clienteId}
+                id={`sl-mar-${n.key}`}
+                valor={n.marcaId}
+                opciones={marcasDe(n.clienteId).map((m) => ({ v: String(m.id), t: m.nombre }))}
+                onChange={(v) => cambiar(n.key, "marcaId", v)}
+                ariaLabel="Marca"
+              />
+            </div>
             {malls.length > 0 ? (
               <div className="field min-w-0 sm:col-span-2">
                 <label htmlFor={`sl-mall-${n.key}`}>Mall (opcional)</label>
@@ -368,16 +377,18 @@ export default function SucursalesLoteDialogo({
                 />
               </div>
             ) : null}
-            <div className="field min-w-0">
-              <label htmlFor={`sl-n-${n.key}`}>Nombre de la sucursal</label>
-              <input
-                id={`sl-n-${n.key}`}
-                className="input"
-                value={nombreDe(n)}
-                onChange={(e) => cambiar(n.key, "nombre", e.target.value)}
-                autoComplete="off"
-              />
-            </div>
+            {n.mallId && n.marcaId ? null : (
+              <div className="field min-w-0">
+                <label htmlFor={`sl-n-${n.key}`}>Nombre de la sucursal</label>
+                <input
+                  id={`sl-n-${n.key}`}
+                  className="input"
+                  value={n.nombre}
+                  onChange={(e) => cambiar(n.key, "nombre", e.target.value)}
+                  autoComplete="off"
+                />
+              </div>
+            )}
             <div className="field min-w-0">
               <label htmlFor={`sl-c-${n.key}`}>Código interno (opcional)</label>
               <input
@@ -430,7 +441,12 @@ export default function SucursalesLoteDialogo({
 
       <button
         type="button"
-        onClick={() => setNuevas((prev) => [...prev, vacia()])}
+        onClick={() =>
+          setNuevas((prev) => {
+            const ultima = prev[prev.length - 1];
+            return [...prev, vacia(ultima?.clienteId ?? clienteDeInicio, ultima?.marcaId ?? "")];
+          })
+        }
         className="btn btn-secondary w-full min-h-11 mt-4 justify-center"
       >
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">

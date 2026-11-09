@@ -63,6 +63,8 @@ export interface CambiosVisita {
   /** null = pasa a ir solo. */
   tecnicoAyudanteId?: number | null;
   fecha?: string;
+  /** Margen de días: el último día para hacerla. Debe ser posterior a la fecha que quede. */
+  fechaHasta?: string;
   hora?: string;
   motivosCodigos?: string[];
   trabajoSolicitado?: string;

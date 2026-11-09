@@ -201,22 +201,20 @@ export async function guardarSucursalAction(idPedido: number | null, datosPedido
   return { ok: true, id: guardadoId };
 }
 
-/** Alta masiva: todas las sucursales nuevas de un cliente, en un solo INSERT. */
+/** Alta masiva: las sucursales nuevas, cada una con su cliente y marca, en un solo INSERT. */
 export async function crearSucursalesLoteAction(
-  clientePedido: number,
-  marcaPedida: number,
   filasPedidas: DatosSucursalLote[]
 ): Promise<ResultadoMaestro & { creadas?: number }> {
   if (!(await sesionCon("sucursales.crear"))) return { ok: false, error: "No tienes permiso para crear sucursales." };
-  const entrada = validar(entradaSucursalesLote, { clienteId: clientePedido, marcaId: marcaPedida, filas: filasPedidas }, "crearSucursalesLote");
+  const entrada = validar(entradaSucursalesLote, { filas: filasPedidas }, "crearSucursalesLote");
   if (!entrada.ok) return { ok: false, error: entrada.error };
-  const { clienteId, marcaId, filas } = entrada.datos;
-  if (!clienteId || !marcaId || filas.length === 0) return { ok: false, error: "No hay sucursales por crear." };
+  const { filas } = entrada.datos;
+  if (filas.length === 0) return { ok: false, error: "No hay sucursales por crear." };
   if (filas.some((f) => !f.nombre.trim() || !f.direccion.trim() || !f.comuna.trim() || !f.region.trim())) {
     return { ok: false, error: "Cada sucursal necesita nombre, dirección, comuna y región." };
   }
   try {
-    const creadas = await crearSucursalesLote(clienteId, marcaId, filas);
+    const creadas = await crearSucursalesLote(filas);
     revalidar();
     return { ok: true, creadas };
   } catch (err) {

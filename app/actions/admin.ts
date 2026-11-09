@@ -525,6 +525,11 @@ export async function modificarVisitasAction(
       if (!/^\d{2}:\d{2}/.test(c.hora)) return loteRechazado(`${folio}: la hora no es válida.`);
       limpio.hora = c.hora;
     }
+    if (c.fechaHasta) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(c.fechaHasta)) return loteRechazado(`${folio}: la fecha «hasta» no es válida.`);
+      if (limpio.fecha && c.fechaHasta <= limpio.fecha) return loteRechazado(`${folio}: ${ERROR_MARGEN}`);
+      limpio.fechaHasta = c.fechaHasta;
+    }
     const motivos = (c.motivosCodigos ?? []).filter(Boolean);
     if (motivos.length) limpio.motivosCodigos = motivos;
     if (c.trabajoSolicitado?.trim()) limpio.trabajoSolicitado = c.trabajoSolicitado.trim();

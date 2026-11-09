@@ -319,6 +319,15 @@ describe("acciones para múltiples visitas", () => {
       expect(r).toEqual({ ok: false, hechas: ["V-1", "V-3"], fallidas: [{ folio: "V-2", error: "Ya está completada." }] });
     });
 
+    it("acepta un margen de días, que debe terminar después de la fecha nueva", async () => {
+      vi.mocked(modificarVisita).mockResolvedValue(null as never);
+      const ok = await admin.modificarVisitasAction([{ folio: "V-1", cambios: { fecha: "2026-11-03", fechaHasta: "2026-11-10" } }]);
+      expect(ok.ok).toBe(true);
+      expect(modificarVisita).toHaveBeenCalledWith("V-1", { fecha: "2026-11-03", fechaHasta: "2026-11-10" }, expect.anything(), expect.anything());
+      const mal = await admin.modificarVisitasAction([{ folio: "V-1", cambios: { fecha: "2026-11-03", fechaHasta: "2026-11-03" } }]);
+      expect(mal.error).toMatch(/posterior/);
+    });
+
     it("rechaza una tanda vacía, repetida, o con una visita sin cambios", async () => {
       expect((await admin.modificarVisitasAction([])).error).toBe("No hay ninguna visita seleccionada.");
       expect(

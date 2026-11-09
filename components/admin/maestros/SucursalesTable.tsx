@@ -290,7 +290,12 @@ export default function SucursalesTable({
           ],
           ayuda: "Al elegirlo, la sucursal toma la dirección, la comuna y la región del mall. Sin mall, escribe la dirección de la calle.",
         },
-        { k: "nombre", label: "Nombre de la sucursal" },
+        {
+          // Con mall y marca el nombre es «Cliente · Marca · Mall»: pedirlo sobra.
+          k: "nombre",
+          label: "Nombre de la sucursal",
+          visible: (f) => !(f.mallId && f.marcaId),
+        },
         { k: "codigo", label: "Código interno (opcional)", ph: "MS-118" },
         { k: "telefono", label: "Teléfono", tipo: "tel", ph: "+56 2 2299 4100" },
         { k: "direccion", label: "Dirección", span: 2 },

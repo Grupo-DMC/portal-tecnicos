@@ -437,6 +437,8 @@ export async function guardarSucursal(id: number | null, d: DatosSucursal): Prom
 
 /** Una sucursal nueva dentro de un alta masiva. */
 export interface DatosSucursalLote {
+  clienteId: number;
+  marcaId: number;
   mallId: number | null;
   nombre: string;
   codigo: string | null;
@@ -446,12 +448,14 @@ export interface DatosSucursalLote {
 }
 
 /**
- * Crea todas las sucursales de un cliente en un solo INSERT: o entran todas o
- * ninguna. Las filas viajan como JSON, igual que en `ponerTiendasDeMall`.
+ * Crea todas las sucursales nuevas, cada una con su cliente y su marca, en un
+ * solo INSERT: o entran todas o ninguna. Las filas viajan como JSON, igual que en `ponerTiendasDeMall`.
  */
-export async function crearSucursalesLote(clienteId: number, marcaId: number, filas: DatosSucursalLote[]): Promise<number> {
+export async function crearSucursalesLote(filas: DatosSucursalLote[]): Promise<number> {
   const json = JSON.stringify(
     filas.map((f) => ({
+      cliente: f.clienteId,
+      marca: f.marcaId,
       mall: f.mallId,
       nombre: f.nombre,
       codigo: f.codigo?.trim() || null,
@@ -462,15 +466,11 @@ export async function crearSucursalesLote(clienteId: number, marcaId: number, fi
   );
   return ejecutar(
     `INSERT INTO dmc.sucursal (cliente_id, marca_id, mall_id, nombre, codigo, direccion, comuna, region, activo)
-     SELECT @cliente, @marca, j.mall, j.nombre, j.codigo, j.direccion, j.comuna, j.region, 1
+     SELECT j.cliente, j.marca, j.mall, j.nombre, j.codigo, j.direccion, j.comuna, j.region, 1
        FROM OPENJSON(@filas)
-            WITH (mall bigint '$.mall', nombre nvarchar(120) '$.nombre', codigo varchar(20) '$.codigo',
+            WITH (cliente bigint '$.cliente', marca bigint '$.marca', mall bigint '$.mall', nombre nvarchar(120) '$.nombre', codigo varchar(20) '$.codigo',
                   direccion nvarchar(180) '$.direccion', comuna nvarchar(80) '$.comuna', region nvarchar(80) '$.region') j`,
-    [
-      ["cliente", sql.BigInt, clienteId],
-      ["marca", sql.BigInt, marcaId],
-      ["filas", sql.NVarChar(sql.MAX), json],
-    ]
+    [["filas", sql.NVarChar(sql.MAX), json]]
   );
 }
 

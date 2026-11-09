@@ -1,11 +1,9 @@
-import VisitasPapel from "@/components/admin/VisitasPapel";
-import SinAcceso from "@/components/admin/SinAcceso";
-import { sesionCon } from "@/lib/auth";
+import { notFound } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-/** "Visitas en papel": cargar los informes hechos a mano en años anteriores. */
-export default async function VisitasPapelPage() {
-  if (!(await sesionCon("visitas.crear"))) return <SinAcceso />;
-  return <VisitasPapel />;
+/**
+ * "Visitas en papel" está desactivada: no hay botón ni se entra por la dirección.
+ * El código de la carga sigue en `components/admin/papel` por si se reactiva.
+ */
+export default function VisitasPapelPage() {
+  notFound();
 }

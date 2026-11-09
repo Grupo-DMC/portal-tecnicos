@@ -74,10 +74,10 @@ export const entradaSucursal = z.object({
 });
 
 export const entradaSucursalesLote = z.object({
-  clienteId: idPositivo,
-  marcaId: idPositivo,
   filas: arreglo(
     z.object({
+      clienteId: idPositivo,
+      marcaId: idPositivo,
       mallId: idPositivo.nullable(),
       nombre: texto(120),
       codigo: texto(20).nullable(),

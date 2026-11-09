@@ -246,6 +246,29 @@ describe("formulario de mall", () => {
   });
 });
 
+describe("crear un local desde las tiendas del mall", () => {
+  it("despliega el formulario completo de sucursal, con el mall ya puesto, y lo crea en ese mall", async () => {
+    acciones.guardarSucursalAction.mockResolvedValue({ ok: true, id: 99 });
+    const u = userEvent.setup();
+    pintar(<MallsTable malls={[mall()] as never} sucursales={[]} clientes={[cliente()] as never} />, {
+      permisos: PERMISOS("malls"),
+      marcas: MARCAS as never,
+    });
+    await u.click(screen.getByRole("button", { name: /Tiendas de Mall Plaza Norte/ }));
+    await u.click(screen.getByRole("button", { name: /Crear uno nuevo en este mall/ }));
+    const nueva = screen.getAllByRole("dialog").at(-1) as HTMLElement;
+    expect(within(nueva).getByLabelText("Dirección")).toHaveValue("Av. Américo Vespucio 1737");
+    expect(within(nueva).getByLabelText("Teléfono")).toBeInTheDocument();
+    await u.click(within(nueva).getByRole("button", { name: "Crear sucursal" }));
+    await waitFor(() =>
+      expect(acciones.guardarSucursalAction).toHaveBeenCalledWith(
+        null,
+        expect.objectContaining({ clienteId: 1, mallId: 5, nombre: "Uno · Marca Uno · Mall Plaza Norte" })
+      )
+    );
+  });
+});
+
 describe("formulario de sucursal", () => {
   const props = {
     clientes: [cliente(), cliente({ id: 2, nombreFantasia: "Dos", rut: "76.000.000-0" })],

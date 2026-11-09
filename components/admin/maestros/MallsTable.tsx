@@ -6,11 +6,13 @@ import { sinTildes } from "@/lib/ui/formato";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import MaestroTable from "@/components/admin/MaestroTable";
-import Dialogo from "@/components/admin/Dialogo";
+import Dialogo, { type FormValores } from "@/components/admin/Dialogo";
+import { useSucursalForm } from "@/components/admin/maestros/useSucursalForm";
+import Confirmar, { type ConfirmarCfg } from "@/components/ui/Confirmar";
 import SelectBuscable from "@/components/ui/SelectBuscable";
 import Tag from "@/components/Tag";
 import { Toast, useToast } from "@/components/ui/Toast";
-import { guardarMallAction, guardarSucursalAction, guardarTiendasMallAction } from "@/app/actions/maestros";
+import { guardarMallAction, guardarTiendasMallAction } from "@/app/actions/maestros";
 import { conMismaDireccion } from "@/lib/ui/direcciones";
 import { puede, useReferencias } from "@/lib/ui/referencias";
 import { REGIONES } from "@/lib/ui/regiones";
@@ -225,45 +227,44 @@ function TiendasDialogo({
   const [porPalabra, setPorPalabra] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const { marcas } = useReferencias();
-  // Crear un local nuevo directamente en este mall.
-  const [creando, setCreando] = useState(false);
-  const [marcaNueva, setMarcaNueva] = useState("");
-  const [nombreNuevo, setNombreNuevo] = useState(mall.nombre);
-  const [creandoGuardando, setCreandoGuardando] = useState(false);
-  const opcMarcas = marcas
-    .filter((m) => m.activo && String(m.clienteId) === clienteSel)
-    .map((m) => ({ v: String(m.id), t: m.nombre }));
-  const marcaElegida = opcMarcas.some((o) => o.v === marcaNueva) ? marcaNueva : (opcMarcas[0]?.v ?? "");
+  // Crear un local nuevo en este mall, con el mismo formulario de Maestros › Sucursales.
+  const sf = useSucursalForm({ sucursales, clientes, malls });
+  const [nuevo, setNuevo] = useState<FormValores | null>(null);
+  const [guardandoNuevo, setGuardandoNuevo] = useState(false);
+  const [confirmarNuevo, setConfirmarNuevo] = useState<ConfirmarCfg | null>(null);
 
-  async function crearLocal() {
-    if (!clienteSel || !marcaElegida) return onHecho("Elige el cliente y la marca del local.", false);
-    if (!nombreNuevo.trim()) return onHecho("El local necesita un nombre.", false);
-    setCreandoGuardando(true);
-    const res = await guardarSucursalAction(null, {
-      clienteId: Number(clienteSel),
-      marcaId: Number(marcaElegida),
-      mallId: mall.id,
-      nombre: nombreNuevo.trim(),
-      codigo: null,
-      direccion: mall.direccion,
-      comuna: mall.comuna,
-      region: mall.region,
-      telefono: null,
-      activo: true,
-      motivoInactivo: null,
-      notas: null,
-      fechaInstalacion: null,
-      remota: null,
-      garantiaMeses: null,
-      planCalibracion: null,
-    });
-    setCreandoGuardando(false);
+  function abrirNuevo() {
+    const base: FormValores = {
+      ...sf.emptyRow,
+      clienteId: clienteSel,
+      marcaId: String(marcas.find((m) => m.activo && String(m.clienteId) === clienteSel)?.id ?? ""),
+      mallId: String(mall.id),
+    };
+    // El mall ya elegido le pone dirección, comuna, región y nombre, como al elegirlo a mano.
+    setNuevo({ ...base, ...sf.alCambiar("mallId", String(mall.id), base, null) });
+  }
+
+  async function crearLocal(confirmado = false): Promise<void> {
+    if (!nuevo) return;
+    const error = sf.validar(nuevo, null);
+    if (error) return onHecho(error, false);
+    const advertencia = confirmado ? null : sf.advertir(nuevo, null);
+    if (advertencia) {
+      return setConfirmarNuevo({
+        titulo: "Ya existe esa dirección",
+        texto: `${advertencia} ¿Quieres guardarlo de todas formas?`,
+        cta: "Guardar de todas formas",
+        accion: () => crearLocal(true),
+      });
+    }
+    setGuardandoNuevo(true);
+    const res = await sf.guardarAction(null, nuevo);
+    setGuardandoNuevo(false);
     if (!res.ok || !res.id) return onHecho(res.error ?? "No se pudo crear el local.", false);
-    // Ya existe con este mall: se suma a la lista para que «Guardar tiendas» no lo suelte.
-    setIds((prev) => [...prev, res.id as number]);
-    setCreando(false);
-    setNombreNuevo(mall.nombre);
-    onHecho(`Local creado en ${mall.nombre}.`, true);
+    // Si sigue en este mall, se suma a la lista para que «Guardar tiendas» no lo suelte.
+    if (String(nuevo.mallId) === String(mall.id)) setIds((prev) => [...prev, res.id as number]);
+    setNuevo(null);
+    onHecho(`Local creado${String(nuevo.mallId) === String(mall.id) ? ` en ${mall.nombre}` : ""}.`, true);
   }
 
   const nombreCliente = (id: number) => clientes.find((c) => c.id === id)?.nombreFantasia ?? "—";
@@ -423,41 +424,9 @@ function TiendasDialogo({
         )}
 
         <div className="border-t border-[var(--color-divider-soft)] px-4 py-3">
-          {!creando ? (
-            <button type="button" onClick={() => setCreando(true)} className="btn btn-secondary">
-              ¿No está el local? Crear uno nuevo en este mall
-            </button>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="sm:col-span-2 text-meta opacity-66">
-                Se crea una sucursal nueva de <strong>{nombreCliente(Number(clienteSel))}</strong> en {mall.nombre}, con la dirección del mall.
-                Cambia el cliente arriba si es de otro.
-              </div>
-              <div className="field min-w-0">
-                <label htmlFor="mt-marca-nueva">Marca</label>
-                <SelectBuscable
-                  id="mt-marca-nueva"
-                  valor={marcaElegida}
-                  opciones={opcMarcas}
-                  onChange={setMarcaNueva}
-                  placeholder={opcMarcas.length ? "Elige la marca…" : "Este cliente no tiene marcas activas"}
-                  ariaLabel="Marca"
-                />
-              </div>
-              <div className="field min-w-0">
-                <label htmlFor="mt-nombre-nuevo">Nombre del local</label>
-                <input id="mt-nombre-nuevo" value={nombreNuevo} onChange={(e) => setNombreNuevo(e.target.value)} />
-              </div>
-              <div className="sm:col-span-2 flex gap-2">
-                <button type="button" onClick={crearLocal} disabled={creandoGuardando} className="btn btn-primary">
-                  {creandoGuardando ? "Creando…" : "Crear y agregar"}
-                </button>
-                <button type="button" onClick={() => setCreando(false)} className="btn btn-secondary">
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          )}
+          <button type="button" onClick={abrirNuevo} className="btn btn-secondary">
+            ¿No está el local? Crear uno nuevo en este mall
+          </button>
         </div>
       </div>
 
@@ -496,6 +465,21 @@ function TiendasDialogo({
           </div>
         ))}
       </div>
+
+      {nuevo ? (
+        <Dialogo
+          titulo="Nueva sucursal"
+          cta="Crear sucursal"
+          nota={`Se agrega a ${mall.nombre}. Es el mismo formulario de Maestros › Sucursales: con el mall elegido toma su dirección y se llama «Cliente · Marca · Mall».`}
+          campos={sf.fields.filter((f) => !f.visible || f.visible(nuevo))}
+          form={nuevo}
+          onCampo={(k, v) => setNuevo({ ...nuevo, [k]: v, ...sf.alCambiar(k, v, nuevo, null) })}
+          onCerrar={() => setNuevo(null)}
+          onGuardar={() => crearLocal()}
+          guardando={guardandoNuevo}
+        />
+      ) : null}
+      {confirmarNuevo ? <Confirmar cfg={confirmarNuevo} onCerrar={() => setConfirmarNuevo(null)} /> : null}
     </Dialogo>
   );
 }

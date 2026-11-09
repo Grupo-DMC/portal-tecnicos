@@ -23,7 +23,7 @@ export default async function PerfilPage() {
   ];
 
   return (
-    <MobileShell titulo="Mi cuenta">
+    <MobileShell titulo="Mi cuenta" atrasHref="/tecnico">
       <div className="px-4 pt-[22px] pb-[26px] animate-fade-in">
         <div className="flex items-center gap-3.5">
           <div

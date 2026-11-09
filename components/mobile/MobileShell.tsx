@@ -19,11 +19,14 @@ export default function MobileShell({
   titulo,
   children,
   volverHref,
+  atrasHref,
 }: {
   titulo: string;
   children: React.ReactNode;
   /** Si se define, muestra el botón volver apuntando a esta ruta y oculta los tabs. */
   volverHref?: string;
+  /** Muestra el botón volver pero deja los tabs: para las secciones principales. */
+  atrasHref?: string;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -31,6 +34,7 @@ export default function MobileShell({
   const uid = useUsuarioLocal();
   const [saliendo, setSaliendo] = useState(false);
   const mostrarTabs = !volverHref;
+  const flecha = volverHref ?? atrasHref;
 
   return (
     <div className="h-screen overflow-hidden flex justify-center bg-[#cac7cd]">
@@ -38,9 +42,9 @@ export default function MobileShell({
         <div className="flex flex-col min-h-full">
           <div className="sticky top-0 z-20 bg-[var(--color-bg)] border-b-2 border-[var(--color-divider)]">
             <div className="flex items-center gap-2.5 px-4 py-2.5">
-              {volverHref ? (
+              {flecha ? (
                 <button
-                  onClick={() => router.push(volverHref)}
+                  onClick={() => router.push(flecha)}
                   aria-label="Volver"
                   className="w-[38px] h-[38px] -ml-2.5 grid place-items-center bg-transparent border-0 text-[var(--color-text)] cursor-pointer hover:bg-black/[.07]"
                 >
@@ -51,6 +55,18 @@ export default function MobileShell({
               ) : null}
               <Image src="/DMC-logo.png" alt="Grupo dMC" width={64} height={18} className="h-[18px] w-auto flex-none" />
               <div className="text-cap opacity-62">{titulo}</div>
+              {pathname !== "/tecnico" ? (
+                <Link
+                  href="/tecnico"
+                  aria-label="Ir al inicio"
+                  title="Ir al inicio"
+                  className="ml-auto w-[34px] h-[34px] grid place-items-center text-[var(--color-text)] hover:bg-black/[.07]"
+                >
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                    <path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z" />
+                  </svg>
+                </Link>
+              ) : null}
               <button
                 type="button"
                 disabled={saliendo}
@@ -63,7 +79,7 @@ export default function MobileShell({
                     void logoutAction();
                   }, 700);
                 }}
-                className="ml-auto w-[34px] h-[34px] grid place-items-center bg-transparent border-0 text-[var(--color-text)] cursor-pointer hover:bg-black/[.07] disabled:opacity-50"
+                className={`${pathname !== "/tecnico" ? "" : "ml-auto "}w-[34px] h-[34px] grid place-items-center bg-transparent border-0 text-[var(--color-text)] cursor-pointer hover:bg-black/[.07] disabled:opacity-50`}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                   <path d="M15 17l5-5-5-5M20 12H9M12 4H5v16h7" />

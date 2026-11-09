@@ -14,7 +14,7 @@ export default async function VisitasTecnicoPage() {
   const visitas = await getVisitasPorTecnico(sesion.tecnico.id);
 
   return (
-    <MobileShell titulo="Mis visitas">
+    <MobileShell titulo="Mis visitas" atrasHref="/tecnico">
       <VisitasList visitas={visitas} hoy={hoyISO()} tecnicoId={sesion.tecnico.id} />
     </MobileShell>
   );

@@ -326,6 +326,9 @@ export interface VisitaEjecucion {
   editableHasta: string | null;
   /** true mientras ese plazo siga abierto. Lo decide la base, con su reloj. */
   editablePorTecnico: boolean;
+  /** Cuándo el técnico pidió a coordinación poder editar el acta; null = sin solicitud pendiente. */
+  edicionSolicitadaEn?: string | null;
+  edicionSolicitadaMotivo?: string | null;
 }
 
 /** Una corrección hecha al acta después de cerrarla (dmc.visita_edicion). */

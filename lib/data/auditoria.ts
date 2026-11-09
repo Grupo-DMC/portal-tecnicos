@@ -27,6 +27,7 @@ export type AccionAuditoria =
   | "permisos_celular.editar"
   | "visita.eliminar"
   | "acta.habilitar_tecnico"
+  | "acta.pedir_edicion"
   | "checklist.editar"
   | "checklist.plantilla_guardar"
   | "checklist.plantilla_aplicar";

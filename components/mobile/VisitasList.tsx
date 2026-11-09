@@ -1,7 +1,7 @@
 "use client";
 
 import { useFiltroRecordado } from "@/lib/ui/filtro-recordado";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Tag from "@/components/Tag";
 import NuevaVisitaSheet from "@/components/mobile/NuevaVisitaSheet";
@@ -10,7 +10,7 @@ import { ESTADO_VISITA_BARRA, ESTADO_VISITA_LABEL, ESTADO_VISITA_TAG, textoMotiv
 import { actasEnCola, haceCuanto, migrarClavesViejas, sacarDeCola, type ActaEnCola } from "@/lib/ui/borrador";
 import { useUsuarioLocal } from "@/lib/ui/usuario-local";
 import { estaCancelada } from "@/lib/ui/estado";
-import { diaDeVisita } from "@/lib/ui/fecha";
+import { diaDeVisita, sumarDias } from "@/lib/ui/fecha";
 import { puede, useReferencias } from "@/lib/ui/referencias";
 import type { EstadoVisita, Mall, Visita } from "@/lib/types";
 
@@ -23,6 +23,8 @@ const ESTADOS: EstadoVisita[] = [
   "CANCELADA",
   "CANCELADA_ADMIN",
 ];
+
+const PENDIENTES: EstadoVisita[] = ["PROGRAMADA", "EN_CURSO", "PENDIENTE"];
 
 /** '2026-10-05' → "5 oct". */
 function diaCorto(fecha: string): string {
@@ -47,6 +49,9 @@ export default function VisitasList({
   const ref = useReferencias();
   /** Los malls desplegados, como "<fecha>-<mall>": nacen plegados. */
   const [abiertos, setAbiertos] = useState<string[]>([]);
+  /** Período del historial y cuántos días de él se muestran. */
+  const [periodo, setPeriodo] = useState<"semana" | "mes" | "todo">("semana");
+  const [diasVisibles, setDiasVisibles] = useState(7);
   /** Los días que el técnico abrió o cerró a mano; el resto sigue la regla de `diaAbierto`. */
   const [diasTocados, setDiasTocados] = useState<Record<string, boolean>>({});
   /** Actas terminadas que quedaron esperando señal en este celular. */
@@ -88,51 +93,73 @@ export default function VisitasList({
 
   const filtradas = useMemo(() => (estado ? visitas.filter((v) => v.estado === estado) : visitas), [visitas, estado]);
 
-  const grupos = useMemo(() => {
+  // Lo que falta por hacer y lo que ya pasó van por separado: lo primero se
+  // mira todos los días; lo segundo es historial y se acota por período.
+  /** Agrupa por día —solo salen los días que tienen visitas— y las tiendas de un mismo mall en un bloque. */
+  const armar = useCallback((items: Visita[], ascendente: boolean) => {
     const porFecha = new Map<string, Visita[]>();
-    for (const v of filtradas) {
+    for (const v of items) {
       // Con margen de días y sin cerrar, la visita se va corriendo a «Hoy».
       const dia = diaDeVisita(v, hoy);
-      const arr = porFecha.get(dia) ?? [];
-      arr.push(v);
-      porFecha.set(dia, arr);
+      porFecha.set(dia, [...(porFecha.get(dia) ?? []), v]);
     }
     return [...porFecha.entries()]
-      .sort((a, b) => b[0].localeCompare(a[0]))
-      .map(([fecha, items]) => ({
-        fecha,
-        titulo:
-          fecha === hoy
-            ? "Hoy"
-            : new Date(`${fecha}T00:00:00`).toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "short" }),
-        n: items.length,
-        bloques: enBloques(
-          items.sort((a, b) => (a.horaProgramada ?? "99:99").localeCompare(b.horaProgramada ?? "99:99"))
-        ),
-      }));
+      .sort((x, y) => (ascendente ? x[0].localeCompare(y[0]) : y[0].localeCompare(x[0])))
+      .map(([fecha, delDia]) => {
+        const ordenadas = [...delDia].sort((x, y) => (x.horaProgramada ?? "99:99").localeCompare(y.horaProgramada ?? "99:99"));
+        return {
+          fecha,
+          titulo:
+            fecha === hoy
+              ? "Hoy"
+              : new Date(`${fecha}T00:00:00`).toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "short" }),
+          n: ordenadas.length,
+          // Las tiendas del día en una línea: se sabe qué hubo sin abrir el día.
+          resumen: [...new Set(ordenadas.map((v) => v.sucursal?.nombre).filter(Boolean))].join(" · "),
+          bloques: enBloques(ordenadas),
+        };
+      });
 
     // Las tiendas de un mismo mall van juntas en un bloque desplegable, puesto
     // donde cae su primera visita del día; las demás quedan sueltas.
     function enBloques(items: Visita[]): { mall: Mall | null; visitas: Visita[] }[] {
       const bloques: { mall: Mall | null; visitas: Visita[] }[] = [];
       for (const v of items) {
-        const mallId = ref.sucursales.find((s) => s.id === v.sucursalId)?.mallId;
+        const mallId = ref.sucursales.find((x) => x.id === v.sucursalId)?.mallId;
         const mall = (mallId && ref.malls.find((m) => m.id === mallId)) || null;
-        const bloque = mall ? bloques.find((b) => b.mall?.id === mall.id) : undefined;
+        const bloque = mall ? bloques.find((x) => x.mall?.id === mall.id) : undefined;
         if (bloque) bloque.visitas.push(v);
         else bloques.push({ mall, visitas: [v] });
       }
       return bloques;
     }
-  }, [filtradas, hoy, ref.sucursales, ref.malls]);
+  }, [hoy, ref.sucursales, ref.malls]);
 
-  // El único día que nace desplegado: hoy si tiene visitas y, si no, el
-  // próximo que las tenga. Los pasados y los demás futuros quedan plegados.
-  const diaAbierto = useMemo(() => {
-    if (grupos.some((g) => g.fecha === hoy)) return hoy;
-    const proximos = grupos.map((g) => g.fecha).filter((f) => f > hoy);
-    return proximos.length > 0 ? proximos.sort()[0] : null;
-  }, [grupos, hoy]);
+  // Por hacer: lo atrasado y lo de hoy primero, después lo que viene.
+  const porHacer = useMemo(
+    () => armar(filtradas.filter((v) => PENDIENTES.includes(v.estado)), true),
+    [filtradas, armar]
+  );
+
+  // Historial: solo los días en que hubo algo, del más reciente al más viejo y
+  // dentro del período elegido.
+  const historial = useMemo(
+    () => {
+      const hasta = periodo === "todo" ? null : sumarDias(hoy, periodo === "semana" ? -6 : -29);
+      return armar(
+        filtradas.filter((v) => !PENDIENTES.includes(v.estado) && (!hasta || diaDeVisita(v, hoy) >= hasta)),
+        false
+      );
+    },
+    [filtradas, hoy, periodo, armar]
+  );
+
+  // El único día de «Por hacer» que nace desplegado: hoy si tiene visitas y, si
+  // no, el primero que las tenga. El historial nace plegado.
+  const diaAbierto = useMemo(
+    () => (porHacer.some((g) => g.fecha === hoy) ? hoy : (porHacer[0]?.fecha ?? null)),
+    [porHacer, hoy]
+  );
 
   const tarjeta = (v: Visita) => (
     <button
@@ -263,18 +290,27 @@ export default function VisitasList({
         </div>
       ) : null}
 
-      {grupos.map((g) => {
-        const diaDesplegado = diasTocados[g.fecha] ?? g.fecha === diaAbierto;
-        return (
-        <div key={g.fecha} className={diaDesplegado ? "mb-6" : "mb-3"}>
+      {(() => {
+        const dia = (g: (typeof porHacer)[number], claveSeccion: string, abiertoPorDefecto: boolean) => {
+          const clave = `${claveSeccion}-${g.fecha}`;
+          const diaDesplegado = diasTocados[clave] ?? abiertoPorDefecto;
+          return (
+        <div key={clave} className={diaDesplegado ? "mb-6" : "mb-3"}>
           <button
             type="button"
             aria-expanded={diaDesplegado}
-            onClick={() => setDiasTocados((prev) => ({ ...prev, [g.fecha]: !diaDesplegado }))}
+            onClick={() => setDiasTocados((prev) => ({ ...prev, [clave]: !diaDesplegado }))}
             className="w-full min-h-[44px] flex items-center gap-2 pb-2 pt-2 bg-transparent border-0 border-b-2 border-[var(--color-divider)] cursor-pointer text-[var(--color-text)] text-left"
           >
-            <div className="font-extrabold text-cap capitalize">{g.titulo}</div>
-            <div className="text-cap tabular-nums opacity-60">{g.n}</div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-cap capitalize">{g.titulo}</span>
+                <span className="text-cap tabular-nums opacity-60">
+                  {g.n} {g.n === 1 ? "visita" : "visitas"}
+                </span>
+              </div>
+              {!diaDesplegado && g.resumen ? <div className="text-meta opacity-60 truncate mt-0.5">{g.resumen}</div> : null}
+            </div>
             <svg
               width="18"
               height="18"
@@ -292,20 +328,20 @@ export default function VisitasList({
           <div className="flex flex-col gap-3 mt-3">
             {g.bloques.map((b) => {
               if (!b.mall) return tarjeta(b.visitas[0]);
-              const clave = `${g.fecha}-${b.mall.id}`;
-              const abierto = abiertos.includes(clave);
+              const claveMall = `${clave}-${b.mall.id}`;
+              const abierto = abiertos.includes(claveMall);
               const porHacer = b.visitas.filter(
                 (v) => v.estado === "PROGRAMADA" || v.estado === "EN_CURSO" || v.estado === "PENDIENTE"
               ).length;
               return (
                 <div
-                  key={clave}
+                  key={claveMall}
                   className="border border-[var(--color-divider)] bg-[var(--color-surface)]"
                 >
                   <button
                     type="button"
                     aria-expanded={abierto}
-                    onClick={() => setAbiertos((prev) => (abierto ? prev.filter((k) => k !== clave) : [...prev, clave]))}
+                    onClick={() => setAbiertos((prev) => (abierto ? prev.filter((k) => k !== claveMall) : [...prev, claveMall]))}
                     className="w-full min-h-[64px] flex items-center gap-3 px-3.5 py-3 bg-transparent border-0 cursor-pointer text-[var(--color-text)] text-left"
                   >
                     <div className="min-w-0 flex-1">
@@ -342,9 +378,66 @@ export default function VisitasList({
           </div>
           ) : null}
         </div>
+          );
+        };
+        return (
+          <>
+            {porHacer.length > 0 ? (
+              <>
+                <h2 className="font-extrabold text-lead m-0 mb-2">Por hacer</h2>
+                {porHacer.map((g) => dia(g, "p", g.fecha === diaAbierto))}
+              </>
+            ) : estado === "" ? (
+              <div className="py-6 text-center text-ui opacity-62">No tienes visitas por hacer.</div>
+            ) : null}
+
+            <div className="flex items-baseline gap-2 mt-7 mb-2.5">
+              <h2 className="font-extrabold text-lead m-0">Historial</h2>
+              <span className="text-cap opacity-62">solo los días en que hubo visitas</span>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5 mb-4">
+              {(
+                [
+                  ["semana", "7 días"],
+                  ["mes", "30 días"],
+                  ["todo", "Todo"],
+                ] as const
+              ).map(([c, label]) => (
+                <button
+                  key={c}
+                  onClick={() => {
+                    setPeriodo(c);
+                    setDiasVisibles(7);
+                  }}
+                  aria-pressed={periodo === c}
+                  className="min-h-11 px-2.5 font-extrabold text-cap leading-none cursor-pointer"
+                  style={{
+                    background: periodo === c ? "var(--color-accent)" : "transparent",
+                    color: periodo === c ? "#fff" : "var(--color-text)",
+                    border: `1px solid ${periodo === c ? "var(--color-accent)" : "rgba(31,28,33,.35)"}`,
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {historial.slice(0, diasVisibles).map((g) => dia(g, "h", false))}
+            {historial.length > diasVisibles ? (
+              <button
+                onClick={() => setDiasVisibles((n) => n + 7)}
+                className="w-full min-h-[48px] mb-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer hover:bg-black/[.07]"
+              >
+                Ver más días ({historial.length - diasVisibles})
+              </button>
+            ) : null}
+            {historial.length === 0 ? (
+              <div className="py-6 text-center text-ui opacity-62">
+                {estado ? "No hay visitas con ese estado." : "No hay visitas en este período."}
+              </div>
+            ) : null}
+          </>
         );
-      })}
-      {grupos.length === 0 ? <div className="py-8.5 text-center text-ui opacity-62">No hay visitas con ese estado.</div> : null}
+      })()}
 
       {nueva ? <NuevaVisitaSheet hoy={hoy} tecnicoId={tecnicoId} onCerrar={() => setNueva(false)} onError={aviso} /> : null}
       <Toast texto={toast} />

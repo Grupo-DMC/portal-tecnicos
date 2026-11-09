@@ -247,6 +247,8 @@ interface FilaEjecucion {
   sincronizado_en: string | null;
   editable_hasta: string | null;
   editable_tecnico: boolean;
+  edicion_solicitada_en: string | null;
+  edicion_solicitada_motivo: string | null;
 }
 
 /**
@@ -421,7 +423,8 @@ async function cargar(filtro: Filtro): Promise<Visita[]> {
                 ${F_TS("sincronizado_en")} AS sincronizado_en,
                 ${F_TS(EDITABLE_HASTA)} AS editable_hasta,
                 CAST(CASE WHEN hora_termino IS NOT NULL AND ${EDITABLE_HASTA} >= SYSDATETIME()
-                          THEN 1 ELSE 0 END AS bit) AS editable_tecnico
+                          THEN 1 ELSE 0 END AS bit) AS editable_tecnico,
+                ${F_TS("edicion_solicitada_en")} AS edicion_solicitada_en, edicion_solicitada_motivo
            FROM dmc.visita_ejecucion WHERE visita_id IN (${ids})`,
         p()
       ),
@@ -636,6 +639,8 @@ async function cargar(filtro: Filtro): Promise<Visita[]> {
             sincronizadoEn: ejec.sincronizado_en,
             editableHasta: ejec.editable_hasta,
             editablePorTecnico: Boolean(ejec.editable_tecnico),
+            edicionSolicitadaEn: ejec.edicion_solicitada_en,
+            edicionSolicitadaMotivo: ejec.edicion_solicitada_motivo,
           } satisfies VisitaEjecucion)
         : undefined,
 

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { log } from "@/lib/log";
 import { getSesion, sesionCon } from "@/lib/auth";
 import { tiene } from "@/lib/permisos";
-import { editarActa, habilitarEdicionTecnico, type ResultadoEdicion } from "@/lib/data/ediciones";
+import { editarActa, habilitarEdicionTecnico, pedirEdicionActa, type ResultadoEdicion } from "@/lib/data/ediciones";
 import { auditar } from "@/lib/data/auditoria";
 import { entradaFolio } from "@/lib/validacion/visitas";
 import type { EdicionActaEntrada } from "@/lib/contratos/acta";
@@ -105,6 +105,29 @@ export async function permitirEditarTecnicoAction(folioPedido: string): Promise<
     return comoError(err, "permitirEditarTecnico");
   }
   await auditar(sesion, { accion: "acta.habilitar_tecnico", entidad: "visita", entidadId: entrada.datos });
+  revalidar(entrada.datos);
+  return { ok: true };
+}
+
+/** El técnico pide a coordinación que le habilite la edición de su acta cerrada. */
+export async function pedirEdicionActaAction(
+  folioPedido: string,
+  motivoPedido?: string
+): Promise<{ ok: boolean; error?: string }> {
+  const sesion = await getSesion();
+  if (!sesion?.tecnico) return { ok: false, error: "Tu cuenta no tiene un técnico asociado." };
+  const entrada = validar(entradaFolio, folioPedido, "pedirEdicionActa");
+  if (!entrada.ok) return { ok: false, error: "No encontramos esa visita." };
+  const motivo = (motivoPedido ?? "").trim().slice(0, 500) || null;
+  try {
+    if (!(await pedirEdicionActa(entrada.datos, sesion.tecnico.id, motivo))) {
+      return { ok: false, error: "Solo puedes pedir editar un acta cerrada de una visita tuya." };
+    }
+  } catch (err) {
+    log.error("pedirEdicionActa", { err });
+    return { ok: false, error: "No se pudo enviar el pedido. Revisa la señal e inténtalo otra vez." };
+  }
+  await auditar(sesion, { accion: "acta.pedir_edicion", entidad: "visita", entidadId: entrada.datos });
   revalidar(entrada.datos);
   return { ok: true };
 }

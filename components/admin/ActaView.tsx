@@ -313,6 +313,21 @@ export default function ActaView({
         </div>
       ) : null}
 
+      {/* El técnico pidió poder corregir su acta: se atiende con «Permitir que el técnico la corrija». */}
+      {ejec?.edicionSolicitadaEn && cerrada ? (
+        <div className="mx-4 md:mx-7 mt-5 max-w-[900px] px-4 py-3.5 bg-[var(--color-accent-200)] border border-[var(--color-accent-300)] text-meta text-[var(--color-accent-800)]">
+          <div className="font-extrabold">
+            El técnico pidió editar esta acta · {fechaCL(ejec.edicionSolicitadaEn)} a las {hhmm(ejec.edicionSolicitadaEn)}
+          </div>
+          {ejec.edicionSolicitadaMotivo ? <div className="mt-1">«{ejec.edicionSolicitadaMotivo}»</div> : null}
+          {editableActa ? (
+            <div className="mt-1.5 opacity-80">
+              Atiéndelo desde Editar › Permitir que el técnico la corrija, o corrige el acta tú mismo.
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {/* El registro de cada corrección al acta: qué parte, por qué, quién y
           cuándo. Es interno: el PDF no lo menciona. */}
       {ediciones.length > 0 ? (

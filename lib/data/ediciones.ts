@@ -592,12 +592,36 @@ export async function editarActa(entrada: EdicionActaEntrada, ctx: ContextoEdici
  * Devuelve false si la visita no tiene acta cerrada.
  */
 export async function habilitarEdicionTecnico(folio: string): Promise<boolean> {
+  // Habilitar atiende la solicitud del técnico, si la había.
   const filas = await ejecutar(
-    `UPDATE e SET edicion_tecnico_hasta = DATEADD(minute, ${MINUTOS_EDICION_HABILITADA}, SYSDATETIME())
+    `UPDATE e SET edicion_tecnico_hasta = DATEADD(minute, ${MINUTOS_EDICION_HABILITADA}, SYSDATETIME()),
+                  edicion_solicitada_en = NULL, edicion_solicitada_motivo = NULL
        FROM dmc.visita_ejecucion e
        JOIN dmc.visita v ON v.id = e.visita_id
       WHERE v.folio = @folio AND v.activo = 1 AND v.estado = 'COMPLETADA'`,
     [["folio", sql.VarChar(16), folio]]
+  );
+  return filas > 0;
+}
+
+/**
+ * El técnico pide a coordinación poder editar su acta cerrada. Solo en una
+ * visita completada donde participa; pedir dos veces no cambia la fecha del
+ * primer pedido. Devuelve false si no hay acta cerrada que pedir.
+ */
+export async function pedirEdicionActa(folio: string, tecnicoId: number, motivo: string | null): Promise<boolean> {
+  const filas = await ejecutar(
+    `UPDATE e SET edicion_solicitada_en = COALESCE(e.edicion_solicitada_en, SYSDATETIME()),
+                  edicion_solicitada_motivo = COALESCE(@motivo, e.edicion_solicitada_motivo)
+       FROM dmc.visita_ejecucion e
+       JOIN dmc.visita v ON v.id = e.visita_id
+      WHERE v.folio = @folio AND v.activo = 1 AND v.estado = 'COMPLETADA'
+        AND (v.tecnico_id = @tecnico OR v.tecnico_ayudante_id = @tecnico)`,
+    [
+      ["folio", sql.VarChar(16), folio],
+      ["tecnico", sql.BigInt, tecnicoId],
+      ["motivo", sql.NVarChar(500), motivo],
+    ]
   );
   return filas > 0;
 }

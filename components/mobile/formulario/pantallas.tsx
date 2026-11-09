@@ -107,6 +107,21 @@ export function PantallaOk({ fv }: { fv: FormularioVisitaApi }) {
             <path d="M5 12h14M13 6l6 6-6 6" />
           </svg>
         </button>
+        {/* Recién guardada, el técnico todavía puede corregirla: se le ofrece. */}
+        {!edicion ? (
+          <button
+            onClick={() => router.push(`/tecnico/visitas/${encodeURIComponent(visita.folio)}/editar`)}
+            className="w-full min-h-[50px] px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
+          >
+            ¿Quieres editarla? Corregir el acta
+          </button>
+        ) : null}
+        <button
+          onClick={() => router.push("/tecnico")}
+          className="w-full min-h-[50px] px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
+        >
+          Ir al inicio
+        </button>
         {/* Lleva al acta que quedó en la base, no de vuelta a la pantalla
             previa a guardar: esa mostraba otra vez el botón "Guardar visita"
             sobre una visita ya cerrada. */}

@@ -516,6 +516,8 @@ CREATE TABLE dmc.visita_ejecucion (
     registrado_offline    bit           NOT NULL CONSTRAINT df_ejec_offline DEFAULT (0),
     sincronizado_en       datetime2(0)  NULL,
     edicion_tecnico_hasta datetime2(0)  NULL,      -- coordinación le abre la edición al técnico hasta esta hora (migración 027)
+    edicion_solicitada_en     datetime2(0)  NULL,  -- el técnico pidió editar el acta; coordinación lo atiende (migración 032)
+    edicion_solicitada_motivo nvarchar(500) NULL,
     creado_en             datetime2(0)  NOT NULL CONSTRAINT df_ejec_creado DEFAULT (SYSDATETIME()),
     actualizado_en        datetime2(0)  NOT NULL CONSTRAINT df_ejec_actualizado DEFAULT (SYSDATETIME()),
     CONSTRAINT pk_visita_ejecucion PRIMARY KEY (visita_id),
@@ -1444,9 +1446,9 @@ GO
 /* =====================================================================
    12. VERSIÓN DEL ESQUEMA
    ===================================================================== */
-/* Este archivo ya trae todo hasta la migración 031. */
+/* Este archivo ya trae todo hasta la migración 032. */
 INSERT INTO dmc.schema_version (version, descripcion)
-VALUES (31, N'Esquema base (incluye las migraciones 002 a 031)');
+VALUES (32, N'Esquema base (incluye las migraciones 002 a 032)');
 GO
 
 

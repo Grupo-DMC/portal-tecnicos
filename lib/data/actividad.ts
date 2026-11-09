@@ -1,6 +1,8 @@
 import "server-only";
+import { after } from "next/server";
 import { consultaCon, ejecutar, F_TS, num, sql } from "@/lib/data/sql";
 import { log } from "@/lib/log";
+import { enviarPush } from "@/lib/data/push";
 import {
   CONFIGURACION_POR_DEFECTO,
   NIVELES,
@@ -51,8 +53,9 @@ export async function registrarActividad(actor: ActorActividad | null, evento: E
     // que se pusieron en «Mi cuenta» (se lee en la misma sentencia) o, si no, el del correo.
     const nombre = actor ? actor.tecnico?.nombreCompleto || nombreVisible(null, actor.usuario.email) : null;
     const enlace = evento.enlace ?? (evento.folio ? `/admin/visitas/${evento.folio}` : null);
-    await ejecutar(
+    const [fila] = await consultaCon<{ id: unknown; actor: string | null; detalle: string | null; enlace: string | null }>(
       `INSERT INTO dmc.actividad (tipo, actor_usuario_id, actor_nombre, de_tecnico, texto, detalle, enlace)
+       OUTPUT INSERTED.id AS id, INSERTED.actor_nombre AS actor, INSERTED.detalle AS detalle, INSERTED.enlace AS enlace
        VALUES (@tipo, @actor,
                CASE WHEN @tecnico = 1 THEN @nombre
                     ELSE COALESCE(NULLIF(LTRIM(RTRIM((SELECT nombre FROM dmc.usuario WHERE id = @actor))), N''), @nombre) END,
@@ -72,6 +75,22 @@ export async function registrarActividad(actor: ActorActividad | null, evento: E
         ["enlace", sql.NVarChar(200), corta(enlace, 200)],
       ]
     );
+    if (fila) {
+      const aviso = {
+        id: num(fila.id),
+        tipo: evento.tipo,
+        actorId: actor?.usuario.id ?? null,
+        titulo: fila.actor ? `${fila.actor} ${evento.texto}` : evento.texto,
+        cuerpo: fila.detalle,
+        enlace: fila.enlace,
+      };
+      // Después de responder, para no hacer esperar a quien hizo el cambio.
+      try {
+        after(() => enviarPush(aviso));
+      } catch {
+        void enviarPush(aviso);
+      }
+    }
   } catch (err) {
     log.error("actividad.registrar", { err, tipo: evento.tipo, usuarioId: actor?.usuario.id });
   }

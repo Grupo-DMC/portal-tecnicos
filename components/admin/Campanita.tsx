@@ -26,6 +26,90 @@ const CADA_OCULTA = 120_000;
 /** Los avisos del navegador se encienden por equipo: viven en este navegador. */
 const claveNavegador = (uid: number) => `dmc:avisos-navegador:${uid}`;
 
+/** El sonido también se enciende por equipo. */
+const claveSonido = (uid: number) => `dmc:sonido:${uid}`;
+
+let audio: AudioContext | null = null;
+
+/** Un «ding» corto generado por código (sin archivo). Falla en silencio si el navegador lo bloquea. */
+function sonar() {
+  try {
+    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    audio ??= new Ctx();
+    const ctx = audio;
+    void ctx.resume();
+    const t = ctx.currentTime;
+    const ganancia = ctx.createGain();
+    ganancia.connect(ctx.destination);
+    ganancia.gain.setValueAtTime(0.0001, t);
+    ganancia.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
+    ganancia.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+    for (const [freq, inicio] of [[880, 0], [1320, 0.12]] as const) {
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      osc.connect(ganancia);
+      osc.start(t + inicio);
+      osc.stop(t + 0.45);
+    }
+  } catch {
+    // Sin audio disponible: no pasa nada.
+  }
+}
+
+function claveAServidor(base64: string): Uint8Array<ArrayBuffer> {
+  const pad = "=".repeat((4 - (base64.length % 4)) % 4);
+  const bin = atob((base64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
+  const salida = new Uint8Array(new ArrayBuffer(bin.length));
+  for (let i = 0; i < bin.length; i++) salida[i] = bin.charCodeAt(i);
+  return salida;
+}
+
+/**
+ * Suscribe este navegador a los avisos push, para recibirlos con el navegador
+ * cerrado. Sin soporte o sin claves en el servidor no hace nada: los avisos
+ * con el panel abierto siguen funcionando.
+ */
+async function suscribirPush(): Promise<void> {
+  try {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    const r = await fetch("/api/push", { cache: "no-store" });
+    if (!r.ok) return;
+    const { clave } = (await r.json()) as { clave: string | null };
+    if (!clave) return;
+    const reg = await navigator.serviceWorker.register("/sw.js");
+    await navigator.serviceWorker.ready;
+    const sub =
+      (await reg.pushManager.getSubscription()) ??
+      (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: claveAServidor(clave) }));
+    await fetch("/api/push", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(sub.toJSON()),
+    });
+  } catch {
+    // Sin push: queda el aviso con el panel abierto.
+  }
+}
+
+async function darDeBajaPush(): Promise<void> {
+  try {
+    if (!("serviceWorker" in navigator)) return;
+    const reg = await navigator.serviceWorker.getRegistration("/sw.js");
+    const sub = await reg?.pushManager.getSubscription();
+    if (!sub) return;
+    await fetch("/api/push", {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ endpoint: sub.endpoint }),
+    });
+    await sub.unsubscribe();
+  } catch {
+    // Si no se pudo, el servidor la borra solo cuando el navegador la da por muerta.
+  }
+}
+
 function leerLocal(clave: string): string | null {
   try {
     return window.localStorage.getItem(clave);
@@ -103,6 +187,7 @@ export default function Campanita({
       const primera = avisadas.current === 0;
       avisadas.current = mayor;
       if (primera || nuevas.length === 0) return;
+      if (leerLocal(claveSonido(usuarioId)) === "1") sonar();
       if (leerLocal(claveNavegador(usuarioId)) !== "1") return;
       if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
       for (const n of nuevas.slice(0, 3).reverse()) {
@@ -123,6 +208,14 @@ export default function Campanita({
     },
     [usuarioId]
   );
+
+  // Si los avisos están encendidos en este equipo, deja la suscripción push al
+  // día (por ejemplo tras entrar con otra cuenta en el mismo navegador).
+  useEffect(() => {
+    if (leerLocal(claveNavegador(usuarioId)) !== "1") return;
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    void suscribirPush();
+  }, [usuarioId]);
 
   // Consulta periódica, más espaciada con la pestaña escondida.
   useEffect(() => {
@@ -389,16 +482,24 @@ function Ajustes({
   });
   const [verPropios, setVerPropios] = useState(configuracion.verPropios);
   const [navegador, setNavegador] = useState(() => leerLocal(claveNavegador(usuarioId)) === "1");
+  const [sonido, setSonido] = useState(() => leerLocal(claveSonido(usuarioId)) === "1");
   const [permisoNavegador, setPermisoNavegador] = useState<NotificationPermission | "no">(() =>
     typeof Notification === "undefined" ? "no" : Notification.permission
   );
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
 
+  function cambiarSonido(encender: boolean) {
+    setSonido(encender);
+    escribirLocal(claveSonido(usuarioId), encender ? "1" : null);
+    if (encender) sonar(); // el clic desbloquea el audio y sirve de prueba
+  }
+
   async function cambiarNavegador(encender: boolean) {
     if (!encender) {
       setNavegador(false);
       escribirLocal(claveNavegador(usuarioId), null);
+      void darDeBajaPush();
       return;
     }
     if (typeof Notification === "undefined") return;
@@ -407,6 +508,7 @@ function Ajustes({
     if (permiso === "granted") {
       setNavegador(true);
       escribirLocal(claveNavegador(usuarioId), "1");
+      void suscribirPush();
     }
   }
 
@@ -453,8 +555,16 @@ function Ajustes({
                 ? "Este navegador no permite avisos."
                 : permisoNavegador === "denied"
                   ? "El navegador los tiene bloqueados para este sitio: actívalos desde el candado de la barra de direcciones."
-                  : "Un aviso en la pantalla con lo que es «Avisar», aunque estés en otra pestaña."}
+                  : "Un aviso en la pantalla con lo que es «Avisar», aunque estés en otra pestaña o hayas cerrado el navegador."}
             </span>
+          </span>
+        </label>
+
+        <label className="flex items-start gap-3 py-2.5 border-b border-[var(--color-divider-faint)] cursor-pointer">
+          <input type="checkbox" className="mt-1" checked={sonido} onChange={(e) => cambiarSonido(e.target.checked)} />
+          <span>
+            <span className="block text-ui font-extrabold">Sonido al llegar un aviso en este equipo</span>
+            <span className="block text-meta opacity-70">Un «ding» corto con lo que es «Avisar». Suena con el panel abierto en cualquier pestaña.</span>
           </span>
         </label>
 

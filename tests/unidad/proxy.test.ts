@@ -97,8 +97,8 @@ describe("proxy: a qué rutas se aplica (config.matcher)", () => {
     }
   });
 
-  it("excluye estáticos, imágenes y /api/salud (esa ruta se protege con su propio token)", () => {
-    for (const ruta of ["/_next/static/chunk.js", "/_next/image", "/api/salud", "/favicon.ico", "/DMC-logo.png", "/x/y.svg"]) {
+  it("excluye estáticos, imágenes, el service worker (/sw.js) y /api/salud (esa ruta se protege con su propio token)", () => {
+    for (const ruta of ["/_next/static/chunk.js", "/_next/image", "/api/salud", "/favicon.ico", "/DMC-logo.png", "/x/y.svg", "/sw.js"]) {
       expect(aplica(ruta), ruta).toBe(false);
     }
   });

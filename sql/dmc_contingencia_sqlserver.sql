@@ -1508,6 +1508,23 @@ GO
 INSERT INTO dmc.schema_version (version, descripcion)
 VALUES (35, N'Campanita de notificaciones: actividad y preferencias por cuenta');
 GO
+/* Y las suscripciones push (migración 036). */
+CREATE TABLE dmc.push_suscripcion (
+    id          bigint         IDENTITY(1,1) NOT NULL,
+    usuario_id  bigint         NOT NULL,
+    endpoint    nvarchar(450)  NOT NULL,
+    p256dh      varchar(200)   NOT NULL,
+    auth        varchar(100)   NOT NULL,
+    creado_en   datetime2(0)   NOT NULL CONSTRAINT df_push_suscripcion_creado DEFAULT (SYSDATETIME()),
+    CONSTRAINT pk_push_suscripcion PRIMARY KEY (id),
+    CONSTRAINT uq_push_suscripcion_endpoint UNIQUE (endpoint)
+);
+GO
+CREATE INDEX ix_push_suscripcion_usuario ON dmc.push_suscripcion (usuario_id);
+GO
+INSERT INTO dmc.schema_version (version, descripcion)
+VALUES (36, N'Avisos push: suscripciones por navegador');
+GO
 
 
 /* =====================================================================

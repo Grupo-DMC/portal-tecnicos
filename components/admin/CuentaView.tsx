@@ -29,24 +29,40 @@ export default function CuentaView({
   const { toast, aviso } = useToast();
 
   return (
-    <div className="px-4 md:px-7 py-6 md:py-8 max-w-[860px] flex flex-col gap-8">
+    // Grilla: 320 + 24 + 1fr. La identidad queda a la vista mientras se editan los formularios.
+    <div className="px-4 md:px-7 py-6 md:py-8 max-w-[1120px] grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
       <SeccionFoto perfil={perfil} rol={rol} aviso={aviso} />
-      <SeccionDatos perfil={perfil} aviso={aviso} />
-      <SeccionPassword largoMinimo={largoMinimo} aviso={aviso} />
+      <div className="flex flex-col gap-6 min-w-0">
+        <SeccionDatos perfil={perfil} aviso={aviso} />
+        <SeccionPassword largoMinimo={largoMinimo} aviso={aviso} />
+      </div>
       <Toast texto={toast} variante="panel" />
     </div>
   );
 }
 
+const PANEL = "bg-[var(--color-surface-3)] border border-[var(--color-line-soft)]";
+
+/** Panel de formulario: título y bajada arriba, campos con aire y la acción al pie. */
 function Seccion({ titulo, bajada, children }: { titulo: string; bajada?: string; children: React.ReactNode }) {
   return (
-    <section className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)] md:gap-8 border-t-2 border-[var(--color-divider)] pt-6 first:border-t-0 first:pt-0">
-      <div>
+    <section className={PANEL}>
+      <header className="px-5 md:px-6 pt-5 md:pt-6">
         <h2 className="font-extrabold text-lead tracking-[-.01em]">{titulo}</h2>
-        {bajada ? <p className="text-meta opacity-62 mt-1 max-w-[30ch]">{bajada}</p> : null}
-      </div>
-      <div className="min-w-0">{children}</div>
+        {bajada ? <p className="text-meta text-[var(--color-muted)] mt-1 max-w-[60ch]">{bajada}</p> : null}
+      </header>
+      <div className="px-5 md:px-6 py-5 md:py-6 min-w-0">{children}</div>
     </section>
+  );
+}
+
+/** Pie del formulario: el error a la vista y el botón a la derecha. */
+function PieForm({ error, children }: { error: string | null; children: React.ReactNode }) {
+  return (
+    <div className="sm:col-span-2 flex flex-col gap-3 mt-2 pt-5 border-t border-[var(--color-line-soft)]">
+      <AvisoError texto={error} />
+      <div className="flex sm:justify-end">{children}</div>
+    </div>
   );
 }
 
@@ -103,49 +119,50 @@ function SeccionFoto({ perfil, rol, aviso }: { perfil: PerfilCuenta; rol: string
   }
 
   return (
-    <Seccion titulo="Perfil" bajada="La foto y el nombre se ven en el menú del panel.">
-      <div className="flex items-center gap-5 flex-wrap">
-        <div className="w-24 h-24 shrink-0 bg-[var(--color-text)] text-[var(--color-bg)] grid place-items-center font-extrabold text-h2 overflow-hidden">
-          {foto ? (
-            // eslint-disable-next-line @next/next/no-img-element -- ruta propia con sesión; next/image no aporta acá
-            <img src={foto} alt={`Foto de ${nombre}`} width={96} height={96} className="w-full h-full object-cover" />
-          ) : (
-            iniciales(nombre)
-          )}
-        </div>
-        <div className="min-w-0 flex flex-col gap-2">
-          <div>
-            <div className="font-extrabold text-lead truncate">{nombre}</div>
-            <div className="text-meta opacity-62">
-              {rol} · último acceso {fechaHoraLegible(perfil.ultimoAccesoEn)}
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <button type="button" className="btn btn-secondary" disabled={pendiente} onClick={() => entrada.current?.click()}>
-              {pendiente ? "Guardando…" : foto ? "Cambiar foto" : "Subir foto"}
-            </button>
-            {foto ? (
-              <button type="button" className="btn btn-ghost" disabled={pendiente} onClick={quitar}>
-                Quitar
-              </button>
-            ) : null}
-          </div>
-          <input
-            ref={entrada}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="hidden"
-            onChange={(e) => {
-              elegido(e.target.files?.[0]);
-              e.target.value = "";
-            }}
-          />
-        </div>
+    <section className={`${PANEL} lg:sticky lg:top-6`}>
+      {/* Foto cuadrada a todo el ancho de la tarjeta: es lo primero que se ve. */}
+      <div className="aspect-square max-h-[320px] w-full bg-[var(--color-accent-100)] text-[var(--color-accent-800)] grid place-items-center font-extrabold text-hero overflow-hidden">
+        {foto ? (
+          // eslint-disable-next-line @next/next/no-img-element -- ruta propia con sesión; next/image no aporta acá
+          <img src={foto} alt={`Foto de ${nombre}`} width={320} height={320} className="w-full h-full object-cover" />
+        ) : (
+          iniciales(nombre)
+        )}
       </div>
-      <div className="mt-3">
+      <div className="p-5 md:p-6 flex flex-col gap-5">
+        <div className="min-w-0">
+          <h2 className="font-extrabold text-h3 tracking-[-.01em] truncate">{nombre}</h2>
+          <p className="text-ui text-[var(--color-muted)] truncate">{perfil.email}</p>
+          <span className="tag tag-accent mt-3">{rol}</span>
+        </div>
+        <dl className="grid gap-1 text-meta">
+          <dt className="text-[var(--color-muted)]">Último acceso</dt>
+          <dd className="font-semibold tabular-nums">{fechaHoraLegible(perfil.ultimoAccesoEn)}</dd>
+        </dl>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button type="button" className="btn btn-secondary" disabled={pendiente} onClick={() => entrada.current?.click()}>
+            {pendiente ? "Guardando…" : foto ? "Cambiar foto" : "Subir foto"}
+          </button>
+          {foto ? (
+            <button type="button" className="btn btn-ghost" disabled={pendiente} onClick={quitar}>
+              Quitar
+            </button>
+          ) : null}
+        </div>
+        <p className="text-meta text-[var(--color-muted)]">La foto y el nombre se ven en el menú del panel.</p>
+        <input
+          ref={entrada}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={(e) => {
+            elegido(e.target.files?.[0]);
+            e.target.value = "";
+          }}
+        />
         <AvisoError texto={error} />
       </div>
-    </Seccion>
+    </section>
   );
 }
 
@@ -214,14 +231,11 @@ function SeccionDatos({ perfil, aviso }: { perfil: PerfilCuenta; aviso: (t: stri
             <input id="cu-actual-correo" name="actual" type="password" className="input" autoComplete="current-password" required />
           </div>
         ) : null}
-        <div className="sm:col-span-2 flex flex-col gap-3">
-          <AvisoError texto={state.error} />
-          <div>
-            <button type="submit" className="btn btn-primary" disabled={pendiente}>
-              {pendiente ? "Guardando…" : "Guardar datos"}
-            </button>
-          </div>
-        </div>
+        <PieForm error={state.error}>
+          <button type="submit" className="btn btn-primary" disabled={pendiente}>
+            {pendiente ? "Guardando…" : "Guardar datos"}
+          </button>
+        </PieForm>
       </form>
     </Seccion>
   );
@@ -272,14 +286,11 @@ function SeccionPassword({ largoMinimo, aviso }: { largoMinimo: number; aviso: (
           <input type="checkbox" checked={ver} onChange={(e) => setVer(e.target.checked)} />
           Mostrar las contraseñas
         </label>
-        <div className="sm:col-span-2 flex flex-col gap-3">
-          <AvisoError texto={state.error} />
-          <div>
-            <button type="submit" className="btn btn-primary" disabled={pendiente}>
-              {pendiente ? "Cambiando…" : "Cambiar contraseña"}
-            </button>
-          </div>
-        </div>
+        <PieForm error={state.error}>
+          <button type="submit" className="btn btn-primary" disabled={pendiente}>
+            {pendiente ? "Cambiando…" : "Cambiar contraseña"}
+          </button>
+        </PieForm>
       </form>
     </Seccion>
   );

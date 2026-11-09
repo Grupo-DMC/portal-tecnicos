@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import { guardarConfiguracionAvisosAction, marcarNotificacionesLeidasAction } from "@/app/actions/notificaciones";
 import {
   cuandoFue,
@@ -213,12 +214,12 @@ export default function Campanita({
         ) : null}
       </button>
 
-      {abierta ? (
+      {abierta && typeof document !== "undefined" ? createPortal(
         <div
           ref={panel}
           role="dialog"
           aria-label="Notificaciones"
-          className="fixed z-[60] inset-x-0 top-14 bottom-0 lg:inset-x-auto lg:bottom-auto lg:top-4 lg:left-[256px] lg:w-[420px] lg:max-h-[calc(100vh-32px)] flex flex-col bg-[var(--color-bg)] border-2 border-[var(--color-text)] shadow-[0_18px_40px_-12px_rgba(31,28,33,.35)] animate-up-dlg"
+          className="fixed z-[100] inset-x-0 top-14 bottom-0 lg:inset-x-auto lg:bottom-auto lg:top-4 lg:left-[256px] lg:w-[420px] lg:max-h-[calc(100vh-32px)] flex flex-col bg-[var(--color-bg)] border-2 border-[var(--color-text)] shadow-[0_18px_40px_-12px_rgba(31,28,33,.35)] animate-up-dlg"
         >
           <div className="flex items-center gap-2 px-4 pt-3.5 pb-3 border-b-2 border-[var(--color-divider)]">
             {vista === "ajustes" ? (
@@ -310,7 +311,8 @@ export default function Campanita({
               ) : null}
             </>
           )}
-        </div>
+        </div>,
+        document.body
       ) : null}
     </>
   );

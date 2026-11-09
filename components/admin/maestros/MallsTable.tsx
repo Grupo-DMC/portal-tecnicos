@@ -10,10 +10,11 @@ import Dialogo from "@/components/admin/Dialogo";
 import SelectBuscable from "@/components/ui/SelectBuscable";
 import Tag from "@/components/Tag";
 import { Toast, useToast } from "@/components/ui/Toast";
-import { guardarMallAction, guardarTiendasMallAction } from "@/app/actions/maestros";
+import { guardarMallAction, guardarSucursalAction, guardarTiendasMallAction } from "@/app/actions/maestros";
 import { conMismaDireccion } from "@/lib/ui/direcciones";
 import { puede, useReferencias } from "@/lib/ui/referencias";
 import { REGIONES } from "@/lib/ui/regiones";
+import { nombreLocal } from "@/lib/ui/nombre-local";
 import type { Cliente, Mall, Sucursal } from "@/lib/types";
 
 export default function MallsTable({
@@ -223,12 +224,61 @@ function TiendasDialogo({
   const [guardando, setGuardando] = useState(false);
   const [porPalabra, setPorPalabra] = useState(false);
   const [busqueda, setBusqueda] = useState("");
+  const { marcas } = useReferencias();
+  // Crear un local nuevo directamente en este mall.
+  const [creando, setCreando] = useState(false);
+  const [marcaNueva, setMarcaNueva] = useState("");
+  const [nombreNuevo, setNombreNuevo] = useState(mall.nombre);
+  const [creandoGuardando, setCreandoGuardando] = useState(false);
+  const opcMarcas = marcas
+    .filter((m) => m.activo && String(m.clienteId) === clienteSel)
+    .map((m) => ({ v: String(m.id), t: m.nombre }));
+  const marcaElegida = opcMarcas.some((o) => o.v === marcaNueva) ? marcaNueva : (opcMarcas[0]?.v ?? "");
+
+  async function crearLocal() {
+    if (!clienteSel || !marcaElegida) return onHecho("Elige el cliente y la marca del local.", false);
+    if (!nombreNuevo.trim()) return onHecho("El local necesita un nombre.", false);
+    setCreandoGuardando(true);
+    const res = await guardarSucursalAction(null, {
+      clienteId: Number(clienteSel),
+      marcaId: Number(marcaElegida),
+      mallId: mall.id,
+      nombre: nombreNuevo.trim(),
+      codigo: null,
+      direccion: mall.direccion,
+      comuna: mall.comuna,
+      region: mall.region,
+      telefono: null,
+      activo: true,
+      motivoInactivo: null,
+      notas: null,
+      fechaInstalacion: null,
+      remota: null,
+      garantiaMeses: null,
+      planCalibracion: null,
+    });
+    setCreandoGuardando(false);
+    if (!res.ok || !res.id) return onHecho(res.error ?? "No se pudo crear el local.", false);
+    // Ya existe con este mall: se suma a la lista para que «Guardar tiendas» no lo suelte.
+    setIds((prev) => [...prev, res.id as number]);
+    setCreando(false);
+    setNombreNuevo(mall.nombre);
+    onHecho(`Local creado en ${mall.nombre}.`, true);
+  }
 
   const nombreCliente = (id: number) => clientes.find((c) => c.id === id)?.nombreFantasia ?? "—";
   const tiendas = ids
     .map((id) => sucursales.find((s) => s.id === id))
     .filter((s): s is Sucursal => Boolean(s))
     .sort((a, b) => `${nombreCliente(a.clienteId)} ${a.nombre}`.localeCompare(`${nombreCliente(b.clienteId)} ${b.nombre}`));
+
+  const etiqueta = (s: Sucursal) =>
+    nombreLocal({
+      cliente: nombreCliente(s.clienteId),
+      marca: marcas.find((m) => m.id === s.marcaId)?.nombre,
+      sucursal: s.nombre,
+      mall: malls.find((m) => m.id === s.mallId)?.nombre,
+    });
 
   /** El mall en el que ya está la sucursal, si es otro que este. */
   const otroMall = (s: Sucursal) =>
@@ -277,7 +327,7 @@ function TiendasDialogo({
     <Dialogo
       titulo={mall.nombre}
       cta="Guardar tiendas"
-      nota="Cada tienda es una sucursal de un cliente. Si todavía no existe, créala primero en Maestros › Sucursales. Una sucursal está en un solo mall: si ya está en otro, hay que quitarla de ese antes de agregarla acá."
+      nota="Cada tienda es una sucursal de un cliente. Si todavía no existe, créala con «Crear uno nuevo en este mall». Una sucursal está en un solo mall: si ya está en otro, hay que quitarla de ese antes de agregarla acá."
       campos={[]}
       form={{}}
       onCampo={() => {}}
@@ -323,9 +373,7 @@ function TiendasDialogo({
                     return (
                       <div key={s.id} className="flex items-center gap-3 px-4 py-3 border-b border-black/[.18] last:border-b-0">
                         <div className="flex-1 min-w-0">
-                          <div className="text-ui truncate">
-                            {nombreCliente(s.clienteId)} · {s.nombre}
-                          </div>
+                          <div className="text-ui truncate">{etiqueta(s)}</div>
                           <div className="mt-0.5 text-cap opacity-66 truncate">{otro ? `Ya en ${otro} · ${s.direccion}` : s.direccion}</div>
                         </div>
                         <button
@@ -373,6 +421,44 @@ function TiendasDialogo({
             </div>
           </div>
         )}
+
+        <div className="border-t border-[var(--color-divider-soft)] px-4 py-3">
+          {!creando ? (
+            <button type="button" onClick={() => setCreando(true)} className="btn btn-secondary">
+              ¿No está el local? Crear uno nuevo en este mall
+            </button>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2 text-meta opacity-66">
+                Se crea una sucursal nueva de <strong>{nombreCliente(Number(clienteSel))}</strong> en {mall.nombre}, con la dirección del mall.
+                Cambia el cliente arriba si es de otro.
+              </div>
+              <div className="field min-w-0">
+                <label htmlFor="mt-marca-nueva">Marca</label>
+                <SelectBuscable
+                  id="mt-marca-nueva"
+                  valor={marcaElegida}
+                  opciones={opcMarcas}
+                  onChange={setMarcaNueva}
+                  placeholder={opcMarcas.length ? "Elige la marca…" : "Este cliente no tiene marcas activas"}
+                  ariaLabel="Marca"
+                />
+              </div>
+              <div className="field min-w-0">
+                <label htmlFor="mt-nombre-nuevo">Nombre del local</label>
+                <input id="mt-nombre-nuevo" value={nombreNuevo} onChange={(e) => setNombreNuevo(e.target.value)} />
+              </div>
+              <div className="sm:col-span-2 flex gap-2">
+                <button type="button" onClick={crearLocal} disabled={creandoGuardando} className="btn btn-primary">
+                  {creandoGuardando ? "Creando…" : "Crear y agregar"}
+                </button>
+                <button type="button" onClick={() => setCreando(false)} className="btn btn-secondary">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="mt-6 border border-black/[.3]">
@@ -392,9 +478,7 @@ function TiendasDialogo({
         {tiendas.map((s) => (
           <div key={s.id} className="flex items-center gap-3 px-4 py-3 border-b border-black/[.18] last:border-b-0">
             <div className="flex-1 min-w-0">
-              <div className="text-ui truncate">
-                {nombreCliente(s.clienteId)} · {s.nombre}
-              </div>
+              <div className="text-ui truncate">{etiqueta(s)}</div>
               <div className="mt-0.5 text-cap opacity-66 truncate">{s.direccion}</div>
             </div>
             {!s.activo ? <span className="tag tag-neutral flex-none">Inactiva</span> : null}

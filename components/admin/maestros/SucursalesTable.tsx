@@ -1,7 +1,7 @@
 "use client";
 
 import { useFiltroRecordado } from "@/lib/ui/filtro-recordado";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import MaestroTable from "@/components/admin/MaestroTable";
@@ -15,6 +15,7 @@ import { REGIONES } from "@/lib/ui/regiones";
 import { OPCIONES_SI_NO, calibracionDeSucursal, formASiNo, mesesDeForm, siNoAForm } from "@/lib/ui/sino";
 import { ETIQUETA_GARANTIA, enGarantia, garantiaDe, type EstadoGarantia } from "@/lib/ui/garantia";
 import { hoyISO, fechaCL } from "@/lib/ui/fecha";
+import { nombreLocal } from "@/lib/ui/nombre-local";
 import type { Cliente, Mall, Sucursal } from "@/lib/types";
 
 /** El filtro de una marca opcional: "" = todas, y si no, sí / no / sin indicar. */
@@ -66,6 +67,7 @@ export default function SucursalesTable({
   /** ¿El cliente elegido en el formulario está en plan? Entonces la tienda también, sin preguntar. */
   const clienteEnPlan = (clienteId: string | boolean | undefined) =>
     clientes.find((c) => String(c.id) === String(clienteId))?.planCalibracion === true;
+  const nombreMarca = (id: number) => marcas.find((m) => m.id === id)?.nombre ?? null;
   const nombreMall = (id?: number | null) => malls.find((m) => m.id === id)?.nombre ?? "";
   const hoy = hoyISO();
   const garantia = (s: Sucursal) => garantiaDe(s, clientes.find((c) => c.id === s.clienteId), hoy);
@@ -74,13 +76,34 @@ export default function SucursalesTable({
   const [fGarantia, setFGarantia] = useFiltroRecordado("garantia");
   const [fRemota, setFRemota] = useFiltroRecordado("remota");
   const [fCalibracion, setFCalibracion] = useFiltroRecordado("calibracion");
+  const [fMall, setFMall] = useFiltroRecordado("mall");
+  const [fRegion, setFRegion] = useFiltroRecordado("region");
+  const [fComuna, setFComuna] = useFiltroRecordado("comuna");
+  const regiones = useMemo(
+    () => [...new Set(sucursales.map((s) => s.region).filter(Boolean))].sort((a, b) => REGIONES.indexOf(a) - REGIONES.indexOf(b)),
+    [sucursales]
+  );
+  const comunas = useMemo(
+    () =>
+      [...new Set(sucursales.filter((s) => !fRegion || s.region === fRegion).map((s) => s.comuna).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b, "es")
+      ),
+    [sucursales, fRegion]
+  );
+  const mallsConLocales = useMemo(() => {
+    const usados = new Set(sucursales.map((s) => s.mallId).filter(Boolean));
+    return malls.filter((m) => usados.has(m.id));
+  }, [sucursales, malls]);
   const pasa = useCallback(
     (s: Sucursal) =>
       (!fCliente || String(s.clienteId) === fCliente) &&
+      (!fMall || (fMall === "sin" ? !s.mallId : String(s.mallId) === fMall)) &&
+      (!fRegion || s.region === fRegion) &&
+      (!fComuna || s.comuna === fComuna) &&
       pasaSiNo(fGarantia, garantiaParaFiltro(s, clientes.find((c) => c.id === s.clienteId), hoy)) &&
       pasaSiNo(fRemota, s.remota) &&
       pasaSiNo(fCalibracion, calibracionDeSucursal(s, clientes.find((c) => c.id === s.clienteId)).valor),
-    [fCliente, fGarantia, fRemota, fCalibracion, clientes, hoy]
+    [fCliente, fMall, fRegion, fComuna, fGarantia, fRemota, fCalibracion, clientes, hoy]
   );
 
   const tabla = (
@@ -109,6 +132,35 @@ export default function SucursalesTable({
             opciones: [{ v: "", t: "Todos" }, ...clientes.map((c) => ({ v: String(c.id), t: c.nombreFantasia }))],
             onChange: setFCliente,
           },
+          {
+            id: "f-mall",
+            label: "Mall",
+            valor: fMall,
+            opciones: [
+              { v: "", t: "Todos" },
+              { v: "sin", t: "Sin mall (a la calle)" },
+              ...mallsConLocales.map((m) => ({ v: String(m.id), t: m.nombre })),
+            ],
+            onChange: setFMall,
+          },
+          {
+            id: "f-region",
+            label: "Región",
+            valor: fRegion,
+            opciones: [{ v: "", t: "Todas" }, ...regiones.map((r) => ({ v: r, t: r }))],
+            // Al cambiar de región, una comuna que no es de ella ya no aplica.
+            onChange: (v) => {
+              setFRegion(v);
+              setFComuna("");
+            },
+          },
+          {
+            id: "f-comuna",
+            label: "Comuna",
+            valor: fComuna,
+            opciones: [{ v: "", t: "Todas" }, ...comunas.map((c) => ({ v: c, t: c }))],
+            onChange: setFComuna,
+          },
           { id: "f-garantia", label: "En garantía", valor: fGarantia, opciones: OPCIONES_FILTRO_SI_NO, onChange: setFGarantia },
           { id: "f-remota", label: "Remota", valor: fRemota, opciones: OPCIONES_FILTRO_SI_NO, onChange: setFRemota },
           {
@@ -121,6 +173,11 @@ export default function SucursalesTable({
         ],
         chips: [
           ...(fCliente ? [{ label: `Cliente: ${nombreCliente(Number(fCliente))}`, onQuitar: () => setFCliente("") }] : []),
+          ...(fMall
+            ? [{ label: `Mall: ${fMall === "sin" ? "sin mall" : nombreMall(Number(fMall))}`, onQuitar: () => setFMall("") }]
+            : []),
+          ...(fRegion ? [{ label: `Región: ${fRegion}`, onQuitar: () => { setFRegion(""); setFComuna(""); } }] : []),
+          ...(fComuna ? [{ label: `Comuna: ${fComuna}`, onQuitar: () => setFComuna("") }] : []),
           ...(fGarantia ? [{ label: `Garantía: ${textoSiNo(fGarantia)}`, onQuitar: () => setFGarantia("") }] : []),
           ...(fRemota ? [{ label: `Remota: ${textoSiNo(fRemota)}`, onQuitar: () => setFRemota("") }] : []),
           ...(fCalibracion
@@ -130,6 +187,9 @@ export default function SucursalesTable({
         pasa,
         limpiar: () => {
           setFCliente("");
+          setFMall("");
+          setFRegion("");
+          setFComuna("");
           setFGarantia("");
           setFRemota("");
           setFCalibracion("");
@@ -147,9 +207,14 @@ export default function SucursalesTable({
           </svg>
         </Link>
       )}
-      searchKeys={(s) => `${s.nombre} ${s.codigo ?? ""} ${s.comuna} ${s.direccion} ${nombreCliente(s.clienteId)} ${nombreMall(s.mallId)}`}
+      searchKeys={(s) => `${s.nombre} ${s.codigo ?? ""} ${s.comuna} ${s.direccion} ${nombreCliente(s.clienteId)} ${nombreMarca(s.marcaId) ?? ""} ${s.region} ${nombreMall(s.mallId)}`}
       columns={[
-        { key: "nombre", label: "Sucursal" },
+        {
+          key: "nombre",
+          label: "Sucursal",
+          render: (s) =>
+            nombreLocal({ cliente: nombreCliente(s.clienteId), marca: nombreMarca(s.marcaId), sucursal: s.nombre, mall: nombreMall(s.mallId) }),
+        },
         { key: "cliente", label: "Cliente", render: (s) => nombreCliente(s.clienteId) },
         { key: "mall", label: "Mall", render: (s) => nombreMall(s.mallId) || "—" },
         { key: "codigo", label: "Código", render: (s) => s.codigo ?? "—" },

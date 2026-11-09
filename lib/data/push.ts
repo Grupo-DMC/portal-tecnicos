@@ -1,5 +1,5 @@
 import "server-only";
-import webpush from "web-push";
+import { sendNotification, setVapidDetails } from "web-push";
 import { env } from "@/lib/env";
 import { consultaCon, ejecutar, num, sql } from "@/lib/data/sql";
 import { leerConfiguracion } from "@/lib/data/actividad";
@@ -40,7 +40,7 @@ function pushConfigurado(): boolean {
 let listo = false;
 function prepararVapid() {
   if (listo) return;
-  webpush.setVapidDetails(env("VAPID_SUBJECT") ?? "mailto:soporte@example.com", env("VAPID_PUBLIC_KEY")!, env("VAPID_PRIVATE_KEY")!);
+  setVapidDetails(env("VAPID_SUBJECT") ?? "mailto:soporte@example.com", env("VAPID_PUBLIC_KEY")!, env("VAPID_PRIVATE_KEY")!);
   listo = true;
 }
 
@@ -119,7 +119,7 @@ export async function enviarPush(aviso: AvisoPush): Promise<void> {
       filas.map(async (f) => {
         if (!(await puede(num(f.usuarioId)))) return;
         try {
-          await webpush.sendNotification({ endpoint: f.endpoint, keys: { p256dh: f.p256dh, auth: f.auth } }, carga, {
+          await sendNotification({ endpoint: f.endpoint, keys: { p256dh: f.p256dh, auth: f.auth } }, carga, {
             TTL: 3600,
             urgency: "normal",
           });

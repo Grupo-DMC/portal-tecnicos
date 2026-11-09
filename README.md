@@ -11,8 +11,23 @@ dar seguimiento, y una vista móvil para que el técnico registre el trabajo y c
 
 ----
 
+## Qué hace
+
+- **Panel de escritorio** (`/admin`): visitas (agenda individual, masiva y acciones sobre varias a la
+  vez, con margen de días), clientes, marcas, sucursales, malls, técnicos, usuarios y roles,
+  checklist, contactos, problemas, reagendas y accesos.
+- **Vista móvil del técnico** (`/tecnico`): sus visitas del día, el formulario del acta con fotos y
+  videos desde la cámara del celular, firma, y pedir edición a coordinación.
+- **Acta en PDF** por visita, con las partes editadas resaltadas y quién las modificó.
+- **Sucursales y malls**: una sucursal puede estar en un mall; con mall y marca su nombre se arma solo
+  («Cliente · Marca · Mall»). El alta masiva permite mezclar clientes y marcas en una misma carga, y
+  desde un mall se crea un local con el mismo formulario de Maestros › Sucursales.
+- La carga de «Visitas en papel» (informes de años anteriores) está **desactivada**: sin botón y la
+  ruta responde «no encontrado». El código sigue en `components/admin/papel`.
+
 ## Índice
 
+- [Qué hace](#qué-hace)
 - [Stack](#stack)
 - [Puesta en marcha](#puesta-en-marcha)
 - [Scripts](#scripts)
@@ -30,9 +45,11 @@ dar seguimiento, y una vista móvil para que el técnico registre el trabajo y c
 
 | Pieza | Detalle |
 | --- | --- |
-| Framework | Next.js 15 (App Router, Server Actions) |
+| Framework | Next.js 16 (App Router, Server Actions) |
 | UI | React 19 + Tailwind CSS 4 |
 | Lenguaje | TypeScript 5 |
+| Validación | Zod 4 |
+| PDF | `pdf-lib` (acta de la visita) |
 | Base de datos | SQL Server (`mssql`) |
 
 **Requisitos:** Node.js 20+ y npm, y acceso a una instancia de SQL Server con el esquema aplicado.
@@ -65,8 +82,11 @@ Para desarrollo, apunta `.env.development` a **tu propia base** (ver
 | `npm start` | Sirve el build de producción |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | Verificación de tipos (`tsc --noEmit`) |
-| `npm test` | Tests (Vitest) |
-| `npm run test:cobertura` | Tests con informe de cobertura |
+| `npm test` | Todos los tests (Vitest) |
+| `npm run test:unit` | Solo unidad, acciones y componentes (sin base de datos) |
+| `npm run test:bd` | Tests contra una base real |
+| `npm run test:e2e` | Tests de extremo a extremo (Playwright) |
+| `npm run test:coverage` | Tests con informe de cobertura |
 | `npm run secreto` | Genera un valor aleatorio apto para secretos |
 | `npm run hash-password` | Genera el hash de una contraseña por consola |
 
@@ -151,22 +171,25 @@ app/
   admin/        Panel de escritorio
   tecnico/      Vista móvil del técnico
   login/        Acceso
-  api/          Rutas internas protegidas por sesión
+  api/          Rutas internas protegidas por sesión (acta, medios, salud)
 components/
   admin/        Componentes del panel
   mobile/       Componentes de la vista móvil
   ui/           Compartidos
 lib/
+  contratos/    Tipos de entrada/salida de las acciones
   data/         Capa de acceso a datos
   db/           Configuración y pool de conexión
+  pdf/          Generación del acta en PDF
   ui/           Utilidades de cliente (formato, fechas, estados)
+  validacion/   Esquemas Zod de las entradas
   auth.ts       Autenticación y sesión
   log.ts        Registro de eventos en JSON
   types.ts      Tipos del dominio
-middleware.ts   Control de acceso a las rutas
+proxy.ts        Control de acceso a las rutas
 scripts/        Utilidades de consola
 sql/            Esquema, migraciones y datos de demostración
-tests/          Tests (Vitest)
+tests/          Tests (Vitest y Playwright)
 ```
 
 ---

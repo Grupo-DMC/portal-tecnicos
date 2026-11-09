@@ -1,5 +1,6 @@
 "use client";
 
+import { useFiltroRecordado } from "@/lib/ui/filtro-recordado";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -69,7 +70,7 @@ export default function PendientesView({ datos }: { datos: DatosPendientes }) {
   const { toast, aviso } = useToast();
   const { pendientes, historial, pasos } = datos;
 
-  const [busqueda, setBusqueda] = useState("");
+  const [busqueda, setBusqueda] = useFiltroRecordado("busqueda");
   const [f, setF] = useState<Filtros>(SIN_FILTROS);
   /** Folios con el historial del local desplegado. */
   const [abiertos, setAbiertos] = useState<string[]>([]);

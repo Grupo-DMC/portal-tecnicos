@@ -1,5 +1,6 @@
 "use client";
 
+import { useFiltroRecordado } from "@/lib/ui/filtro-recordado";
 import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -69,10 +70,10 @@ export default function SucursalesTable({
   const hoy = hoyISO();
   const garantia = (s: Sucursal) => garantiaDe(s, clientes.find((c) => c.id === s.clienteId), hoy);
 
-  const [fCliente, setFCliente] = useState(clientes.some((c) => String(c.id) === clienteInicial) ? clienteInicial : "");
-  const [fGarantia, setFGarantia] = useState("");
-  const [fRemota, setFRemota] = useState("");
-  const [fCalibracion, setFCalibracion] = useState("");
+  const [fCliente, setFCliente] = useFiltroRecordado("cliente", clientes.some((c) => String(c.id) === clienteInicial) ? (clienteInicial ?? "") : "");
+  const [fGarantia, setFGarantia] = useFiltroRecordado("garantia");
+  const [fRemota, setFRemota] = useFiltroRecordado("remota");
+  const [fCalibracion, setFCalibracion] = useFiltroRecordado("calibracion");
   const pasa = useCallback(
     (s: Sucursal) =>
       (!fCliente || String(s.clienteId) === fCliente) &&

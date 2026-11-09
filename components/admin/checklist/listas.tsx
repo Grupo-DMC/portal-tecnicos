@@ -32,7 +32,7 @@ export function ListaMotivos({ fv }: { fv: ChecklistEditorApi }) {
         numero="Lista 1"
         titulo="Motivos y sus trabajos"
         bajada="Coordinación agenda la visita con uno o varios motivos, y bajo cada motivo el técnico registra lo que hizo eligiendo entre SUS trabajos, en este orden. Despliega un motivo para armar su lista. Agrupa los motivos en secciones (ej. «Visitas») y el celular y el panel los muestran plegables por sección. Un mismo trabajo puede ir en varios motivos: sus subtrabajos se editan una vez y valen en todos."
-        cta="Nuevo motivo"
+        cta="Nuevo motivo de visita"
         onAgregar={() => agregarMotivo()}
         ctaExtra={{ label: "Nueva sección", onClick: () => agregarSeccion(setSeccionesMotivo) }}
       >
@@ -64,7 +64,7 @@ export function ListaMotivos({ fv }: { fv: ChecklistEditorApi }) {
                       : undefined
                   }
                   onQuitar={() => quitarSeccion(sec, "motivos")}
-                  cta="Nuevo motivo aquí"
+                  cta="Nuevo motivo de visita aquí"
                   onNuevo={() => agregarMotivo(sec.key)}
                 >
                   {visibles.map(({ m }) =>
@@ -93,7 +93,7 @@ export function ListaMotivos({ fv }: { fv: ChecklistEditorApi }) {
                   cuenta={`${sueltos.length} ${sueltos.length === 1 ? "motivo" : "motivos"}`}
                   abierta={!plegadas.has("sin-motivo") || !!filtro}
                   onToggle={() => alternarSeccion("sin-motivo")}
-                  cta="Nuevo motivo aquí"
+                  cta="Nuevo motivo de visita aquí"
                   onNuevo={() => agregarMotivo(null)}
                 >
                   {visibles.map(({ m }) =>

@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import type { FormValores } from "@/components/admin/Dialogo";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { recordarUrlVisitas } from "@/lib/ui/filtro-recordado";
 import Tag from "@/components/Tag";
 import AdminHeader from "@/components/admin/AdminHeader";
 import FiltrosBar, { type ChipFiltro } from "@/components/admin/FiltrosBar";
@@ -55,6 +56,7 @@ export default function VisitasTable({
   permiteCrear?: boolean;
 }) {
   const router = useRouter();
+  const pantalla = usePathname();
   const ref = useReferencias();
   const { tecnicos, problemas: catalogoProblema } = ref;
   const { toast, aviso } = useToast();
@@ -77,6 +79,12 @@ export default function VisitasTable({
     }, 350);
     return () => clearTimeout(espera);
   }, [busqueda, f, router]);
+
+  // Con el acta abierta, «Visitas» vuelve a esta misma lista con sus filtros.
+  const urlActual = urlFiltrosVisitas(f);
+  useEffect(() => {
+    if (pantalla === "/admin/visitas") recordarUrlVisitas(urlActual);
+  }, [pantalla, urlActual]);
 
   const [nueva, setNueva] = useState(false);
   // Con `porMall` el diálogo de la ruta abre eligiendo tiendas de un mall, y

@@ -1,5 +1,6 @@
 "use client";
 
+import { useFiltroRecordado } from "@/lib/ui/filtro-recordado";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Tag from "@/components/Tag";
@@ -41,7 +42,7 @@ export default function VisitasList({
   const router = useRouter();
   const { toast, aviso } = useToast();
   const [filtroAbierto, setFiltroAbierto] = useState(false);
-  const [estado, setEstado] = useState<string>("");
+  const [estado, setEstado] = useFiltroRecordado("estado");
   const [nueva, setNueva] = useState(false);
   const ref = useReferencias();
   /** Los malls desplegados, como "<fecha>-<mall>": nacen plegados. */

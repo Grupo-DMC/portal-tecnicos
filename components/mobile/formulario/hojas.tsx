@@ -7,9 +7,51 @@ import { Campo, Contador, PasoTitulo, entradaSheet } from "@/components/mobile/f
 import type { FormularioVisitaApi } from "@/components/mobile/formulario/useFormularioVisita";
 import { nuevoId } from "@/components/mobile/formulario/ids";
 import { gruposDeSubtrabajos } from "@/lib/ui/subtrabajos";
+import { useState } from "react";
 
 // Las hojas que suben desde abajo para agregar un trabajo realizado o un
 // problema.
+
+/**
+ * Las opciones de un grupo de subtrabajos: al abrir la hoja solo se ve la
+ * primera, y el resto queda tras «Ver las N restantes». Un grupo con algo ya
+ * marcado nace desplegado, para no esconderle al técnico lo que eligió.
+ */
+function OpcionesRecortadas<T>({
+  items,
+  marcado,
+  render,
+}: {
+  items: T[];
+  marcado: (x: T) => boolean;
+  render: (x: T) => React.ReactNode;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  const desplegado = abierto || items.slice(1).some(marcado);
+  const visibles = desplegado ? items : items.slice(0, 1);
+  const ocultas = items.length - visibles.length;
+  return (
+    <div className="flex flex-col gap-1.5">
+      {visibles.map(render)}
+      {ocultas > 0 ? (
+        <button
+          onClick={() => setAbierto(true)}
+          className="w-full min-h-[46px] px-3.5 bg-transparent border border-dashed border-black/[.4] text-[var(--color-text)] text-ui font-extrabold cursor-pointer text-left hover:bg-black/[.07]"
+        >
+          Ver {ocultas === 1 ? "la 1 restante" : `las ${ocultas} restantes`}
+        </button>
+      ) : null}
+      {abierto && items.length > 1 && !items.slice(1).some(marcado) ? (
+        <button
+          onClick={() => setAbierto(false)}
+          className="w-full min-h-[40px] px-3.5 bg-transparent border-0 text-[var(--color-text)] text-meta underline underline-offset-[3px] cursor-pointer text-left"
+        >
+          Ver solo la primera
+        </button>
+      ) : null}
+    </div>
+  );
+}
 
 export function HojaTrabajo({ fv }: { fv: FormularioVisitaApi }) {
   const {
@@ -77,8 +119,10 @@ export function HojaTrabajo({ fv }: { fv: FormularioVisitaApi }) {
             {trbSel && trbSel.subtrabajos.length > 0 ? gruposDeSubtrabajos(trbSel).map((grupoSub, k) => (
               <div key={grupoSub.clave}>
                 <PasoTitulo n={String(k + 2)} texto={grupoSub.titulo} />
-                <div className="flex flex-col gap-1.5">
-                  {grupoSub.subtrabajos.map((s) => {
+                <OpcionesRecortadas
+                  items={grupoSub.subtrabajos}
+                  marcado={(s) => nt.subs.some((x) => x.etiqueta === s.etiqueta)}
+                  render={(s) => {
                     const marcado = nt.subs.find((x) => x.etiqueta === s.etiqueta);
                     const activo = !!marcado;
                     return (
@@ -130,8 +174,8 @@ export function HojaTrabajo({ fv }: { fv: FormularioVisitaApi }) {
                         ) : null}
                       </div>
                     );
-                  })}
-                </div>
+                  }}
+                />
               </div>
             )) : null}
 

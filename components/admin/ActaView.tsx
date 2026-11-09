@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Tag from "@/components/Tag";
@@ -27,6 +27,7 @@ import { resumenEdicion } from "@/lib/ui/edicion";
 import { esInformePapel } from "@/lib/ui/papel";
 import { nombreArchivoActa, nombreZipMultimedia } from "@/lib/ui/nombre-acta";
 import { textoMall } from "@/lib/ui/ubicacion";
+import { urlVisitasRecordada } from "@/lib/ui/filtro-recordado";
 import type { Visita } from "@/lib/types";
 import { AdjuntosVista } from "@/components/ui/AdjuntosTrabajo";
 
@@ -78,6 +79,9 @@ export default function ActaView({
   const ref = useReferencias();
   const { problemas: catalogoProblema, trabajos: catalogoTrabajo } = ref;
   const { toast, aviso } = useToast();
+  // «Visitas» vuelve a la lista tal como se dejó, con sus filtros.
+  const [volverA, setVolverA] = useState("/admin/visitas");
+  useEffect(() => setVolverA(urlVisitasRecordada()), []);
   const [resumenAbierto, setResumenAbierto] = useState(false);
   const [trazaAbierta, setTrazaAbierta] = useState(false);
   const [zonaAbierta, setZonaAbierta] = useState(false);
@@ -196,7 +200,7 @@ export default function ActaView({
       {/* Barra de acciones: volver a la izquierda; a la derecha la acción
           principal del estado, y lo demás agrupado en Editar y Descargar. */}
       <div className="flex items-center gap-2 flex-wrap px-4 md:px-7 py-3 border-b border-[var(--color-divider-soft)]">
-        <Link href="/admin/visitas" className="btn btn-ghost min-h-10 no-underline">
+        <Link href={volverA} className="btn btn-ghost min-h-10 no-underline">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
             <path d="M19 12H5M11 6l-6 6 6 6" />
           </svg>

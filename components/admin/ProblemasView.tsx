@@ -1,5 +1,6 @@
 "use client";
 
+import { useFiltroRecordado } from "@/lib/ui/filtro-recordado";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -76,7 +77,7 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
   const nombreEstado = (codigo: string) => etiquetaEstadoProblema(codigo, ref.estadosProblema);
 
   const { toast, aviso } = useToast();
-  const [busqueda, setBusqueda] = useState("");
+  const [busqueda, setBusqueda] = useFiltroRecordado("busqueda");
   const [f, setF] = useState<Filtros>(SIN_FILTROS);
   const [verAnalisis, setVerAnalisis] = useState(true);
   /** Problema con el panel "Cambiar estado o tipo" desplegado. */

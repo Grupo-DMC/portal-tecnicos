@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useFiltroRecordado } from "@/lib/ui/filtro-recordado";
+import { useCallback, useMemo } from "react";
 import Link from "next/link";
 import MaestroTable from "@/components/admin/MaestroTable";
 import Tag from "@/components/Tag";
@@ -82,8 +83,8 @@ export default function ClientesTable({ clientes, sucursales }: { clientes: Clie
   const sinLocales = activos.filter((c) => de(c).activos === 0).length;
   const enPlan = activos.filter((c) => c.planCalibracion === true).length;
 
-  const [fPlan, setFPlan] = useState("");
-  const [fGarantia, setFGarantia] = useState("");
+  const [fPlan, setFPlan] = useFiltroRecordado("plan");
+  const [fGarantia, setFGarantia] = useFiltroRecordado("garantia");
   const pasa = useCallback(
     (c: Cliente) => {
       const plan = c.planCalibracion === true ? "si" : c.planCalibracion === false ? "no" : "nd";

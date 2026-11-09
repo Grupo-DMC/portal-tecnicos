@@ -1,5 +1,6 @@
 "use client";
 
+import { useFiltroRecordado } from "@/lib/ui/filtro-recordado";
 import { useMemo, useState } from "react";
 import { sinTildes } from "@/lib/ui/formato";
 import { useRouter } from "next/navigation";
@@ -114,7 +115,7 @@ export default function MaestroTable<T extends { id: number }>({
   const ref = useReferencias();
   const puedeCrear = puede(ref, `${modulo}.crear`);
   const puedeEditar = puede(ref, `${modulo}.editar`);
-  const [busqueda, setBusqueda] = useState("");
+  const [busqueda, setBusqueda] = useFiltroRecordado(`${modulo}-busqueda`);
   const [dialogo, setDialogo] = useState<{ id: number | null; form: FormValores } | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [confirmar, setConfirmar] = useState<ConfirmarCfg | null>(null);

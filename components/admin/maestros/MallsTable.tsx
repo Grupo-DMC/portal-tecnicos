@@ -1,5 +1,6 @@
 "use client";
 
+import { useFiltroRecordado } from "@/lib/ui/filtro-recordado";
 import { useMemo, useState } from "react";
 import { sinTildes } from "@/lib/ui/formato";
 import Link from "next/link";
@@ -28,8 +29,8 @@ export default function MallsTable({
   const ref = useReferencias();
   const { toast, aviso } = useToast();
   const [tiendasDe, setTiendasDe] = useState<Mall | null>(null);
-  const [fRegion, setFRegion] = useState("");
-  const [fComuna, setFComuna] = useState("");
+  const [fRegion, setFRegion] = useFiltroRecordado("region");
+  const [fComuna, setFComuna] = useFiltroRecordado("comuna");
   const nTiendas = (mallId: number) => sucursales.filter((s) => s.mallId === mallId).length;
 
   // Cuántas tiendas tiene cada mall, calculado una vez (el orden lo consulta por fila).

@@ -12,6 +12,7 @@ import {
   listaCorta,
   mover,
   moverEn,
+  nombreDeCopia,
   nuevaClave,
   reubicar,
   reubicarEn,
@@ -115,6 +116,21 @@ export function Desplegable({
     setNuevas((prev) => ({ ...prev, [sub ?? ""]: "" }));
   }
 
+  /** Copia el subdetalle justo debajo, en su mismo grupo, para editarle el nombre. */
+  function copiarItem(o: Item) {
+    onCambiar((g) => {
+      const copia: Item = {
+        key: nuevaClave(),
+        id: null,
+        etiqueta: nombreDeCopia(o.etiqueta.trim() || "Sin nombre", g.items.map((x) => x.etiqueta)),
+        permiteCantidad: o.permiteCantidad,
+        subgrupo: o.subgrupo ?? null,
+      };
+      const i = g.items.findIndex((x) => x.key === o.key);
+      return { ...g, items: [...g.items.slice(0, i + 1), copia, ...g.items.slice(i + 1)] };
+    });
+  }
+
   function agregarSubgrupo() {
     const key = nuevaClave();
     onCambiar((g) => ({ ...g, subgrupos: [...(g.subgrupos ?? []), { key, nombre: "" }] }));
@@ -184,6 +200,14 @@ export function Desplegable({
                       }))
                     }
                   />
+                  <button
+                    onClick={() => copiarItem(o)}
+                    className="btn btn-icon w-10 h-10 flex-none border border-black/[.3]"
+                    aria-label={`Copiar ${etiquetaSingular}`}
+                    title={`Copiar este ${etiquetaSingular} (con su modo y en su mismo grupo)`}
+                  >
+                    <IconoClonar />
+                  </button>
                   <button
                     onClick={() =>
                       onConfirmarQuitarItem({

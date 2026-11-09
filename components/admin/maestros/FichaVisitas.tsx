@@ -1,5 +1,6 @@
 "use client";
 
+import { useFiltroRecordado } from "@/lib/ui/filtro-recordado";
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -76,10 +77,10 @@ export default function FichaVisitas({
   const esMall = modo === "mall";
   const conTiendas = Boolean(tiendas);
 
-  const [busqueda, setBusqueda] = useState("");
-  const [fEstado, setFEstado] = useState("");
-  const [fAnio, setFAnio] = useState("");
-  const [fTienda, setFTienda] = useState("");
+  const [busqueda, setBusqueda] = useFiltroRecordado("busqueda");
+  const [fEstado, setFEstado] = useFiltroRecordado("estado");
+  const [fAnio, setFAnio] = useFiltroRecordado("anio");
+  const [fTienda, setFTienda] = useFiltroRecordado("tienda");
 
   // ── Cifras ────────────────────────────────────────────────────────────────
   const total = filas.length;

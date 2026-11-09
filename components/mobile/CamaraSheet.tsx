@@ -1,14 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-
-type Estado = "pidiendo" | "lista" | "denegada" | "sin-camara";
+import { useEffect, useState } from "react";
 
 /**
- * Captura de fotos con la cámara del equipo. Pide permiso real vía
- * getUserMedia (cámara trasera cuando existe) y devuelve cada disparo como
- * data URL. Si el navegador niega el permiso o no hay cámara, cae al selector
- * de archivos para no dejar al técnico sin forma de adjuntar la foto.
+ * Fotos con la cámara del celular.
+ *
+ * Abre la app de cámara del propio teléfono (input con `capture`), no un visor
+ * dentro de la página: así el técnico tiene el enfoque, el flash, el zoom y los
+ * permisos que ya conoce, y no hay que autorizar la cámara al navegador. Cada
+ * foto tomada vuelve como data URL y se agrega a la visita al instante; para
+ * otra, se aprieta de nuevo. La galería queda como segunda opción.
  */
 export default function CamaraSheet({
   onCapturar,
@@ -17,63 +18,7 @@ export default function CamaraSheet({
   onCapturar: (dataUrl: string) => void;
   onCerrar: () => void;
 }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [estado, setEstado] = useState<Estado>("pidiendo");
-  const [error, setError] = useState("");
   const [tomadas, setTomadas] = useState(0);
-
-  const detener = useCallback(() => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-  }, []);
-
-  useEffect(() => {
-    let cancelado = false;
-
-    async function pedir() {
-      if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
-        setEstado("sin-camara");
-        setError("Este navegador no permite abrir la cámara.");
-        return;
-      }
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" }, width: { ideal: 1600 }, height: { ideal: 1200 } },
-          audio: false,
-        });
-        if (cancelado) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play().catch(() => {});
-        }
-        setEstado("lista");
-      } catch (e) {
-        if (cancelado) return;
-        const nombre = e instanceof DOMException ? e.name : "";
-        if (nombre === "NotAllowedError" || nombre === "SecurityError") {
-          setEstado("denegada");
-          setError("Diste “Bloquear” al permiso de cámara. Habilítalo en el candado de la barra de direcciones, o sube la foto desde la galería.");
-        } else if (nombre === "NotFoundError" || nombre === "OverconstrainedError") {
-          setEstado("sin-camara");
-          setError("No se detectó ninguna cámara en este equipo.");
-        } else {
-          setEstado("sin-camara");
-          setError("No se pudo abrir la cámara. Usa la galería para adjuntar la foto.");
-        }
-      }
-    }
-
-    pedir();
-    return () => {
-      cancelado = true;
-      detener();
-    };
-  }, [detener]);
 
   useEffect(() => {
     const previo = document.body.style.overflow;
@@ -83,33 +28,19 @@ export default function CamaraSheet({
     };
   }, []);
 
-  function cerrar() {
-    detener();
-    onCerrar();
-  }
-
-  function disparar() {
-    const video = videoRef.current;
-    if (!video || !video.videoWidth) return;
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    onCapturar(canvas.toDataURL("image/jpeg", 0.85));
-    setTomadas((n) => n + 1);
-  }
-
-  function desdeArchivo(e: React.ChangeEvent<HTMLInputElement>) {
+  function leer(e: React.ChangeEvent<HTMLInputElement>, desdeCamara: boolean) {
     const files = Array.from(e.target.files ?? []);
     files.forEach((file) => {
       const reader = new FileReader();
-      reader.onload = () => onCapturar(String(reader.result));
+      reader.onload = () => {
+        onCapturar(String(reader.result));
+        if (desdeCamara) setTomadas((n) => n + 1);
+      };
       reader.readAsDataURL(file);
     });
     e.target.value = "";
-    if (files.length) cerrar();
+    // De la galería se eligen todas de una vez: no hay nada más que esperar.
+    if (!desdeCamara && files.length) onCerrar();
   }
 
   return (
@@ -124,7 +55,7 @@ export default function CamaraSheet({
           <div className="font-extrabold text-lead leading-[1.2]">Tomar foto</div>
           <button
             type="button"
-            onClick={cerrar}
+            onClick={onCerrar}
             aria-label="Cerrar"
             className="ml-auto w-[38px] h-[38px] grid place-items-center bg-transparent border-0 cursor-pointer text-[var(--color-text)] hover:bg-black/[.08]"
           >
@@ -135,54 +66,48 @@ export default function CamaraSheet({
         </div>
 
         <div className="p-4">
-          <div className="relative w-full aspect-[4/3] bg-[var(--color-text)] overflow-hidden border border-[var(--color-divider)]">
-            <video ref={videoRef} playsInline muted className="w-full h-full object-cover" />
-            {estado === "pidiendo" ? (
-              <div className="absolute inset-0 grid place-items-center px-6 text-center text-meta text-[var(--color-bg)]">
-                Esperando que autorices el uso de la cámara…
-              </div>
-            ) : null}
-            {estado !== "lista" && estado !== "pidiendo" ? (
-              <div className="absolute inset-0 grid place-items-center px-6 text-center text-meta text-[var(--color-bg)]">
-                {error}
-              </div>
-            ) : null}
-          </div>
+          <label className="relative w-full min-h-[64px] flex items-center justify-between px-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] font-extrabold text-lead cursor-pointer hover:bg-[var(--color-accent-hover)]">
+            <span>{tomadas > 0 ? "Tomar otra foto" : "Abrir la cámara"}</span>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+              <path d="M3 8h3l2-3h8l2 3h3v12H3z" />
+              <circle cx="12" cy="13" r="3.4" />
+            </svg>
+            {/* capture: en el celular abre la app de cámara (trasera) en vez del selector de archivos. */}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => leer(e, true)}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              aria-label="Abrir la cámara del celular"
+            />
+          </label>
+          <p className="mt-2.5 mb-0 text-cap opacity-66">
+            {tomadas > 0
+              ? `${tomadas} foto${tomadas > 1 ? "s" : ""} agregada${tomadas > 1 ? "s" : ""} a la visita. Puedes tomar otra.`
+              : "Se abre la cámara de tu celular. Cada foto se agrega a la visita al instante."}
+          </p>
 
-          {estado === "lista" ? (
-            <>
-              <button
-                type="button"
-                onClick={disparar}
-                className="w-full min-h-[58px] flex items-center justify-between px-4.5 mt-3.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)]"
-              >
-                <span>Tomar foto</span>
-                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
-                  <path d="M3 8h3l2-3h8l2 3h3v12H3z" />
-                  <circle cx="12" cy="13" r="3.4" />
-                </svg>
-              </button>
-              <p className="mt-2.5 mb-0 text-cap opacity-66">
-                {tomadas > 0
-                  ? `${tomadas} foto${tomadas > 1 ? "s" : ""} agregada${tomadas > 1 ? "s" : ""} a la visita. Puedes seguir disparando.`
-                  : "Cada disparo se agrega a la visita al instante."}
-              </p>
-            </>
-          ) : null}
-
-          <label className="w-full min-h-[52px] flex items-center gap-2.5 px-4 mt-2.5 bg-transparent border border-dashed border-black/[.5] text-[var(--color-text)] font-extrabold text-ui cursor-pointer hover:bg-black/[.06]">
+          <label className="relative w-full min-h-[52px] flex items-center gap-2.5 px-4 mt-3.5 bg-transparent border border-dashed border-black/[.5] text-[var(--color-text)] font-extrabold text-ui cursor-pointer hover:bg-black/[.06]">
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               <path d="M4 5h16v14H4z" />
               <path d="M4 16l5-5 4 4 3-3 4 4" />
               <circle cx="9" cy="9" r="1.4" />
             </svg>
             <span>Subir desde la galería</span>
-            <input type="file" accept="image/*" multiple onChange={desdeArchivo} className="absolute w-px h-px opacity-0 pointer-events-none" />
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => leer(e, false)}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              aria-label="Subir fotos desde la galería"
+            />
           </label>
 
           <button
             type="button"
-            onClick={cerrar}
+            onClick={onCerrar}
             className="w-full min-h-[50px] mt-2.5 px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
           >
             {tomadas > 0 ? "Listo" : "Cancelar"}

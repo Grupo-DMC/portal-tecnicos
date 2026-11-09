@@ -84,6 +84,11 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
   /** Cambios sin confirmar del panel abierto. */
   const [pendiente, setPendiente] = useState<{ estado: EstadoProblema; tipo: string; nota: string } | null>(null);
   const [guardando, setGuardando] = useState(false);
+  /** Al resolver: se está preguntando si se asocia a una visita, y cuál (folio, "" = ninguna). */
+  const [preguntando, setPreguntando] = useState(false);
+  const [visitaAsociada, setVisitaAsociada] = useState("");
+  /** Tiendas con la tarjeta cerrada (solo se ve su encabezado). */
+  const [cerradas, setCerradas] = useState<number[]>([]);
   const [agendar, setAgendar] = useState<OrigenProblema | null>(null);
   /** Problemas con la bitácora desplegada y tiendas con el historial desplegado. */
   const [bitacoras, setBitacoras] = useState<number[]>([]);
@@ -212,16 +217,28 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
     requestAnimationFrame(() => lista.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
 
-  async function confirmarCambio(p: ProblemaPanel) {
+  /** Primer paso: si el cambio cierra el problema, antes se pregunta por la visita. */
+  function pedirConfirmacion(p: ProblemaPanel, g: GrupoProblemas) {
     if (!pendiente || (pendiente.estado === p.estado && pendiente.tipo === p.tipoCodigo)) {
       return aviso("No hay cambios que confirmar");
     }
+    if (pendiente.estado === "RESUELTO" && p.estado !== "RESUELTO" && g.visitas.length > 0) {
+      // Si ya tiene una visita agendada para resolverlo, parte elegida esa.
+      setVisitaAsociada(p.agenda?.folio ?? "");
+      return setPreguntando(true);
+    }
+    return confirmarCambio(p, "");
+  }
+
+  async function confirmarCambio(p: ProblemaPanel, visitaFolio: string) {
+    if (!pendiente) return;
     setGuardando(true);
     const res = await actualizarProblemaAction({
       problemaId: p.id,
       estado: pendiente.estado,
       tipoCodigo: pendiente.tipo,
       nota: pendiente.nota,
+      ...(visitaFolio ? { visitaFolio } : {}),
     });
     setGuardando(false);
     if (!res.ok) return aviso(res.error ?? "No se pudo guardar el cambio.");
@@ -229,6 +246,7 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
     const partes: string[] = [];
     if (pendiente.estado !== p.estado) partes.push(nombreEstado(pendiente.estado));
     if (pendiente.tipo !== p.tipoCodigo) partes.push(`reclasificado como «${nombreTipo(pendiente.tipo)}»`);
+    if (visitaFolio) partes.push(`asociado a la visita ${visitaFolio}`);
     aviso(
       partes.join(" · ") +
         (pendiente.estado === "RESUELTO" && p.estado !== "RESUELTO" && f.estado === ""
@@ -237,6 +255,7 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
     );
     setEditando(null);
     setPendiente(null);
+    setPreguntando(false);
     router.refresh();
   }
 
@@ -278,6 +297,19 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
           </svg>
           <span>{verAnalisis ? "Ocultar gráficos" : "Ver gráficos"}</span>
         </button>
+        {filtrados.length > 1 ? (
+          <button
+            onClick={() =>
+              setCerradas(cerradas.length < filtrados.length ? filtrados.map((g) => g.sucursalId) : [])
+            }
+            className="btn btn-secondary"
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <path d={cerradas.length < filtrados.length ? "M6 9l6 6 6-6M6 4h12" : "M6 15l6-6 6 6M6 20h12"} />
+            </svg>
+            <span>{cerradas.length < filtrados.length ? "Cerrar todas las tarjetas" : "Abrir todas las tarjetas"}</span>
+          </button>
+        ) : null}
         {puede(ref, "checklist.ver") ? (
           <Link href="/admin/checklist" className="btn btn-secondary">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -377,6 +409,7 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
               const g = grupos.find((x) => x.sucursalId === sucursalId);
               if (!g) return;
               setHistoriales((prev) => (prev.includes(sucursalId) ? prev : [...prev, sucursalId]));
+              setCerradas((prev) => prev.filter((x) => x !== sucursalId));
               irALista({ tramo: "", agenda: "", avance: "", estado: "" }, g.nombre);
             }}
           />
@@ -396,19 +429,33 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
               .filter((p) => p.estado !== "RESUELTO")
               .reduce((m, p) => Math.max(m, p.dias), 0);
             const historialAbierto = historiales.includes(g.sucursalId);
+            const cerrada = cerradas.includes(g.sucursalId);
 
             return (
               <div
                 key={g.sucursalId}
                 className="border-2 border-[var(--color-text)] mt-7"
               >
-                <div className="flex items-center gap-3 flex-wrap px-5 py-4 bg-[var(--color-surface-2)] border-b-2 border-[var(--color-text)]">
-                  <div className="min-w-0">
-                    <div className="font-extrabold text-lead">{g.nombre}</div>
-                    <div className="text-meta opacity-60 mt-0.5">
-                      {g.cliente} · {g.comuna}
-                    </div>
-                  </div>
+                <div
+                  className={`flex items-center gap-3 flex-wrap px-5 py-4 bg-[var(--color-surface-2)] ${
+                    cerrada ? "" : "border-b-2 border-[var(--color-text)]"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => alternar(setCerradas, g.sucursalId)}
+                    aria-expanded={!cerrada}
+                    aria-label={`${cerrada ? "Abrir" : "Cerrar"} la tarjeta de ${g.nombre}`}
+                    className="flex items-center gap-3 min-w-0 text-left bg-transparent border-0 p-0 cursor-pointer text-[var(--color-text)]"
+                  >
+                    <Flecha abierta={!cerrada} />
+                    <span className="min-w-0">
+                      <span className="block font-extrabold text-lead">{g.nombre}</span>
+                      <span className="block text-meta opacity-60 mt-0.5">
+                        {g.cliente} · {g.comuna}
+                      </span>
+                    </span>
+                  </button>
                   <div className="ml-auto flex items-center gap-2.5 flex-wrap">
                     <span className="tag tag-outline">{original.abiertos} sin cerrar</span>
                     <span className="text-cap opacity-62">de {original.total} en total</span>
@@ -431,9 +478,9 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
                   </div>
                 </div>
 
-                {historialAbierto ? <HistorialLocal grupo={original} nombreTipo={nombreTipo} /> : null}
+                {!cerrada && historialAbierto ? <HistorialLocal grupo={original} nombreTipo={nombreTipo} /> : null}
 
-                <div className="bg-white">
+                <div className="bg-white" hidden={cerrada}>
                   {g.items.map((p) => {
                     const resuelto = p.estado === "RESUELTO";
                     const abierto = editando === p.id;
@@ -606,6 +653,7 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
                                   const abrir = editando !== p.id;
                                   setEditando(abrir ? p.id : null);
                                   setPendiente(abrir ? { estado: p.estado, tipo: p.tipoCodigo, nota: "" } : null);
+                                  setPreguntando(false);
                                 }}
                                 aria-expanded={abierto}
                                 className="ml-auto min-h-[34px] flex items-center gap-2 px-3 bg-transparent border border-black/[.35] text-cap cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
@@ -703,9 +751,56 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
                                 className="input max-w-[76ch]"
                               />
 
-                              <div className="flex items-center gap-2.5 flex-wrap mt-3">
+                              {preguntando ? (
+                                <div className="mt-3 px-3.5 py-3 border-2 border-[var(--color-text)] bg-white">
+                                  <div className="font-extrabold text-ui">¿Asociar la resolución a una visita?</div>
+                                  <div className="text-cap opacity-62 mt-1 max-w-[70ch]">
+                                    Elige la visita del local en la que se resolvió. Queda en la bitácora del problema.
+                                  </div>
+                                  <label htmlFor={`fv-${p.id}`} className="block text-cap opacity-60 mt-3 mb-1.5">
+                                    Visita
+                                  </label>
+                                  <select
+                                    id={`fv-${p.id}`}
+                                    value={visitaAsociada}
+                                    onChange={(e) => setVisitaAsociada(e.target.value)}
+                                    className="input min-h-[34px] text-meta max-w-full"
+                                  >
+                                    <option value="">Ninguna en particular</option>
+                                    {g.visitas.map((v) => (
+                                      <option key={v.folio} value={v.folio}>
+                                        {v.folio} · {fechaCL(v.fecha)} · {v.tecnico}
+                                        {v.motivo ? ` · ${v.motivo}` : ""}
+                                        {p.agenda?.folio === v.folio ? " · agendada para resolverlo" : ""}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <div className="flex items-center gap-2.5 flex-wrap mt-3">
+                                    <button
+                                      onClick={() => confirmarCambio(p, visitaAsociada)}
+                                      disabled={guardando}
+                                      className="btn btn-primary min-h-[38px] px-3.5 text-meta"
+                                    >
+                                      {guardando
+                                        ? "Guardando…"
+                                        : visitaAsociada
+                                          ? "Resolver y asociar"
+                                          : "Resolver sin asociar"}
+                                    </button>
+                                    <button
+                                      onClick={() => setPreguntando(false)}
+                                      disabled={guardando}
+                                      className="min-h-[38px] px-3.5 bg-transparent border border-black/[.35] text-meta cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
+                                    >
+                                      Volver
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : null}
+
+                              <div className="flex items-center gap-2.5 flex-wrap mt-3" hidden={preguntando}>
                                 <button
-                                  onClick={() => confirmarCambio(p)}
+                                  onClick={() => pedirConfirmacion(p, original)}
                                   disabled={guardando}
                                   className="min-h-[38px] flex items-center gap-2 px-3.5 text-[var(--color-bg)] border-0 font-extrabold text-meta cursor-pointer hover:brightness-95 disabled:opacity-60"
                                   style={{ background: hayCambio ? "var(--color-accent)" : "var(--color-neutral-500)" }}
@@ -719,6 +814,7 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
                                   onClick={() => {
                                     setEditando(null);
                                     setPendiente(null);
+                                    setPreguntando(false);
                                   }}
                                   className="min-h-[38px] px-3.5 bg-transparent border border-black/[.35] text-meta cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
                                 >

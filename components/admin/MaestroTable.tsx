@@ -15,6 +15,11 @@ export interface Column<T> {
   label: string;
   align?: "left" | "right";
   render?: (row: T) => React.ReactNode;
+  /**
+   * Hace la columna ordenable: el encabezado alterna entre «más primero»,
+   * «menos primero» y el orden de siempre. Devuelve un número, de menor a mayor.
+   */
+  valorOrden?: (row: T) => number | string;
 }
 
 /** Filtros propios del maestro, además de la búsqueda (sucursales de un cliente). */
@@ -113,12 +118,27 @@ export default function MaestroTable<T extends { id: number }>({
   const [dialogo, setDialogo] = useState<{ id: number | null; form: FormValores } | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [confirmar, setConfirmar] = useState<ConfirmarCfg | null>(null);
+  /** Columna por la que se ordena y hacia dónde. Sin columna = el orden en que llegan. */
+  const [orden, setOrden] = useState<{ key: string; dir: "desc" | "asc" } | null>(null);
 
   const filtradas = useMemo(() => {
     const q = sinTildes(busqueda.trim());
     const pasa = filtros?.pasa;
-    return rows.filter((r) => (!pasa || pasa(r)) && (!q || sinTildes(searchKeys(r)).includes(q)));
-  }, [rows, busqueda, searchKeys, filtros?.pasa]);
+    const vistas = rows.filter((r) => (!pasa || pasa(r)) && (!q || sinTildes(searchKeys(r)).includes(q)));
+    const col = orden ? columns.find((c) => c.key === orden.key) : undefined;
+    if (!orden || !col?.valorOrden) return vistas;
+    const valor = col.valorOrden;
+    const signo = orden.dir === "desc" ? -1 : 1;
+    return [...vistas].sort((a, b) => {
+      const x = valor(a);
+      const y = valor(b);
+      return signo * (typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y), "es"));
+    });
+  }, [rows, busqueda, searchKeys, filtros?.pasa, orden, columns]);
+
+  /** Primer clic: los más primero; segundo: los menos primero; tercero: orden original. */
+  const alternarOrden = (key: string) =>
+    setOrden((prev) => (prev?.key !== key ? { key, dir: "desc" } : prev.dir === "desc" ? { key, dir: "asc" } : null));
 
   async function guardar(confirmado = false): Promise<void> {
     if (!dialogo) return;
@@ -182,8 +202,38 @@ export default function MaestroTable<T extends { id: number }>({
             <thead>
               <tr>
                 {columns.map((c) => (
-                  <th key={c.key} style={{ textAlign: c.align ?? "left" }}>
-                    {c.label}
+                  <th
+                    key={c.key}
+                    style={{ textAlign: c.align ?? "left" }}
+                    aria-sort={
+                      orden?.key === c.key ? (orden.dir === "desc" ? "descending" : "ascending") : c.valorOrden ? "none" : undefined
+                    }
+                  >
+                    {c.valorOrden ? (
+                      <button
+                        type="button"
+                        onClick={() => alternarOrden(c.key)}
+                        title={
+                          orden?.key !== c.key
+                            ? "Poner arriba los que tienen más"
+                            : orden.dir === "desc"
+                              ? "Ahora arriba los que tienen más · clic para poner arriba los que tienen menos"
+                              : "Ahora arriba los que tienen menos · clic para quitar el orden"
+                        }
+                        className="inline-flex items-center gap-1.5 bg-transparent border-0 p-0 cursor-pointer font-[inherit] text-[inherit] uppercase tracking-[inherit] hover:opacity-70"
+                      >
+                        <span>{c.label}</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" aria-hidden="true">
+                          {orden?.key === c.key ? (
+                            <path d={orden.dir === "desc" ? "M12 5v14M6 13l6 6 6-6" : "M12 19V5M6 11l6-6 6 6"} />
+                          ) : (
+                            <path d="M8 9l4-4 4 4M8 15l4 4 4-4" opacity="0.45" />
+                          )}
+                        </svg>
+                      </button>
+                    ) : (
+                      c.label
+                    )}
                   </th>
                 ))}
                 <th style={{ width: accionFila ? 88 : 44 }} />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { sinTildes } from "@/lib/ui/formato";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -28,7 +28,29 @@ export default function MallsTable({
   const ref = useReferencias();
   const { toast, aviso } = useToast();
   const [tiendasDe, setTiendasDe] = useState<Mall | null>(null);
+  const [fRegion, setFRegion] = useState("");
+  const [fComuna, setFComuna] = useState("");
   const nTiendas = (mallId: number) => sucursales.filter((s) => s.mallId === mallId).length;
+
+  // Cuántas tiendas tiene cada mall, calculado una vez (el orden lo consulta por fila).
+  const tiendasPorMall = useMemo(() => {
+    const cuenta = new Map<number, number>();
+    for (const s of sucursales) if (s.mallId) cuenta.set(s.mallId, (cuenta.get(s.mallId) ?? 0) + 1);
+    return cuenta;
+  }, [sucursales]);
+
+  // Las opciones salen de lo que hay cargado; la comuna se acota a la región elegida.
+  const regiones = useMemo(
+    () => [...new Set(malls.map((m) => m.region).filter(Boolean))].sort((a, b) => REGIONES.indexOf(a) - REGIONES.indexOf(b)),
+    [malls]
+  );
+  const comunas = useMemo(
+    () =>
+      [...new Set(malls.filter((m) => !fRegion || m.region === fRegion).map((m) => m.comuna).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b, "es")
+      ),
+    [malls, fRegion]
+  );
 
   return (
     <>
@@ -41,11 +63,48 @@ export default function MallsTable({
         phBusqueda="Buscar mall, dirección o comuna…"
         rows={malls}
         searchKeys={(m) => `${m.nombre} ${m.direccion} ${m.comuna} ${m.region}`}
+        filtros={{
+          campos: [
+            {
+              id: "fm-region",
+              label: "Región",
+              valor: fRegion,
+              opciones: [{ v: "", t: "Todas las regiones" }, ...regiones.map((r) => ({ v: r, t: r }))],
+              // Al cambiar de región, una comuna que no es de ella ya no aplica.
+              onChange: (v) => {
+                setFRegion(v);
+                setFComuna("");
+              },
+            },
+            {
+              id: "fm-comuna",
+              label: "Comuna",
+              valor: fComuna,
+              opciones: [{ v: "", t: "Todas las comunas" }, ...comunas.map((c) => ({ v: c, t: c }))],
+              onChange: setFComuna,
+            },
+          ],
+          chips: [
+            ...(fRegion ? [{ label: `Región: ${fRegion}`, onQuitar: () => { setFRegion(""); setFComuna(""); } }] : []),
+            ...(fComuna ? [{ label: `Comuna: ${fComuna}`, onQuitar: () => setFComuna("") }] : []),
+          ],
+          pasa: (m) => (!fRegion || m.region === fRegion) && (!fComuna || m.comuna === fComuna),
+          limpiar: () => {
+            setFRegion("");
+            setFComuna("");
+          },
+        }}
         columns={[
           { key: "nombre", label: "Mall" },
           { key: "direccion", label: "Dirección" },
           { key: "comuna", label: "Comuna", render: (m) => m.comuna || "—" },
-          { key: "tiendas", label: "Tiendas", align: "right", render: (m) => nTiendas(m.id) },
+          {
+            key: "tiendas",
+            label: "Tiendas",
+            align: "right",
+            render: (m) => nTiendas(m.id),
+            valorOrden: (m) => tiendasPorMall.get(m.id) ?? 0,
+          },
           {
             key: "activo",
             label: "Estado",

@@ -408,6 +408,15 @@ describe("problemas, pendientes y envío del acta", () => {
     expect((await admin.actualizarProblemaAction({ problemaId: 99, estado: "RESUELTO", tipoCodigo: "OTRO" })).error).toBe("No encontramos ese problema.");
   });
 
+  it("actualizarProblemaAction: al resolver puede asociar la visita, y si la visita no sirve devuelve el error", async () => {
+    vi.mocked(esEstadoProblemaVigente).mockResolvedValue(true as never);
+    vi.mocked(actualizarProblema).mockResolvedValueOnce(true as never);
+    expect((await admin.actualizarProblemaAction({ problemaId: 1, estado: "RESUELTO", tipoCodigo: "OTRO", visitaFolio: "V-0042" })).ok).toBe(true);
+    expect(actualizarProblema).toHaveBeenLastCalledWith(1, "RESUELTO", "OTRO", 1, null, "V-0042");
+    vi.mocked(actualizarProblema).mockResolvedValueOnce({ error: "Esa visita no existe o no es de este local. Recarga la página." } as never);
+    expect((await admin.actualizarProblemaAction({ problemaId: 1, estado: "RESUELTO", tipoCodigo: "OTRO", visitaFolio: "V-9" })).error).toMatch(/no es de este local/);
+  });
+
   it("actualizarProblemaAction: un estado de más de 10 caracteres se rechaza antes de consultar", async () => {
     const r = await admin.actualizarProblemaAction({ problemaId: 1, estado: "ESTADO_MUY_LARGO" as never, tipoCodigo: "OTRO" });
     expect(r.ok).toBe(false);

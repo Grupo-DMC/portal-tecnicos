@@ -570,6 +570,8 @@ export async function actualizarProblemaAction(pedido: {
   tipoCodigo: string;
   /** Por qué se cambia. Opcional; queda en la bitácora del problema. */
   nota?: string;
+  /** Al resolver: folio de la visita en la que se resolvió (opcional). */
+  visitaFolio?: string;
 }): Promise<ResultadoAdmin> {
   const sesion = await sesionCon("problemas.editar");
   if (!sesion) return { ok: false, error: "No tienes permiso para cambiar problemas." };
@@ -584,9 +586,11 @@ export async function actualizarProblemaAction(pedido: {
 
   try {
     const nota = input.nota?.trim() || null;
-    if (!(await actualizarProblema(input.problemaId, input.estado, input.tipoCodigo, sesion.usuario.id, nota))) {
-      return { ok: false, error: "No encontramos ese problema." };
-    }
+    const res = input.visitaFolio
+      ? await actualizarProblema(input.problemaId, input.estado, input.tipoCodigo, sesion.usuario.id, nota, input.visitaFolio)
+      : await actualizarProblema(input.problemaId, input.estado, input.tipoCodigo, sesion.usuario.id, nota);
+    if (typeof res === "object") return { ok: false, error: res.error };
+    if (!res) return { ok: false, error: "No encontramos ese problema." };
   } catch (err) {
     return comoError(err, "actualizarProblema");
   }

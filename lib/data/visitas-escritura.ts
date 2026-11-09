@@ -720,13 +720,33 @@ export async function actualizarProblema(
   estado: EstadoProblema,
   tipoCodigo: string,
   usuarioId: number | null,
-  nota: string | null = null
-): Promise<boolean> {
+  nota: string | null = null,
+  /** Al resolver: la visita (del mismo local) a la que se asocia la resolución. */
+  visitaFolio: string | null = null
+): Promise<boolean | { error: string }> {
   const [actual] = await consultaCon<{ estado: EstadoProblema; tipo_codigo: string }>(
     `SELECT estado, tipo_codigo FROM dmc.problema WHERE id = @id`,
     [["id", sql.BigInt, problemaId]]
   );
   if (!actual) return false;
+
+  // La visita tiene que ser vigente y del mismo local donde se levantó el problema.
+  let visitaId: number | null = null;
+  if (visitaFolio && estado === "RESUELTO") {
+    const [v] = await consultaCon<{ id: number }>(
+      `SELECT v.id
+         FROM dmc.visita v
+         JOIN dmc.problema p ON p.id = @id
+         JOIN dmc.visita vp ON vp.id = p.visita_id
+        WHERE v.folio = @folio AND v.activo = 1 AND v.sucursal_id = vp.sucursal_id`,
+      [
+        ["id", sql.BigInt, problemaId],
+        ["folio", sql.VarChar(16), visitaFolio],
+      ]
+    );
+    if (!v) return { error: "Esa visita no existe o no es de este local. Recarga la página." };
+    visitaId = num(v.id);
+  }
 
   // resuelto_en se escribe en el mismo UPDATE, no se deja al trigger.
   //
@@ -755,6 +775,7 @@ export async function actualizarProblema(
       ["TIPO", actual.tipo_codigo, tipoCodigo],
     ] as const) {
       if (antes === ahora) continue;
+      const aVisita = campo === "ESTADO" && visitaId !== null ? `Resuelto en la visita ${visitaFolio}.` : null;
       await ej.ejecutar(
         `INSERT INTO dmc.problema_historial (problema_id, campo, valor_anterior, valor_nuevo, motivo, usuario_id)
          VALUES (@id, @campo, @antes, @ahora, @nota, @usuario)`,
@@ -763,7 +784,25 @@ export async function actualizarProblema(
           ["campo", sql.VarChar(20), campo],
           ["antes", sql.NVarChar(40), antes],
           ["ahora", sql.NVarChar(40), ahora],
-          ["nota", sql.NVarChar(sql.MAX), nota],
+          ["nota", sql.NVarChar(sql.MAX), [aVisita, nota].filter(Boolean).join(" ") || null],
+          ["usuario", sql.BigInt, usuarioId],
+        ]
+      );
+    }
+
+    // Asocia la resolución a la visita: queda como respondida RESUELTO.
+    if (visitaId !== null) {
+      await ej.ejecutar(
+        `IF EXISTS (SELECT 1 FROM dmc.problema_visita_resolucion WHERE problema_id = @problema AND visita_id = @visita)
+           UPDATE dmc.problema_visita_resolucion
+              SET resultado = 'RESUELTO', respondido_en = SYSDATETIME()
+            WHERE problema_id = @problema AND visita_id = @visita
+         ELSE
+           INSERT INTO dmc.problema_visita_resolucion (problema_id, visita_id, agendado_por, resultado, respondido_en)
+           VALUES (@problema, @visita, @usuario, 'RESUELTO', SYSDATETIME())`,
+        [
+          ["problema", sql.BigInt, problemaId],
+          ["visita", sql.BigInt, visitaId],
           ["usuario", sql.BigInt, usuarioId],
         ]
       );

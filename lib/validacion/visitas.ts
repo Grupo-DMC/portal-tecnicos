@@ -124,6 +124,8 @@ export const entradaActualizarProblema = z.object({
   estado: z.string().min(1).max(10),
   tipoCodigo: codigo,
   nota: textoLibre.optional(),
+  /** Al resolver: folio de la visita (del mismo local) en la que se resolvió. */
+  visitaFolio: folio.optional(),
 });
 
 export const entradaGestionPendiente = z.object({ folio, codigo, marcado: z.boolean() });

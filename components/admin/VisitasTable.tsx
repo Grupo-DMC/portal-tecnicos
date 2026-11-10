@@ -421,12 +421,11 @@ export default function VisitasTable({
               {conCasillas ? <col style={{ width: 44 }} /> : null}
               <col style={{ width: 124 }} />
               <col style={{ width: hayMargen ? 200 : 108 }} />
-              <col style={{ width: 80 }} />
+              <col style={{ width: "20%" }} />
               <col />
               <col />
               <col />
-              <col />
-              <col style={{ width: 226 }} />
+              <col style={{ width: 150 }} />
               {mostrarMotivo ? <col /> : null}
               <col style={{ width: 52 }} />
             </colgroup>

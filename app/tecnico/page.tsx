@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSesion } from "@/lib/auth";
 import { getVisitasPorTecnico } from "@/lib/data/visitas";
+import { visitaParaTecnico } from "@/lib/data/visita-reducida";
 import { listarMalls, listarSucursales } from "@/lib/data/maestros";
 import { diaDeVisita, hoyISO, sumarDias } from "@/lib/ui/fecha";
 import MobileShell from "@/components/mobile/MobileShell";
@@ -16,11 +17,12 @@ export default async function InicioPage() {
   if (!sesion?.tecnico) redirect("/login");
 
   const HOY = hoyISO();
-  const [visitas, malls, sucursales] = await Promise.all([
+  const [crudas, malls, sucursales] = await Promise.all([
     getVisitasPorTecnico(sesion.tecnico.id),
     listarMalls(),
     listarSucursales(),
   ]);
+  const visitas = crudas.map((v) => visitaParaTecnico(v, sesion.tecnico!.id));
   // Las que tienen margen de días cuentan como de hoy mientras sigan abiertas.
   const deHoy = visitas.filter((v) => diaDeVisita(v, HOY) === HOY);
   const nHoy = deHoy.length;

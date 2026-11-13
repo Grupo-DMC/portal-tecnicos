@@ -166,6 +166,7 @@ export async function atenderSolicitudPassword(
         ["usuario", sql.BigInt, cuenta.id],
       ]
     );
+    await ej.ejecutar(`DELETE FROM dmc.push_suscripcion WHERE usuario_id = @usuario`, [["usuario", sql.BigInt, cuenta.id]]);
     await ej.ejecutar(
       `UPDATE dmc.solicitud_password
           SET estado = 'ATENDIDA', atendido_por = @admin, atendido_en = SYSDATETIME()

@@ -31,8 +31,8 @@ import {
   subirTrozoAdjuntoAction,
 } from "@/app/actions/adjuntos";
 import { abrirVideoAction, borrarVideoAction, cerrarVideoAction, subirTrozoVideoAction } from "@/app/actions/videos";
-import { abrirAdjunto, cerrarAdjunto, desactivarAdjunto, getVisitaParaAdjunto, pegarTrozoAdjunto } from "@/lib/data/adjuntos";
-import { abrirVideo, cerrarVideo, desactivarVideo, getVisitaParaVideo, pegarTrozo } from "@/lib/data/videos";
+import { CuotaDeAdjuntos, abrirAdjunto, cerrarAdjunto, desactivarAdjunto, getVisitaParaAdjunto, pegarTrozoAdjunto } from "@/lib/data/adjuntos";
+import { CuotaDeVideos, abrirVideo, cerrarVideo, desactivarVideo, getVisitaParaVideo, pegarTrozo } from "@/lib/data/videos";
 import { tomarReserva } from "@/lib/data/reservas";
 import { TECNICO_PRUEBA, entrarComo, salir } from "../helpers/sesion";
 
@@ -176,6 +176,11 @@ describe("adjuntos del trabajo a realizar", () => {
       expect((await borrarAdjuntoAction("V-1", 7)).error).toBe("No se pudo quitar el archivo.");
     });
 
+    it("pasada la cuota del día, el mensaje de la cuota llega tal cual", async () => {
+      vi.mocked(abrirAdjunto).mockRejectedValueOnce(new CuotaDeAdjuntos("Subiste muchos archivos hoy. Inténtalo de nuevo más tarde."));
+      expect((await abrirAdjuntoAction("V-1", foto)).error).toBe("Subiste muchos archivos hoy. Inténtalo de nuevo más tarde.");
+    });
+
     it("cada trozo vuelve a comprobar el permiso (la visita pudo cerrarse a mitad de la subida)", async () => {
       vi.mocked(getVisitaParaAdjunto).mockResolvedValue(visita({ estado: "COMPLETADA" }));
       const r = await subirTrozoAdjuntoAction({ folio: "V-1", adjuntoId: 7, desde: 0, trozoBase64: "YQ==" });
@@ -200,6 +205,14 @@ describe("video del acta", () => {
       vi.mocked(abrirVideo).mockResolvedValue(9);
       expect(await abrirVideoAction("V-1", video as never)).toEqual({ ok: true, videoId: 9, recibidos: 0 });
       expect(tomarReserva).toHaveBeenCalledWith("V-1", { usuarioId: 3, tecnicoId: MIO });
+      // La cuota del día es de quien sube, no del titular de la visita.
+      expect(abrirVideo).toHaveBeenCalledWith(200, expect.anything(), MIO);
+    });
+
+    it("pasada la cuota, el mensaje de la cuota llega tal cual", async () => {
+      entrarComo("tecnico");
+      vi.mocked(abrirVideo).mockRejectedValueOnce(new CuotaDeVideos("Subiste muchos videos hoy. Inténtalo de nuevo más tarde."));
+      expect((await abrirVideoAction("V-1", video as never)).error).toBe("Subiste muchos videos hoy. Inténtalo de nuevo más tarde.");
     });
 
     it("sin el permiso «celular.video» no sube", async () => {

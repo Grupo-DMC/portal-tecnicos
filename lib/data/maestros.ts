@@ -686,6 +686,10 @@ export async function guardarUsuario(
         ["id", sql.BigInt, actual.id],
       ]
     );
+    // Cambia la clave, el rol o se desactiva: sus navegadores dejan de recibir avisos push.
+    if (revoca) {
+      await ej.ejecutar(`DELETE FROM dmc.push_suscripcion WHERE usuario_id = @id`, [["id", sql.BigInt, actual.id]]);
+    }
     return { id: actual.id, sesionVersion: num(fila.sesion_version) };
   });
 }

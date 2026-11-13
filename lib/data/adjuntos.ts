@@ -1,5 +1,6 @@
 import "server-only";
 import { consultaCon, ejecutar, num, numONull, sql } from "@/lib/data/sql";
+import { log } from "@/lib/log";
 import type { AdjuntoTrabajo, EstadoVisita } from "@/lib/types";
 
 /**
@@ -92,8 +93,56 @@ export async function getVisitaParaAdjunto(folio: string): Promise<VisitaParaAdj
     : null;
 }
 
-/** Crea la fila vacía a la que se le van a pegar los trozos. Null si la visita ya tiene el máximo. */
+/** La cuenta ya subió lo que se permite en un día. */
+export class CuotaDeAdjuntos extends Error {}
+
+/**
+ * Lo que una cuenta puede subir en adjuntos en 24 horas. El tope por visita
+ * cuenta solo los activos (es de presentación), así que sin esto quitar y
+ * volver a subir llenaba la base sin límite.
+ */
+export const ADJUNTOS_MAX_BYTES_POR_DIA_Y_CUENTA = 500 * 1024 * 1024;
+/** Cuántos días se guarda un adjunto quitado, y cuántas horas uno que no terminó de subir. */
+const DIAS_ADJUNTO_QUITADO = 30;
+const HORAS_ADJUNTO_A_MEDIAS = 24;
+
+/**
+ * Libera la base de lo que nadie va a ver, como con los videos: los adjuntos a
+ * medias vencidos se borran (además ocupaban un cupo de la visita) y los
+ * quitados pierden sus bytes; la fila queda de registro. Ninguna vía vuelve a
+ * activar un adjunto quitado. De mejor esfuerzo: se llama al abrir uno nuevo.
+ */
+export async function purgarAdjuntosDescartados(): Promise<void> {
+  try {
+    await ejecutar(
+      `DELETE FROM dmc.visita_adjunto
+        WHERE subida_completa = 0 AND subido_en < DATEADD(HOUR, -@horas, SYSDATETIME())`,
+      [["horas", sql.Int, HORAS_ADJUNTO_A_MEDIAS]]
+    );
+    await ejecutar(
+      `UPDATE dmc.visita_adjunto SET contenido = NULL
+        WHERE activo = 0 AND contenido IS NOT NULL AND subido_en < DATEADD(DAY, -@dias, SYSDATETIME())`,
+      [["dias", sql.Int, DIAS_ADJUNTO_QUITADO]]
+    );
+  } catch (err) {
+    log.error("purgarAdjuntos", { err });
+  }
+}
+
+/**
+ * Crea la fila vacía a la que se le van a pegar los trozos. Null si la visita
+ * ya tiene el máximo; lanza CuotaDeAdjuntos si la cuenta pasó su tope del día.
+ */
 export async function abrirAdjunto(visitaId: number, d: DatosAdjunto, usuarioId: number): Promise<number | null> {
+  await purgarAdjuntosDescartados();
+  const [uso] = await consultaCon<{ dia: number }>(
+    `SELECT COALESCE(SUM(CAST(bytes AS bigint)), 0) AS dia FROM dmc.visita_adjunto
+      WHERE subido_por = @usuario AND subido_en > DATEADD(DAY, -1, SYSDATETIME())`,
+    [["usuario", sql.BigInt, usuarioId]]
+  );
+  if (num(uso?.dia ?? 0) + d.bytes > ADJUNTOS_MAX_BYTES_POR_DIA_Y_CUENTA) {
+    throw new CuotaDeAdjuntos("Subiste muchos archivos hoy. Inténtalo de nuevo más tarde.");
+  }
   const [fila] = await consultaCon<{ id: number | null }>(
     `DECLARE @nuevo TABLE (id bigint);
 

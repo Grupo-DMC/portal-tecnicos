@@ -131,4 +131,63 @@ describe("generarPdfActa", { timeout: 30_000 }, () => {
     const pdf = await generarPdfActa(datos({ visita: v, firma: null }));
     expect(Buffer.from(pdf.slice(0, 5)).toString()).toBe("%PDF-");
   });
+
+  describe("PNG hostil", () => {
+    const crc = (b: Buffer) => {
+      let c = ~0;
+      for (const x of b) {
+        c ^= x;
+        for (let k = 0; k < 8; k++) c = c & 1 ? (c >>> 1) ^ 0xedb88320 : c >>> 1;
+      }
+      return ~c >>> 0;
+    };
+    const chunk = (tipo: string, datos: Buffer) => {
+      const cuerpo = Buffer.concat([Buffer.from(tipo, "latin1"), datos]);
+      const largo = Buffer.alloc(4);
+      largo.writeUInt32BE(datos.length);
+      const suma = Buffer.alloc(4);
+      suma.writeUInt32BE(crc(cuerpo));
+      return Buffer.concat([largo, cuerpo, suma]);
+    };
+    const ihdr = (w: number, h: number) => {
+      const d = Buffer.alloc(13);
+      d.writeUInt32BE(w, 0);
+      d.writeUInt32BE(h, 4);
+      d[8] = 8;
+      d[9] = 6;
+      return chunk("IHDR", d);
+    };
+    const original = Buffer.from(PNG_1X1);
+    const firma = original.subarray(0, 8);
+    const idat = original.subarray(original.indexOf("IDAT") - 4, original.indexOf("IEND") - 4);
+    const iend = chunk("IEND", Buffer.alloc(0));
+    const armar = (...partes: Buffer[]) => new Uint8Array(Buffer.concat([firma, ...partes]));
+
+    const contar = async (fotos: DatosPdfActa["fotos"]) => {
+      const pdf = await generarPdfActa(datos({ firma: null, fotos }));
+      return Buffer.from(pdf).toString("latin1").split("/Subtype /Image").length - 1;
+    };
+    // Lo que ya trae el acta sin fotos (el logo): se descuenta.
+    async function imagenes(bytes: Uint8Array) {
+      return (await contar([{ bytes, mime: "image/png", etiqueta: "x" }])) - (await contar([]));
+    }
+
+    it("acepta un PNG normal", async () => {
+      expect(await imagenes(PNG_1X1)).toBeGreaterThan(0);
+    });
+
+    it("descarta un segundo IHDR que declara dimensiones enormes", async () => {
+      expect(await imagenes(armar(ihdr(1, 1), ihdr(20000, 20000), idat, iend))).toBe(0);
+    });
+
+    it("descarta un PNG animado (acTL)", async () => {
+      expect(await imagenes(armar(ihdr(1, 1), chunk("acTL", Buffer.alloc(8)), idat, iend))).toBe(0);
+    });
+
+    it("descarta un IDAT que descomprime mucho más de lo declarado", async () => {
+      const { deflateSync } = await import("node:zlib");
+      const bomba = chunk("IDAT", deflateSync(Buffer.alloc(50_000_000)));
+      expect(await imagenes(armar(ihdr(1, 1), bomba, iend))).toBe(0);
+    });
+  });
 });

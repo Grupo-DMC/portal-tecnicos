@@ -146,3 +146,6 @@ export function textoMotivosReales(visita: {
   const porCodigo = new Map((visita.motivosCodigos ?? []).map((c, i) => [c, visita.motivosNombres?.[i] ?? c]));
   return reales.map((c) => porCodigo.get(c) ?? c).join(" · ");
 }
+
+/** Las únicas visitas que se reprograman: las que quedaron sin hacer. Una en curso, completada o cerrada por admin no vuelve a Programada por esta vía. */
+export const ESTADOS_REPROGRAMABLES: readonly EstadoVisita[] = ["REAGENDADA", "PENDIENTE", "CANCELADA"];

@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getSesion } from "@/lib/auth";
 import { getVisitaCompletaPorFolio } from "@/lib/data/visitas";
+import { visitaParaTecnico } from "@/lib/data/visita-reducida";
 import { listarInternos, listarMotivos, listarProblemas, listarTrabajos } from "@/lib/data/catalogos";
 import MobileShell from "@/components/mobile/MobileShell";
 import FormularioVisita from "@/components/mobile/FormularioVisita";
@@ -16,8 +17,9 @@ export default async function EditarActaPage({ params }: { params: Promise<{ fol
   const sesion = await getSesion();
   if (!sesion?.tecnico) redirect("/login");
 
-  const visita = await getVisitaCompletaPorFolio(folio);
-  if (!visita || !participaEnVisita(visita, sesion.tecnico.id)) notFound();
+  const completa = await getVisitaCompletaPorFolio(folio);
+  if (!completa || !participaEnVisita(completa, sesion.tecnico.id)) notFound();
+  const visita = visitaParaTecnico(completa, sesion.tecnico.id);
   // Fuera de plazo o sin acta cerrada no hay nada que editar: vuelve al acta,
   // que es donde se explica por qué.
   if (

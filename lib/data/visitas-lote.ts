@@ -1,5 +1,5 @@
 import "server-only";
-import { editarVisita, getVisitaCompletaPorFolio, reprogramarVisita } from "@/lib/data/visitas";
+import { editarVisita, getVisitaCompletaPorFolio, reprogramarVisita, VisitaNoEditable } from "@/lib/data/visitas";
 import type { CambiosVisita, DatosVisita } from "@/lib/contratos/visitas";
 import { enTransaccion } from "@/lib/data/sql";
 import { ESTADO_VISITA_LABEL } from "@/lib/ui/estado";
@@ -73,8 +73,13 @@ export async function modificarVisita(
   const reprograma = cambiaFecha && VUELVE_A_PROGRAMADA.includes(v.estado);
   const soloReprograma = reprograma && !cambiaDetalle && !cambiaMargen && ayudanteId === v.tecnicoAyudanteId;
   if (soloReprograma) {
-    if (!(await reprogramarVisita({ folio, tecnicoId, fecha, hora, usuarioId }))) {
-      return { error: "No encontramos esa visita." };
+    try {
+      if (!(await reprogramarVisita({ folio, tecnicoId, fecha, hora, usuarioId }))) {
+        return { error: "No encontramos esa visita." };
+      }
+    } catch (err) {
+      if (err instanceof VisitaNoEditable) return { error: err.message };
+      throw err;
     }
     return null;
   }
@@ -102,7 +107,12 @@ export async function modificarVisita(
     responsableTelefono: v.responsableTelefono,
   };
   if (!reprograma) {
-    if (!(await editarVisita(folio, datos, usuarioId))) return { error: "No encontramos esa visita." };
+    try {
+      if (!(await editarVisita(folio, datos, usuarioId))) return { error: "No encontramos esa visita." };
+    } catch (err) {
+      if (err instanceof VisitaNoEditable) return { error: err.message };
+      throw err;
+    }
     return null;
   }
 
@@ -115,6 +125,7 @@ export async function modificarVisita(
     });
   } catch (err) {
     if (err instanceof NoEncontrada) return { error: "No encontramos esa visita." };
+    if (err instanceof VisitaNoEditable) return { error: err.message };
     throw err;
   }
   return null;

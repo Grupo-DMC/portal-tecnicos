@@ -549,7 +549,9 @@ export async function editarActa(entrada: EdicionActaEntrada, ctx: ContextoEdici
         for (const [i, videoId] of cambios.videos.ids.entries()) {
           await ej.ejecutar(
             `UPDATE dmc.visita_video SET activo = 1, orden = @orden, interno = @interno
-              WHERE id = @video AND visita_id = @id AND subida_completa = 1`,
+              WHERE id = @video AND visita_id = @id AND subida_completa = 1
+                -- Un clip quitado hace tiempo ya perdió sus bytes en la purga: no vuelve al acta.
+                AND contenido IS NOT NULL`,
             p([
               ["video", sql.BigInt, videoId],
               ["orden", sql.SmallInt, i + 1],

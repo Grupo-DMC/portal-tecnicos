@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { getSesion } from "@/lib/auth";
-import { borrarSuscripcion, clavePublicaPush, guardarSuscripcion } from "@/lib/data/push";
+import { EndpointNoPermitido, borrarSuscripcion, clavePublicaPush, guardarSuscripcion } from "@/lib/data/push";
 import { log } from "@/lib/log";
 
 // Suscripciones a los avisos push de la campanita. GET devuelve la clave
@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ ok: true });
   } catch (err) {
+    if (err instanceof EndpointNoPermitido) return NextResponse.json({ error: "Suscripción inválida." }, { status: 400 });
     log.error("push.suscribir", { err });
     return NextResponse.json({ error: "No se pudo guardar." }, { status: 503 });
   }

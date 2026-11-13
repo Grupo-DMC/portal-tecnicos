@@ -1,7 +1,8 @@
 import "server-only";
-import { consultaCon, ejecutar, num, numONull, sql } from "@/lib/data/sql";
+import { consultaCon, ejecutar, enTransaccion, num, numONull, sql, type Ejecutor } from "@/lib/data/sql";
 import { editableHastaSql, TOMADA_POR } from "@/lib/data/visitas";
 import type { EstadoVisita } from "@/lib/types";
+import { log } from "@/lib/log";
 
 /**
  * El video del trabajo, subido por partes.
@@ -118,10 +119,86 @@ export async function getVisitaParaVideo(folio: string): Promise<VisitaParaVideo
     : null;
 }
 
-/** Crea la fila vacía a la que se le van a pegar los trozos. */
-export async function abrirVideo(visitaId: number, d: DatosVideo): Promise<number> {
-  const [fila] = await consultaCon<{ id: number }>(
-    `DECLARE @nuevo TABLE (id bigint);
+/** Cuota por visita: clips que ocupan la base (incluye los quitados y los a medias, hasta que se purgan). */
+export class CuotaDeVideos extends Error {}
+
+export const VIDEOS_MAX_POR_VISITA = 8;
+export const VIDEOS_MAX_BYTES_POR_VISITA = 120 * 1024 * 1024;
+/** Cuota por técnico en las últimas 24 horas, sumando todas sus visitas. */
+export const VIDEOS_MAX_BYTES_POR_DIA_Y_TECNICO = 400 * 1024 * 1024;
+/** Cuántos días se guarda un clip quitado del acta, y cuántas horas uno que no terminó de subir. */
+const DIAS_CLIP_QUITADO = 30;
+const HORAS_CLIP_A_MEDIAS = 24;
+
+/**
+ * Libera la base de lo que nadie va a ver: los clips a medias vencidos se
+ * borran y los quitados del acta pierden sus bytes (la fila queda de registro).
+ * De mejor esfuerzo; se llama al abrir un video nuevo porque no hay tarea programada.
+ */
+export async function purgarVideosDescartados(): Promise<void> {
+  try {
+    await ejecutar(
+      `DELETE FROM dmc.visita_video
+        WHERE subida_completa = 0 AND subido_en < DATEADD(HOUR, -@horas, SYSDATETIME())`,
+      [["horas", sql.Int, HORAS_CLIP_A_MEDIAS]]
+    );
+    await ejecutar(
+      `UPDATE dmc.visita_video SET contenido = NULL
+        WHERE activo = 0 AND subida_completa = 1 AND contenido IS NOT NULL
+          AND subido_en < DATEADD(DAY, -@dias, SYSDATETIME())`,
+      [["dias", sql.Int, DIAS_CLIP_QUITADO]]
+    );
+  } catch (err) {
+    log.error("purgarVideos", { err });
+  }
+}
+
+/**
+ * null si cabe; si no, por qué no.
+ *
+ * La cuota del día es de quien sube (`tecnicoId`), no del titular de la visita:
+ * suma lo de todas las visitas en que participa, como titular o como ayudante,
+ * así que un ayudante no la esquiva repartiendo clips entre visitas de otros.
+ * Cuenta los bytes que de verdad llegaron (los declarados solo en los clips ya
+ * cerrados): abrir clips sin subir nada no le gasta la cuota a un compañero.
+ * Desde el panel (`tecnicoId` null) solo rige la cuota de la visita.
+ */
+async function excedeCuota(ej: Ejecutor, visitaId: number, nuevos: number, tecnicoId: number | null): Promise<string | null> {
+  const [uso] = await ej.consulta<{ n: number; bytes: number; dia: number }>(
+    `SELECT (SELECT COUNT(*) FROM dmc.visita_video WHERE visita_id = @visita AND contenido IS NOT NULL) AS n,
+            (SELECT COALESCE(SUM(CAST(bytes AS bigint)), 0) FROM dmc.visita_video
+              WHERE visita_id = @visita AND contenido IS NOT NULL) AS bytes,
+            (SELECT COALESCE(SUM(CAST(CASE WHEN w.subida_completa = 1 THEN w.bytes ELSE w.bytes_recibidos END AS bigint)), 0)
+               FROM dmc.visita_video w
+               JOIN dmc.visita x ON x.id = w.visita_id
+              WHERE w.subido_en > DATEADD(DAY, -1, SYSDATETIME())
+                AND (x.tecnico_id = @tecnico OR x.tecnico_ayudante_id = @tecnico)) AS dia`,
+    [
+      ["visita", sql.BigInt, visitaId],
+      ["tecnico", sql.BigInt, tecnicoId],
+    ]
+  );
+  if (num(uso.n) >= VIDEOS_MAX_POR_VISITA) return "Esta visita ya tiene el máximo de videos.";
+  if (num(uso.bytes) + nuevos > VIDEOS_MAX_BYTES_POR_VISITA) return "Esta visita ya llegó al límite de espacio para videos.";
+  if (num(uso.dia) + nuevos > VIDEOS_MAX_BYTES_POR_DIA_Y_TECNICO) {
+    return "Subiste muchos videos hoy. Inténtalo de nuevo más tarde.";
+  }
+  return null;
+}
+
+/** Crea la fila vacía a la que se le van a pegar los trozos. `tecnicoId`: quien sube (null desde el panel). */
+export async function abrirVideo(visitaId: number, d: DatosVideo, tecnicoId: number | null): Promise<number> {
+  await purgarVideosDescartados();
+  // El chequeo y el insert van juntos, con la fila de la visita bloqueada: dos
+  // aperturas en paralelo se turnan y la segunda ve el clip de la primera.
+  return enTransaccion(async (ej) => {
+    await ej.consulta(`SELECT id FROM dmc.visita WITH (UPDLOCK, ROWLOCK) WHERE id = @visita`, [
+      ["visita", sql.BigInt, visitaId],
+    ]);
+    const exceso = await excedeCuota(ej, visitaId, d.bytes, tecnicoId);
+    if (exceso) throw new CuotaDeVideos(exceso);
+    const [fila] = await ej.consulta<{ id: number }>(
+      `DECLARE @nuevo TABLE (id bigint);
 
      INSERT INTO dmc.visita_video
        (visita_id, etiqueta, contenido, mime, bytes, bytes_recibidos,
@@ -131,18 +208,19 @@ export async function abrirVideo(visitaId: number, d: DatosVideo): Promise<numbe
              @duracion, @ancho, @alto, 0, COALESCE(@grabado, SYSDATETIME()));
 
      SELECT id FROM @nuevo;`,
-    [
-      ["visita", sql.BigInt, visitaId],
-      ["etiqueta", sql.NVarChar(40), d.etiqueta || null],
-      ["mime", sql.VarChar(40), d.mime.toLowerCase()],
-      ["bytes", sql.Int, d.bytes],
-      ["duracion", sql.SmallInt, d.duracionSeg],
-      ["ancho", sql.SmallInt, d.ancho],
-      ["alto", sql.SmallInt, d.alto],
-      ["grabado", sql.DateTime2(0), d.grabadoEn ? new Date(d.grabadoEn) : null],
-    ]
-  );
-  return num(fila.id);
+      [
+        ["visita", sql.BigInt, visitaId],
+        ["etiqueta", sql.NVarChar(40), d.etiqueta || null],
+        ["mime", sql.VarChar(40), d.mime.toLowerCase()],
+        ["bytes", sql.Int, d.bytes],
+        ["duracion", sql.SmallInt, d.duracionSeg],
+        ["ancho", sql.SmallInt, d.ancho],
+        ["alto", sql.SmallInt, d.alto],
+        ["grabado", sql.DateTime2(0), d.grabadoEn ? new Date(d.grabadoEn) : null],
+      ]
+    );
+    return num(fila.id);
+  });
 }
 
 /** mp4/mov llevan 'ftyp' en el offset 4; webm empieza con la cabecera EBML 1A 45 DF A3. */

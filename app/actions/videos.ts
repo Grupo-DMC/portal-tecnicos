@@ -5,6 +5,7 @@ import { log } from "@/lib/log";
 import {
   abrirVideo,
   cerrarVideo,
+  CuotaDeVideos,
   desactivarVideo,
   getVisitaParaVideo,
   motivoRechazo,
@@ -67,7 +68,8 @@ const NO_ABIERTA = "Esa visita no está abierta para ti.";
 async function visitaAbierta(
   folio: string
 ): Promise<
-  | { ok: true; visita: NonNullable<Awaited<ReturnType<typeof getVisitaParaVideo>>> & { enEdicion: boolean } }
+  /** `tecnicoId`: el técnico que sube, para su cuota del día (null desde el panel). */
+  | { ok: true; visita: NonNullable<Awaited<ReturnType<typeof getVisitaParaVideo>>> & { enEdicion: boolean }; tecnicoId: number | null }
   | { ok: false; error: string; reservaAjena?: ReservaAjena }
 > {
   const sesion = await getSesion();
@@ -80,12 +82,12 @@ async function visitaAbierta(
     if (visita.estado !== "COMPLETADA" || !tiene(sesion.permisos, "visitas.editarActa")) {
       return { ok: false, error: NO_ABIERTA };
     }
-    return { ok: true, visita: { ...visita, enEdicion: true } };
+    return { ok: true, visita: { ...visita, enEdicion: true }, tecnicoId: null };
   }
 
   if (!tiene(sesion.permisos, "celular.video")) return { ok: false, error: NO_ABIERTA };
   if (!sesion.tecnico || !participaEnVisita(visita, sesion.tecnico.id)) return { ok: false, error: NO_ABIERTA };
-  if (visita.editablePorTecnico) return { ok: true, visita: { ...visita, enEdicion: true } };
+  if (visita.editablePorTecnico) return { ok: true, visita: { ...visita, enEdicion: true }, tecnicoId: sesion.tecnico.id };
   if (visita.estado !== "PROGRAMADA" && visita.estado !== "EN_CURSO") return { ok: false, error: NO_ABIERTA };
 
   const reserva = await tomarReserva(folio, { usuarioId: sesion.usuario.id, tecnicoId: sesion.tecnico.id });
@@ -98,7 +100,7 @@ async function visitaAbierta(
         }
       : { ok: false, error: reserva.error };
   }
-  return { ok: true, visita: { ...visita, enEdicion: false } };
+  return { ok: true, visita: { ...visita, enEdicion: false }, tecnicoId: sesion.tecnico.id };
 }
 
 /** Paso 1: reserva la fila del clip y devuelve su id. */
@@ -118,8 +120,9 @@ export async function abrirVideoAction(folioPedido: string, datosPedidos: DatosV
   if (rechazo) return { ok: false, error: rechazo };
 
   try {
-    return { ok: true, videoId: await abrirVideo(visita.id, datos), recibidos: 0 };
+    return { ok: true, videoId: await abrirVideo(visita.id, datos, abierta.tecnicoId), recibidos: 0 };
   } catch (err) {
+    if (err instanceof CuotaDeVideos) return { ok: false, error: err.message };
     log.error("abrirVideo", { err });
     return { ok: false, error: "No se pudo empezar a subir el video." };
   }

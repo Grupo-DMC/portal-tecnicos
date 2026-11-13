@@ -2,6 +2,7 @@ import "server-only";
 import { log } from "@/lib/log";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { inflateSync } from "node:zlib";
 import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument, StandardFonts, rgb, type Color, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
 import type { CatalogoMotivo, CatalogoProblema, CatalogoTrabajo, Visita } from "@/lib/types";
@@ -337,8 +338,110 @@ class Hoja {
   }
 }
 
+/** Tope de píxeles de una imagen del acta: una foto de celular ronda los 12 MP. */
+const MAX_PIXELES = 16_000_000;
+const MAX_LADO = 12_000;
+
+const CANALES_PNG: Record<number, number> = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 };
+
+/**
+ * PNG seguro de decodificar, o null. pdf-lib deja ganar al último IHDR y
+ * descomprime sin tope, así que no basta con mirar el primero: se recorren los
+ * chunks, se rechaza lo que cambia las dimensiones después (segundo IHDR) o
+ * anima la imagen (acTL, fcTL, fdAT) y el IDAT se descomprime aquí con un tope
+ * igual a lo que las dimensiones declaradas pueden ocupar.
+ */
+function dimensionesPng(b: Uint8Array): { ancho: number; alto: number } | null {
+  const firma = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  if (b.length < 33 || firma.some((x, i) => b[i] !== x)) return null;
+  const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  let ancho = 0;
+  let alto = 0;
+  let canales = 0;
+  let profundidad = 0;
+  let visto = false;
+  let fin = false;
+  const idat: Uint8Array[] = [];
+  let i = 8;
+  while (i + 12 <= b.length) {
+    const largo = v.getUint32(i);
+    const tipo = String.fromCharCode(b[i + 4], b[i + 5], b[i + 6], b[i + 7]);
+    const datos = i + 8;
+    if (largo > b.length - datos - 4) return null;
+    if (!visto) {
+      // El primer chunk es el IHDR y mide 13 bytes.
+      if (tipo !== "IHDR" || largo !== 13) return null;
+      visto = true;
+      ancho = v.getUint32(datos);
+      alto = v.getUint32(datos + 4);
+      profundidad = b[datos + 8];
+      canales = CANALES_PNG[b[datos + 9]] ?? 0;
+      if (!canales || ancho < 1 || alto < 1 || ancho > MAX_LADO || alto > MAX_LADO || ancho * alto > MAX_PIXELES) return null;
+    } else if (tipo === "IHDR" || tipo === "acTL" || tipo === "fcTL" || tipo === "fdAT") {
+      return null;
+    } else if (tipo === "IDAT") {
+      idat.push(b.subarray(datos, datos + largo));
+    } else if (tipo === "IEND") {
+      fin = true;
+      break;
+    }
+    i = datos + largo + 4;
+  }
+  if (!visto || !fin || idat.length === 0) return null;
+  // Lo que ocupan las filas sin comprimir (más el byte de filtro de cada una),
+  // con holgura para las pasadas del entrelazado.
+  const fila = Math.ceil((ancho * canales * profundidad) / 8) + 1;
+  const tope = fila * alto + 16 * alto + 1024;
+  try {
+    inflateSync(Buffer.concat(idat), { maxOutputLength: tope });
+  } catch {
+    return null;
+  }
+  return { ancho, alto };
+}
+
+/**
+ * Ancho y alto declarados en la cabecera, sin decodificar nada. pdf-lib
+ * descomprime el PNG entero para incrustarlo: un archivo de 10 KB que declara
+ * decenas de miles de píxeles por lado reservaría gigas de memoria.
+ */
+function dimensiones(b: Uint8Array): { ancho: number; alto: number } | null {
+  if (b.length >= 24 && b[0] === 0x89 && b[1] === 0x50) return dimensionesPng(b);
+  if (b.length > 4 && b[0] === 0xff && b[1] === 0xd8) {
+    const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
+    let i = 2;
+    while (i + 9 < b.length) {
+      if (b[i] !== 0xff) {
+        i++;
+        continue;
+      }
+      const marca = b[i + 1];
+      if (marca === 0xff) {
+        i++;
+        continue;
+      }
+      if (marca === 0xd8 || marca === 0x01 || (marca >= 0xd0 && marca <= 0xd7)) {
+        i += 2;
+        continue;
+      }
+      // Cuadros de inicio (SOF), salvo DHT, JPG y DAC.
+      if (marca >= 0xc0 && marca <= 0xcf && marca !== 0xc4 && marca !== 0xc8 && marca !== 0xcc) {
+        return { alto: v.getUint16(i + 5), ancho: v.getUint16(i + 7) };
+      }
+      i += 2 + v.getUint16(i + 2);
+    }
+  }
+  return null;
+}
+
 async function incrustar(doc: PDFDocument, img: ImagenActa): Promise<PDFImage | null> {
   try {
+    const dim = dimensiones(img.bytes);
+    // Sin dimensiones legibles no se incrusta: es lo que haría falta para medirla.
+    if (!dim || dim.ancho < 1 || dim.alto < 1 || dim.ancho > MAX_LADO || dim.alto > MAX_LADO || dim.ancho * dim.alto > MAX_PIXELES) {
+      log.error("imagen del acta descartada por sus dimensiones", { ancho: dim?.ancho, alto: dim?.alto });
+      return null;
+    }
     if (/png/i.test(img.mime)) return await doc.embedPng(img.bytes);
     if (/jpe?g/i.test(img.mime)) return await doc.embedJpg(img.bytes);
     // Sin mime confiable: se prueba por la firma de los bytes.
@@ -483,7 +586,9 @@ export async function generarPdfActa(d: DatosPdfActa): Promise<Uint8Array> {
   // ── Fotos: la primera va junto al trabajo, el resto en la grilla ──
   const fotos: { img: PDFImage; pie: string }[] = [];
   {
-    const incrustadas = await Promise.all(d.fotos.map(async (x) => ({ img: await incrustar(doc, x), etiqueta: x.etiqueta })));
+    // Una por una: incrustar varias a la vez sumaría sus memorias.
+    const incrustadas: { img: PDFImage | null; etiqueta?: string | null }[] = [];
+    for (const x of d.fotos) incrustadas.push({ img: await incrustar(doc, x), etiqueta: x.etiqueta });
     let n = 0;
     for (const x of incrustadas) {
       if (!x.img) continue;

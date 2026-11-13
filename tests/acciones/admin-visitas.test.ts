@@ -218,11 +218,17 @@ describe("editar, reprogramar, cancelar, liberar y eliminar", () => {
     });
 
     it("sin hora, si la visita tiene una instalación, no deja", async () => {
-      vi.mocked(getVisitaCompletaPorFolio).mockResolvedValue({ motivosCodigos: ["INSTALACION"] } as never);
+      vi.mocked(getVisitaCompletaPorFolio).mockResolvedValue({ estado: "PENDIENTE", motivosCodigos: ["INSTALACION"] } as never);
       expect((await admin.reprogramarVisitaAction(pedido({ hora: null }))).error).toBe("En instalación la hora es obligatoria.");
-      vi.mocked(getVisitaCompletaPorFolio).mockResolvedValue({ motivosCodigos: ["VISITA"] } as never);
+      vi.mocked(getVisitaCompletaPorFolio).mockResolvedValue({ estado: "PENDIENTE", motivosCodigos: ["VISITA"] } as never);
       vi.mocked(reprogramarVisita).mockResolvedValue(true as never);
       expect((await admin.reprogramarVisitaAction(pedido({ hora: null }))).ok).toBe(true);
+    });
+
+    it.each(["COMPLETADA", "EN_CURSO", "CANCELADA_ADMIN", "PROGRAMADA"])("no reabre una visita %s", async (estado) => {
+      vi.mocked(getVisitaCompletaPorFolio).mockResolvedValue({ estado, motivosCodigos: [] } as never);
+      expect((await admin.reprogramarVisitaAction(pedido())).ok).toBe(false);
+      expect(reprogramarVisita).not.toHaveBeenCalled();
     });
 
     it("visita inexistente", async () => {

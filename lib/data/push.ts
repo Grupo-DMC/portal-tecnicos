@@ -29,6 +29,39 @@ export interface AvisoPush {
   enlace: string | null;
 }
 
+/**
+ * Solo se acepta la dirección de un servicio de push real. Sin esto, cualquier
+ * cuenta del panel registraba una URL cualquiera y el servidor le mandaba un
+ * POST (SSRF ciego hacia la red interna). Se exige https, sin credenciales ni
+ * puerto, y un host de la lista.
+ */
+const SERVICIOS_PUSH = [
+  "fcm.googleapis.com",
+  "android.googleapis.com",
+  "updates.push.services.mozilla.com",
+  "push.services.mozilla.com",
+  "push.apple.com",
+  "notify.windows.com",
+];
+
+export function endpointPermitido(endpoint: string): boolean {
+  let u: URL;
+  try {
+    u = new URL(endpoint);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== "https:" || u.username || u.password || u.port) return false;
+  const host = u.hostname.toLowerCase();
+  return SERVICIOS_PUSH.some((s) => host === s || host.endsWith(`.${s}`));
+}
+
+/** Navegadores que una cuenta puede tener suscritos a la vez; al pasarse, caen los más viejos. */
+export const MAX_SUSCRIPCIONES_POR_CUENTA = 5;
+/** Cuántos envíos salen a la vez y cuánto se espera a cada servicio de push. */
+const ENVIOS_SIMULTANEOS = 10;
+const ESPERA_ENVIO_MS = 8000;
+
 export function clavePublicaPush(): string | null {
   return pushConfigurado() ? env("VAPID_PUBLIC_KEY")! : null;
 }
@@ -46,6 +79,7 @@ function prepararVapid() {
 
 /** Un navegador solo pertenece a una cuenta: si otra la activa ahí, se la queda. */
 export async function guardarSuscripcion(usuarioId: number, s: SuscripcionPush): Promise<void> {
+  if (!endpointPermitido(s.endpoint)) throw new EndpointNoPermitido();
   await ejecutar(
     `MERGE dmc.push_suscripcion AS d
      USING (SELECT @endpoint AS endpoint) AS o ON d.endpoint = o.endpoint
@@ -58,7 +92,22 @@ export async function guardarSuscripcion(usuarioId: number, s: SuscripcionPush):
       ["auth", sql.VarChar(100), s.auth],
     ]
   );
+  // Tope por cuenta: se queda con las más nuevas. La que se acaba de guardar
+  // nunca cae: si ya existía, conserva su id viejo y por id parecería la más antigua.
+  await ejecutar(
+    `DELETE FROM dmc.push_suscripcion
+      WHERE usuario_id = @u AND endpoint <> @endpoint
+        AND id NOT IN (SELECT TOP (@max) id FROM dmc.push_suscripcion
+                        WHERE usuario_id = @u AND endpoint <> @endpoint ORDER BY id DESC)`,
+    [
+      ["u", sql.BigInt, usuarioId],
+      ["endpoint", sql.NVarChar(450), s.endpoint],
+      ["max", sql.Int, MAX_SUSCRIPCIONES_POR_CUENTA - 1],
+    ]
+  );
 }
+
+export class EndpointNoPermitido extends Error {}
 
 export async function borrarSuscripcion(usuarioId: number, endpoint: string): Promise<void> {
   await ejecutar(`DELETE FROM dmc.push_suscripcion WHERE endpoint = @endpoint AND usuario_id = @u`, [
@@ -115,13 +164,18 @@ export async function enviarPush(aviso: AvisoPush): Promise<void> {
       tag: `dmc-${aviso.id}`,
     });
 
-    await Promise.all(
-      filas.map(async (f) => {
+    const enviar = async (f: FilaSuscripcion) => {
         if (!(await puede(num(f.usuarioId)))) return;
+        // Suscripciones guardadas antes de la lista blanca: se descartan sin enviar nada.
+        if (!endpointPermitido(f.endpoint)) {
+          await ejecutar(`DELETE FROM dmc.push_suscripcion WHERE id = @id`, [["id", sql.BigInt, num(f.id)]]);
+          return;
+        }
         try {
           await sendNotification({ endpoint: f.endpoint, keys: { p256dh: f.p256dh, auth: f.auth } }, carga, {
             TTL: 3600,
             urgency: "normal",
+            timeout: ESPERA_ENVIO_MS,
           });
         } catch (err) {
           const estado = (err as { statusCode?: number }).statusCode;
@@ -132,8 +186,11 @@ export async function enviarPush(aviso: AvisoPush): Promise<void> {
             log.error("push.envio", { err, estado });
           }
         }
-      })
-    );
+    };
+    // De a tandas: un evento no abre cientos de conexiones de golpe.
+    for (let i = 0; i < filas.length; i += ENVIOS_SIMULTANEOS) {
+      await Promise.all(filas.slice(i, i + ENVIOS_SIMULTANEOS).map(enviar));
+    }
   } catch (err) {
     log.error("push.enviar", { err, tipo: aviso.tipo });
   }

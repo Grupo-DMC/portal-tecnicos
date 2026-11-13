@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getSesion } from "@/lib/auth";
 import { getVisitaCompletaPorFolio } from "@/lib/data/visitas";
+import { visitaParaTecnico } from "@/lib/data/visita-reducida";
 import { getHistorialLocal } from "@/lib/data/historial";
 import MobileShell from "@/components/mobile/MobileShell";
 import DetalleVisita from "@/components/mobile/DetalleVisita";
@@ -15,8 +16,9 @@ export default async function DetalleVisitaPage({ params }: { params: Promise<{ 
   const sesion = await getSesion();
   if (!sesion?.tecnico) redirect("/login");
 
-  const visita = await getVisitaCompletaPorFolio(folio);
-  if (!visita || !participaEnVisita(visita, sesion.tecnico.id)) notFound();
+  const completa = await getVisitaCompletaPorFolio(folio);
+  if (!completa || !participaEnVisita(completa, sesion.tecnico.id)) notFound();
+  const visita = visitaParaTecnico(completa, sesion.tecnico.id);
   const esAyudante = visita.tecnicoAyudanteId === sesion.tecnico.id;
 
   const historial = await getHistorialLocal(visita.sucursalId, visita.id);

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSesion } from "@/lib/auth";
-import { cabecerasEvidencia, mimeSeguro } from "@/lib/evidencia-http";
+import { cabecerasEvidencia, sinPermisoDeVer, mimeSeguro } from "@/lib/evidencia-http";
 import { esEvidenciaDeEliminada, getDuenosDeImagen, getFotoBinaria } from "@/lib/data/visitas";
 
 // Sirve la foto que el técnico tomó en terreno. Los bytes viven en
@@ -14,6 +14,7 @@ export const dynamic = "force-dynamic";
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const sesion = await getSesion();
   if (!sesion) return new NextResponse("No autorizado", { status: 401 });
+  if (sinPermisoDeVer(sesion)) return new NextResponse("Sin permiso", { status: 403 });
 
   const { id: idParam } = await params;
   const id = Number(idParam);

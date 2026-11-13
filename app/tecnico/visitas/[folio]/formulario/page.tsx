@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getSesion } from "@/lib/auth";
 import { getVisitaCompletaPorFolio } from "@/lib/data/visitas";
+import { visitaParaTecnico } from "@/lib/data/visita-reducida";
 import { listarInternos, listarMotivos, listarProblemas, listarTrabajos } from "@/lib/data/catalogos";
 import { leerBorrador } from "@/lib/data/borradores";
 import MobileShell from "@/components/mobile/MobileShell";
@@ -18,8 +19,9 @@ export default async function FormularioPage({ params }: { params: Promise<{ fol
   const sesion = await getSesion();
   if (!sesion?.tecnico) redirect("/login");
 
-  const visita = await getVisitaCompletaPorFolio(folio);
-  if (!visita || !participaEnVisita(visita, sesion.tecnico.id)) notFound();
+  const completa = await getVisitaCompletaPorFolio(folio);
+  if (!completa || !participaEnVisita(completa, sesion.tecnico.id)) notFound();
+  const visita = visitaParaTecnico(completa, sesion.tecnico.id);
   if (visita.estado !== "PROGRAMADA" && visita.estado !== "EN_CURSO") {
     redirect(`/tecnico/visitas/${visita.folio}`);
   }

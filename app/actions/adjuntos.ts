@@ -5,6 +5,7 @@ import { getSesion } from "@/lib/auth";
 import { log } from "@/lib/log";
 import {
   ADJUNTOS_MAX_POR_VISITA,
+  CuotaDeAdjuntos,
   abrirAdjunto,
   cerrarAdjunto,
   desactivarAdjunto,
@@ -77,6 +78,7 @@ export async function abrirAdjuntoAction(folioPedido: string, datosPedidos: unkn
     }
     return { ok: true, adjuntoId, recibidos: 0 };
   } catch (err) {
+    if (err instanceof CuotaDeAdjuntos) return { ok: false, error: err.message };
     log.error("abrirAdjunto", { err });
     return { ok: false, error: "No se pudo empezar a subir el archivo." };
   }

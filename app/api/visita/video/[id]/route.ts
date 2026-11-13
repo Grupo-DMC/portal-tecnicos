@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSesion } from "@/lib/auth";
 import { TRAMO_MAXIMO, leerRango } from "@/lib/rango-http";
-import { cabecerasEvidencia, mimeSeguro } from "@/lib/evidencia-http";
+import { cabecerasEvidencia, sinPermisoDeVer, mimeSeguro } from "@/lib/evidencia-http";
 import { getDuenosDeVideo, getVideoMeta, getVideoTramo } from "@/lib/data/videos";
 import { esEvidenciaDeEliminada } from "@/lib/data/visitas";
 
@@ -20,6 +20,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const sesion = await getSesion();
   if (!sesion) return new NextResponse("No autorizado", { status: 401 });
+  if (sinPermisoDeVer(sesion)) return new NextResponse("Sin permiso", { status: 403 });
 
   const { id: idParam } = await params;
   const id = Number(idParam);

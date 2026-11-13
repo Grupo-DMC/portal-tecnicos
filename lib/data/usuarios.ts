@@ -1,4 +1,5 @@
 import "server-only";
+import { borrarSuscripcionesDeUsuario } from "@/lib/data/push-baja";
 import { log } from "@/lib/log";
 import sql from "mssql";
 import { getPool } from "@/lib/db/pool";
@@ -133,7 +134,22 @@ export async function cambiarPasswordPropia(usuarioId: number, nueva: string): P
         WHERE id = @id;
        SELECT sesion_version FROM dmc.usuario WHERE id = @id;`
     );
+  await borrarSuscripcionesDeUsuario(usuarioId);
   return Number(resultado.recordset[0].sesion_version);
+}
+
+/**
+ * Cierra la sesión en el servidor: sube la versión de sesión, así que cualquier
+ * copia de la cookie (robada o no) deja de servir aunque su firma sea válida y
+ * el proxy la siga renovando. Cierra también las sesiones de la cuenta en otros
+ * equipos: la versión es una sola por cuenta.
+ */
+export async function revocarSesiones(usuarioId: number): Promise<void> {
+  const pool = await getPool();
+  await pool
+    .request()
+    .input("id", sql.BigInt, usuarioId)
+    .query(`UPDATE dmc.usuario SET sesion_version = sesion_version + 1 WHERE id = @id`);
 }
 
 /** Sella el último acceso. Un fallo aquí no debe tumbar el login. */

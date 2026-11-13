@@ -191,6 +191,10 @@ export async function cambiarEstadoVisitaAction(pedido: {
   if (!tiene(contexto.sesion.permisos, "celular.estado")) {
     return { ok: false, error: "Tu rol no puede reagendar, dejar pendiente ni cancelar visitas." };
   }
+  // Una visita cerrada (acta firmada o cierre administrativo) no se deshace desde el celular.
+  if (contexto.visita.estado === "COMPLETADA" || contexto.visita.estado === "CANCELADA_ADMIN") {
+    return { ok: false, error: "Esta visita ya está cerrada: no se puede reagendar, dejar pendiente ni cancelar." };
+  }
   const reserva = await estadoDeReserva(contexto.visita.id, contexto.tecnico.id);
   if (reserva.estado === "ajena") return { ok: false, error: textoActaEnCurso(reserva), reservaAjena: reserva };
 
@@ -201,7 +205,7 @@ export async function cambiarEstadoVisitaAction(pedido: {
   }
 
   try {
-    await cambiarEstadoVisita({
+    const hecho = await cambiarEstadoVisita({
       folio: input.folio,
       estado: input.estado,
       motivo,
@@ -211,6 +215,10 @@ export async function cambiarEstadoVisitaAction(pedido: {
       usuarioId: contexto.sesion.usuario.id,
       tecnicoId: contexto.tecnico.id,
     });
+    // Se cerró mientras tanto: no se deshace.
+    if (hecho === false) {
+      return { ok: false, error: "Esta visita ya está cerrada: no se puede reagendar, dejar pendiente ni cancelar." };
+    }
   } catch (err) {
     return comoError(err, "cambiarEstadoVisita");
   }

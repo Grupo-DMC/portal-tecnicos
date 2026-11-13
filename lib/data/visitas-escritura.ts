@@ -15,6 +15,7 @@ import { cargoDelChecklist } from "@/lib/data/catalogos";
 import { registrarPersonaLocal } from "@/lib/data/personas-local";
 import { soltarReservaEn, tomarReservaEn, traspasarTomadaEn } from "@/lib/data/reservas";
 import { textoActaEnCurso } from "@/lib/reserva";
+import { ESTADOS_REPROGRAMABLES, ESTADO_VISITA_LABEL } from "@/lib/ui/estado";
 import type { EstadoProblema, EstadoVisita, OrigenRegistro, Visita } from "@/lib/types";
 import type { AvisoProblemas, DatosVisita } from "@/lib/contratos/visitas";
 import { MOTIVO_PENDIENTE, TOMADA_POR, getVisitaCompleta } from "@/lib/data/visitas-lectura";
@@ -177,17 +178,20 @@ export async function cambiarEstadoVisita(input: {
   usuarioId?: number | null;
   tecnicoId?: number | null;
 }): Promise<boolean> {
-  const [visita] = await consultaCon<{ id: number; fecha: string; hora: string | null }>(
-    `SELECT id, ${F_FECHA("fecha_programada")} AS fecha, ${F_HORA("hora_programada")} AS hora
-       FROM dmc.visita WHERE folio = @folio AND activo = 1`,
-    [["folio", sql.VarChar(16), input.folio]]
-  );
-  if (!visita) return false;
-  const id = num(visita.id);
-
   // Reagendar toca tres tablas (reagendamiento, visita y la bitácora): o quedan
-  // las tres o ninguna.
-  await enTransaccion(async (ej) => {
+  // las tres o ninguna. El estado se lee dentro, con la fila bloqueada: si
+  // alguien cerró la visita mientras tanto (acta firmada o cierre de
+  // administración), no se deshace.
+  return enTransaccion(async (ej) => {
+    const [visita] = await ej.consulta<{ id: number; estado: EstadoVisita; fecha: string; hora: string | null }>(
+      `SELECT id, estado, ${F_FECHA("fecha_programada")} AS fecha, ${F_HORA("hora_programada")} AS hora
+         FROM dmc.visita WITH (UPDLOCK, ROWLOCK) WHERE folio = @folio AND activo = 1`,
+      [["folio", sql.VarChar(16), input.folio]]
+    );
+    if (!visita) return false;
+    if (visita.estado === "COMPLETADA" || visita.estado === "CANCELADA_ADMIN") return false;
+    const id = num(visita.id);
+
     if (input.estado === "REAGENDADA") {
       await ej.ejecutar(
         `INSERT INTO dmc.reagendamiento
@@ -218,8 +222,8 @@ export async function cambiarEstadoVisita(input: {
     await marcarEstado(id, input.estado, input.motivo, input.origen, input.usuarioId ?? null, ej);
     // Cancelada en la tienda, ya no va a resolver nada: lo que esperaba por ella vuelve a abierto.
     if (input.estado === "CANCELADA") await soltarAgendadosEn(ej, id, input.folio, input.usuarioId ?? null);
+    return true;
   });
-  return true;
 }
 
 /**
@@ -573,6 +577,34 @@ async function sincronizarMotivos(
   }
 }
 
+/** Estados en los que la visita no se corrige desde coordinación. */
+const ESTADOS_NO_EDITABLES: readonly EstadoVisita[] = ["COMPLETADA", "CANCELADA_ADMIN", "EN_CURSO"];
+
+/**
+ * La visita cambió de estado mientras se editaba (alguien la inició o la cerró):
+ * el mensaje dice cuál es el estado de ahora, para que no parezca que se perdió.
+ */
+export class VisitaNoEditable extends Error {
+  constructor(estado?: EstadoVisita) {
+    super(
+      estado
+        ? `La visita cambió mientras la editabas: ahora está ${ESTADO_VISITA_LABEL[estado].toLowerCase()} y ya no se puede cambiar así. Recarga la página.`
+        : "Esta visita está en curso o ya cerrada: no se puede corregir."
+    );
+  }
+}
+
+/**
+ * Si cambia el técnico asignado, la ejecución a medio abrir del anterior (la
+ * hora de llegada y el responsable) no se hereda: el nuevo parte de cero y se
+ * suelta la reserva del acta.
+ */
+async function soltarEjecucionDelAnterior(ej: Ejecutor, visitaId: number, antes: number | null, ahora: number): Promise<void> {
+  if (antes === null || num(antes) === ahora) return;
+  await ej.ejecutar(`DELETE FROM dmc.visita_ejecucion WHERE visita_id = @id`, [["id", sql.BigInt, visitaId]]);
+  await soltarReservaEn(ej, visitaId);
+}
+
 /** "Corregir visita" del acta. Si venía REAGENDADA vuelve a PROGRAMADA. */
 export async function editarVisita(
   folio: string,
@@ -581,16 +613,19 @@ export async function editarVisita(
   // Dentro de una transacción ajena (ver modificarVisita) todo se lee y escribe por ella.
   ejAjeno?: Ejecutor
 ): Promise<boolean> {
-  const [visita] = await (ejAjeno ?? ejecutorSuelto).consulta<{ id: number; estado: EstadoVisita }>(
-    `SELECT id, estado FROM dmc.visita WHERE folio = @folio AND activo = 1`,
-    [["folio", sql.VarChar(16), folio]]
-  );
-  if (!visita) return false;
-  const id = num(visita.id);
-
   // Datos, motivos, cargo y estado van juntos: una visita con los datos nuevos
-  // y los motivos viejos es peor que una sin corregir.
-  const cargo = await conTransaccion(ejAjeno, async (ej) => {
+  // y los motivos viejos es peor que una sin corregir. El estado se lee dentro,
+  // con la fila bloqueada: una visita en curso o cerrada no se corrige (si no,
+  // el técnico nuevo heredaría un acta ajena).
+  const resultado = await conTransaccion(ejAjeno, async (ej) => {
+    const [visita] = await ej.consulta<{ id: number; estado: EstadoVisita; tecnico_id: number | null }>(
+      `SELECT id, estado, tecnico_id FROM dmc.visita WITH (UPDLOCK, ROWLOCK) WHERE folio = @folio AND activo = 1`,
+      [["folio", sql.VarChar(16), folio]]
+    );
+    if (!visita) return null;
+    if (ESTADOS_NO_EDITABLES.includes(visita.estado)) throw new VisitaNoEditable(visita.estado);
+    const id = num(visita.id);
+    await soltarEjecucionDelAnterior(ej, id, visita.tecnico_id, datos.tecnicoId);
     await ej.ejecutar(
       `UPDATE dmc.visita
           SET cliente_id = @cliente, sucursal_id = @sucursal, tecnico_id = @tecnico,
@@ -622,8 +657,10 @@ export async function editarVisita(
     if (visita.estado === "REAGENDADA") {
       await marcarEstado(id, "PROGRAMADA", "Corregida desde coordinación.", "WEB", usuarioId, ej);
     }
-    return cargoGuardado;
+    return { cargo: cargoGuardado };
   });
+  if (!resultado) return false;
+  const { cargo } = resultado;
   await registrarPersonaLocal(datos.sucursalId, {
     nombre: datos.responsableNombre,
     rut: datos.responsableRut,
@@ -648,23 +685,30 @@ export async function reprogramarVisita(
   // Dentro de una transacción ajena (ver modificarVisita) todo se lee y escribe por ella.
   ejAjeno?: Ejecutor
 ): Promise<boolean> {
-  const [visita] = await (ejAjeno ?? ejecutorSuelto).consulta<{
-    id: number;
-    sucursal_id: number;
-    fecha: string;
-    hora: string | null;
-    motivo: string | null;
-  }>(
-    `SELECT v.id, v.sucursal_id, ${F_FECHA("v.fecha_programada")} AS fecha, ${F_HORA("v.hora_programada")} AS hora,
-            ${MOTIVO_PENDIENTE} AS motivo
-       FROM dmc.visita v WHERE v.folio = @folio AND v.activo = 1`,
-    [["folio", sql.VarChar(16), input.folio]]
-  );
-  if (!visita) return false;
-  const id = num(visita.id);
+  // Reprogramar deja un día fijo: el margen que tuviera se suelta. La visita se
+  // lee dentro de la transacción y con la fila bloqueada: si el técnico la
+  // cerró un instante antes, el estado que se ve es el nuevo y no se revierte.
+  return conTransaccion(ejAjeno, async (ej) => {
+    const [visita] = await ej.consulta<{
+      id: number;
+      estado: EstadoVisita;
+      tecnico_id: number | null;
+      sucursal_id: number;
+      fecha: string;
+      hora: string | null;
+      motivo: string | null;
+    }>(
+      `SELECT v.id, v.estado, v.tecnico_id, v.sucursal_id, ${F_FECHA("v.fecha_programada")} AS fecha, ${F_HORA("v.hora_programada")} AS hora,
+              ${MOTIVO_PENDIENTE} AS motivo
+         FROM dmc.visita v WITH (UPDLOCK, ROWLOCK) WHERE v.folio = @folio AND v.activo = 1`,
+      [["folio", sql.VarChar(16), input.folio]]
+    );
+    if (!visita) return false;
+    // Última palabra sobre el estado: la acción ya lo avisa, esto cubre cualquier otra vía.
+    if (!ESTADOS_REPROGRAMABLES.includes(visita.estado)) throw new VisitaNoEditable(visita.estado);
+    const id = num(visita.id);
+    await soltarEjecucionDelAnterior(ej, id, visita.tecnico_id, input.tecnicoId);
 
-  // Reprogramar deja un día fijo: el margen que tuviera se suelta.
-  await conTransaccion(ejAjeno, async (ej) => {
     await ej.ejecutar(
       `INSERT INTO dmc.reagendamiento
          (visita_id, fecha_anterior, hora_anterior, fecha_nueva, hora_nueva, motivo, origen, usuario_id)
@@ -707,8 +751,8 @@ export async function reprogramarVisita(
         usuarioId: input.usuarioId,
       });
     }
+    return true;
   });
-  return true;
 }
 
 /**

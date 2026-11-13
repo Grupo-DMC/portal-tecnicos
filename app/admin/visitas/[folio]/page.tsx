@@ -3,6 +3,7 @@ import { getActaEnviada, getVisitaCompletaPorFolio, getVisitaEliminadaPorFolio }
 import ActaView from "@/components/admin/ActaView";
 import SinAcceso from "@/components/admin/SinAcceso";
 import { sesionCon } from "@/lib/auth";
+import { visitaParaPanel } from "@/lib/data/visita-reducida";
 
 export const dynamic = "force-dynamic";
 
@@ -16,9 +17,10 @@ export default async function ActaPage({ params }: { params: Promise<{ folio: st
     (await getVisitaCompletaPorFolio(folio)) ??
     (sesion.usuario.rol === "ADMIN" ? await getVisitaEliminadaPorFolio(folio) : undefined);
   if (!visita) notFound();
+  const paraPanel = visitaParaPanel(visita, sesion.permisos);
 
   return (
-    <ActaView visita={visita} enviada={await getActaEnviada(visita.folio)}
+    <ActaView visita={paraPanel} enviada={await getActaEnviada(visita.folio)}
     />
   );
 }

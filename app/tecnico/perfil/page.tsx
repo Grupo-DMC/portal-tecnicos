@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSesion } from "@/lib/auth";
 import { getVisitasPorTecnico } from "@/lib/data/visitas";
+import { visitaParaTecnico } from "@/lib/data/visita-reducida";
 import { hoyISO } from "@/lib/ui/fecha";
 import MobileShell from "@/components/mobile/MobileShell";
 import PerfilHistorial from "@/components/mobile/PerfilHistorial";
@@ -13,7 +14,8 @@ export default async function PerfilPage() {
   if (!sesion?.tecnico) redirect("/login");
 
   const tecnico = sesion.tecnico;
-  const visitas = await getVisitasPorTecnico(tecnico.id);
+  // Igual que en el resto del celular: el ayudante no recibe el RUT ni el correo del titular.
+  const visitas = (await getVisitasPorTecnico(tecnico.id)).map((v) => visitaParaTecnico(v, tecnico.id));
   const iniciales = `${tecnico.nombres.trim().charAt(0)}${tecnico.apellidoPaterno.trim().charAt(0)}`.toUpperCase();
   // Sin fila "Rol": el técnico solo tiene un rol posible y verlo no le aporta.
   const filas: { k: string; v: string }[] = [

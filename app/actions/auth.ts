@@ -1,5 +1,6 @@
 "use server";
 
+import { borrarSuscripcionesDeUsuario } from "@/lib/data/push-baja";
 import { redirect } from "next/navigation";
 import {
   autenticar,
@@ -14,7 +15,7 @@ import { auditar } from "@/lib/data/auditoria";
 import { registrarActividad } from "@/lib/data/actividad";
 import { liberarReservasDelUsuario } from "@/lib/data/reservas";
 import { log } from "@/lib/log";
-import { cambiarPasswordPropia } from "@/lib/data/usuarios";
+import { cambiarPasswordPropia, revocarSesiones } from "@/lib/data/usuarios";
 import { validarPasswordNueva } from "@/lib/password";
 import { validar } from "@/lib/validacion/comun";
 import { entradaCambioPassword, entradaLogin, entradaSolicitudPassword } from "@/lib/validacion/auth";
@@ -146,8 +147,12 @@ export async function cambiarPasswordAction(
 export async function logoutAction() {
   // Las actas que este técnico tenía reservadas se sueltan al salir: el otro
   // no tiene que esperar el plazo. Si falla, vencen solas.
-  const sesion = await getSesion().catch(() => null);
+  const sesion = (await getSesion().catch(() => null)) ?? (await getSesionPorCambiarPassword().catch(() => null));
   if (sesion?.tecnico) await liberarReservasDelUsuario(sesion.usuario.id);
+  // El navegador deja de recibir avisos push de esta cuenta.
+  if (sesion) await borrarSuscripcionesDeUsuario(sesion.usuario.id);
+  // Y el token deja de valer en el servidor, no solo se borra la cookie de este navegador.
+  if (sesion) await revocarSesiones(sesion.usuario.id).catch((err) => log.error("logout.revocar", { err }));
   await cerrarSesion();
   redirect("/login");
 }

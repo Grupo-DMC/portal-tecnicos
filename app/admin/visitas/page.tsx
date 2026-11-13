@@ -3,6 +3,7 @@ import VisitasTable from "@/components/admin/VisitasTable";
 import { buscarVisitas, contarVisitasEliminadas, lugaresConVisitas } from "@/lib/data/visitas-lista";
 import SinAcceso from "@/components/admin/SinAcceso";
 import { sesionCon } from "@/lib/auth";
+import { visitaParaPanel } from "@/lib/data/visita-reducida";
 import { acotarFiltros, ELIMINADAS, leerFiltrosVisitas, urlFiltrosVisitas } from "@/lib/ui/filtros-visitas";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +27,8 @@ export default async function VisitasPage({
   // la URL lo refleja.
   const { opciones, filtros } = acotarFiltros(lugares, pedidos);
   if (urlFiltrosVisitas(filtros) !== urlFiltrosVisitas(pedidos)) redirect(urlFiltrosVisitas(filtros));
-  const pagina = await buscarVisitas(filtros);
+  const cruda = await buscarVisitas(filtros);
+  const pagina = { ...cruda, visitas: cruda.visitas.map((v) => visitaParaPanel(v, sesion.permisos)) };
   return (
     <VisitasTable
       title="Visitas"

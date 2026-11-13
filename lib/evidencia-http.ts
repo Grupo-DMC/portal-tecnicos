@@ -4,6 +4,17 @@ import "server-only";
 // vienen de la base y se entregan desde el mismo origen que la app, así que se
 // sirven como datos inertes: sin sniffing, sin scripts y sin caché del equipo.
 
+import type { Sesion } from "@/lib/auth";
+import { tiene } from "@/lib/permisos";
+
+/**
+ * El panel solo sirve evidencia a quien puede ver visitas, igual que las páginas
+ * del módulo. El técnico entra por su propia regla (las visitas en que participa).
+ */
+export function sinPermisoDeVer(sesion: Sesion): boolean {
+  return sesion.usuario.rol !== "TECNICO" && !tiene(sesion.permisos, "visitas.ver");
+}
+
 const MIMES_IMAGEN = ["image/jpeg", "image/png", "image/webp"];
 const MIMES_VIDEO = ["video/mp4", "video/webm", "video/quicktime"];
 

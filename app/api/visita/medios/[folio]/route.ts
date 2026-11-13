@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSesion } from "@/lib/auth";
+import { sinPermisoDeVer } from "@/lib/evidencia-http";
 import { getVisitaCompletaPorFolio } from "@/lib/data/visitas";
 import { participaEnVisita } from "@/lib/ui/estado";
 import { mediosDelActa } from "@/lib/ui/medios-acta";
@@ -16,6 +17,7 @@ export const dynamic = "force-dynamic";
 export async function GET(_req: Request, { params }: { params: Promise<{ folio: string }> }) {
   const sesion = await getSesion();
   if (!sesion) return new NextResponse("No autorizado", { status: 401 });
+  if (sinPermisoDeVer(sesion)) return new NextResponse("Sin permiso", { status: 403 });
 
   const { folio: folioParam } = await params;
   const visita = await getVisitaCompletaPorFolio(decodeURIComponent(folioParam));

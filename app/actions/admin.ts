@@ -5,11 +5,13 @@ import { registrarActividad } from "@/lib/data/actividad";
 import { log } from "@/lib/log";
 import { revalidatePath } from "next/cache";
 import { sesionCon } from "@/lib/auth";
+import { ESTADOS_REPROGRAMABLES } from "@/lib/ui/estado";
 import {
   actualizarProblema,
   cancelarVisitaPorAdmin,
   crearVisita,
   editarVisita,
+  VisitaNoEditable,
   eliminarVisita,
   getVisitaCompletaPorFolio,
   liberarVisita,
@@ -82,7 +84,7 @@ function revalidarPanel(folio?: string) {
 
 function comoError(err: unknown, contexto: string): ResultadoAdmin {
   // La respuesta al aviso de problemas no sirvió: el mensaje ya es para quien agenda.
-  if (err instanceof ErrorDeAviso) return { ok: false, error: err.message };
+  if (err instanceof ErrorDeAviso || err instanceof VisitaNoEditable) return { ok: false, error: err.message };
   const texto = err instanceof Error ? err.message : String(err);
   if (/ck_visita_fecha_hasta/i.test(texto)) return { ok: false, error: ERROR_MARGEN };
   if (/fk_visita_motivo/i.test(texto)) {
@@ -335,8 +337,11 @@ export async function reprogramarVisitaAction(pedido: {
   const entrada = validar(entradaReprogramar, pedido, "reprogramarVisita");
   if (!entrada.ok) return { ok: false, error: "Elige el técnico y la nueva fecha." };
   const input = entrada.datos;
+  const visita = await getVisitaCompletaPorFolio(input.folio);
+  if (visita && !ESTADOS_REPROGRAMABLES.includes(visita.estado)) {
+    return { ok: false, error: "Esta visita no se puede reprogramar: solo las reagendadas, pendientes o canceladas." };
+  }
   if (!input.hora) {
-    const visita = await getVisitaCompletaPorFolio(input.folio);
     if (visita && algunoPideHora(visita.motivosCodigos, await listarMotivos())) {
       return { ok: false, error: "En instalación la hora es obligatoria." };
     }

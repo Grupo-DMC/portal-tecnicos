@@ -220,6 +220,7 @@ tests/          Tests (Vitest y Playwright)
 
 ---
 
+
 ## Seguridad
 
 - **No subir** credenciales, cadenas de conexión, hosts, IP, respaldos de base de datos, planillas

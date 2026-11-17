@@ -43,16 +43,14 @@ export interface FiltrosVisitas {
    */
   /** Regiones de la tienda de la visita (hoy), tal como se guardan. */
   regiones: string[];
-  mallId: string;
+  mallIds: string[];
   clienteIds: string[];
   /** Marcas de la tienda (hoy). Solo cuentan con algún cliente elegido. */
   marcaIds: string[];
   /** Solo cuentan con algún cliente elegido. */
   sucursalIds: string[];
-  /** Trae también las visitas en las que va de ayudante. */
-  tecnicoId: string;
-  /** Tipo de falla registrada. Solo cuenta sin cliente elegido. */
-  tipo: string;
+  /** Trae también las visitas en las que va de ayudante. Basta con que cumpla uno. */
+  tecnicoIds: string[];
   /** Texto libre: folio, cliente, sucursal, técnico o motivo. */
   q: string;
   /** Visitas por página: una de LIMITES. */
@@ -66,12 +64,11 @@ export const SIN_FILTROS: FiltrosVisitas = {
   desde: "",
   hasta: "",
   regiones: [],
-  mallId: "",
+  mallIds: [],
   clienteIds: [],
   marcaIds: [],
   sucursalIds: [],
-  tecnicoId: "",
-  tipo: "",
+  tecnicoIds: [],
   q: "",
   limite: POR_PAGINA,
   pagina: 1,
@@ -113,12 +110,11 @@ export function leerFiltrosVisitas(p: Parametros, opciones: { verEliminadas: boo
     desde: fecha(uno(p, "desde")) || dia,
     hasta: fecha(uno(p, "hasta")) || dia,
     regiones: varios(p, "region").map((r) => r.slice(0, 80)),
-    mallId: id(uno(p, "mall")),
+    mallIds: varios(p, "mall").map(id).filter(Boolean),
     clienteIds,
     marcaIds: clienteIds.length ? varios(p, "marca").map(id).filter(Boolean) : [],
     sucursalIds: clienteIds.length ? varios(p, "tienda").map(id).filter(Boolean) : [],
-    tecnicoId: id(uno(p, "tecnico")),
-    tipo: clienteIds.length ? "" : uno(p, "tipo").slice(0, 40),
+    tecnicoIds: varios(p, "tecnico").map(id).filter(Boolean),
     q: uno(p, "q").slice(0, 100),
     limite: (LIMITES as readonly number[]).includes(limite) ? limite : POR_PAGINA,
     pagina: Number.isSafeInteger(pagina) && pagina > 1 ? pagina : 1,
@@ -132,14 +128,13 @@ export function urlFiltrosVisitas(f: FiltrosVisitas): string {
   if (f.desde) p.set("desde", f.desde);
   if (f.hasta) p.set("hasta", f.hasta);
   f.regiones.forEach((r) => p.append("region", r));
-  if (f.mallId) p.set("mall", f.mallId);
+  f.mallIds.forEach((m) => p.append("mall", m));
   f.clienteIds.forEach((c) => p.append("cliente", c));
   if (f.clienteIds.length) {
     f.marcaIds.forEach((m) => p.append("marca", m));
     f.sucursalIds.forEach((s) => p.append("tienda", s));
   }
-  if (f.tecnicoId) p.set("tecnico", f.tecnicoId);
-  if (f.tipo && !f.clienteIds.length) p.set("tipo", f.tipo);
+  f.tecnicoIds.forEach((t) => p.append("tecnico", t));
   if (f.q.trim()) p.set("q", f.q.trim());
   if (f.limite !== POR_PAGINA) p.set("limite", String(f.limite));
   if (f.pagina > 1) p.set("pagina", String(f.pagina));
@@ -220,9 +215,9 @@ export function acotarFiltros(
 
   const enRegion = f.regiones.length ? lugares.filter((l) => f.regiones.includes(l.region)) : lugares;
   const malls = distintos(enRegion, (l) => [l.mallId, l.mall]);
-  const mallId = quedan(f.mallId ? [f.mallId] : [], malls)[0] ?? "";
+  const mallIds = quedan(f.mallIds, malls);
 
-  const enMall = mallId ? enRegion.filter((l) => String(l.mallId) === mallId) : enRegion;
+  const enMall = mallIds.length ? enRegion.filter((l) => mallIds.includes(String(l.mallId))) : enRegion;
   const clientes = distintos(enMall, (l) => [l.clienteId, l.cliente]);
   const clienteIds = quedan(f.clienteIds, clientes);
 
@@ -238,12 +233,10 @@ export function acotarFiltros(
     opciones: { regiones, malls, clientes, marcas, tiendas },
     filtros: {
       ...f,
-      mallId,
+      mallIds,
       clienteIds,
       marcaIds,
       sucursalIds,
-      // Con algún cliente el tipo de falla deja de aplicar, también si llegó por la URL.
-      tipo: clienteIds.length ? "" : f.tipo,
     },
   };
 }

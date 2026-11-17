@@ -332,7 +332,7 @@ export function TrabajosDelInforme({
         ) : null}
       </div>
       {hayAlgunaSeccion(delMotivo) ? (
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-3.5">
           {agruparPorSeccion(delMotivo).map((g) => {
             const marcadosAca = g.items.filter((t) => marcado(t.codigo)).length;
             return (

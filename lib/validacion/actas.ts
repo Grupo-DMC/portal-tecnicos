@@ -26,6 +26,11 @@ export const fotoActa = z.object({
   interno: z.boolean().optional(),
 });
 
+export const fotoGirada = z.object({
+  id: idPositivo,
+  dataUrl: dataUrlImagen(6_000_000),
+});
+
 export const firmaActa = z.object({
   nombre: texto(120),
   rut: rutGuardable.nullable(),
@@ -73,6 +78,12 @@ const problemaEdicion = z.object({
   items: arreglo(subtrabajoActa, 200),
 });
 
+/** Los problemas de una visita sin cerrar, anotados desde el panel. */
+export const entradaProblemasVisita = z.object({
+  folio,
+  problemas: arreglo(problemaEdicion, 100),
+});
+
 export const edicionActaEntrada = z.object({
   folio,
   motivoEdicion: textoLibre,
@@ -89,6 +100,7 @@ export const edicionActaEntrada = z.object({
   problemas: arreglo(problemaEdicion, 100),
   fotosConservadas: arreglo(idPositivo, 100),
   fotosNuevas: arreglo(fotoActa, 60),
+  fotosGiradas: arreglo(fotoGirada, 60).optional(),
   videosIds: arreglo(idPositivo, 30),
   videosInternosIds: arreglo(idPositivo, 30),
 });

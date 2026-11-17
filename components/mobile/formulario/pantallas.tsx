@@ -129,7 +129,7 @@ export function PantallaOk({ fv }: { fv: FormularioVisitaApi }) {
           onClick={() => router.push(`/tecnico/visitas/${visita.folio}/revisar`)}
           className="w-full min-h-[50px] px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
         >
-          Ver el acta guardada
+          Ver acta
         </button>
       </div>
     </div>

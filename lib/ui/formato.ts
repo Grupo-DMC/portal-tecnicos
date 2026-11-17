@@ -76,6 +76,58 @@ export function telCompleto(v: string): boolean {
   return sinPrefijo.length === 8;
 }
 
+/** Cuántos dígitos lleva un teléfono móvil chileno después del «+56 9». */
+export const DIGITOS_TEL = 8;
+
+/**
+ * Los dígitos del teléfono que se escriben después del «+56 9» fijo (de 0 a 8),
+ * o null si el valor guardado no tiene esa forma —un fijo «+56 2 2299 4100», por
+ * ejemplo, cargado antes de que el campo fuera solo móvil—.
+ *
+ * Reconoce el formato en que se guarda («+56 9 1234 5678»), con o sin espacios, y
+ * los números pegados sin el «+» («912345678», «56912345678»).
+ */
+export function telLocal(v: string | null | undefined): string | null {
+  const t = String(v ?? "").trim();
+  if (!t) return "";
+  const conPrefijo = t.match(/^\+\s*56\s*9([\d\s]*)$/);
+  if (conPrefijo) return conPrefijo[1].replace(/\D/g, "");
+  if (/[^\d\s]/.test(t)) return null;
+  const d = t.replace(/\D/g, "");
+  if (d.length === 11 && d.startsWith("569")) return d.slice(3);
+  if (d.length === 9 && d.startsWith("9")) return d.slice(1);
+  if (d.length === DIGITOS_TEL) return d;
+  return null;
+}
+
+/** Lo que se escribió en el campo (sin prefijo) → el valor que se guarda: «+56 9 1234 5678», o "" si no hay dígitos. */
+export function telDesdeLocal(local: string): string {
+  const d = String(local ?? "").replace(/\D/g, "").slice(0, DIGITOS_TEL);
+  if (!d) return "";
+  return "+56 9 " + d.slice(0, 4) + (d.length > 4 ? " " + d.slice(4) : "");
+}
+
+/**
+ * El teléfono en la forma en que se guarda («+56 9 1234 5678»). Lo que no tiene
+ * esa forma (un fijo de antes, por ejemplo) se devuelve tal cual: nunca se
+ * convierte en otro número.
+ */
+export function normalizarTel(v: string | null | undefined): string {
+  const local = telLocal(v);
+  return local === null ? String(v ?? "").trim() : telDesdeLocal(local);
+}
+
+/**
+ * Por qué un teléfono no sirve, o null si está bien. Vacío es válido (quien
+ * decide si el campo es obligatorio es el formulario). Un valor de antes que no
+ * tiene la forma «+56 9» más 8 dígitos se conserva tal cual mientras no se toque.
+ */
+export function mensajeTel(v: string | null | undefined): string | null {
+  const local = telLocal(v);
+  if (local === null || local === "" || local.length === DIGITOS_TEL) return null;
+  return `El teléfono necesita ${DIGITOS_TEL} dígitos después del +56 9.`;
+}
+
 /**
  * URL de Google Maps para el botón "Ruta" del detalle de la visita.
  *

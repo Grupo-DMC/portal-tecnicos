@@ -82,3 +82,16 @@ sql/Emigracion-Final.sql
 
 # build aislado de los tests E2E
 /.next-e2e/
+
+# herramientas de IA / agentes (locales, no son parte del producto)
+/.claude/
+/.agents/
+/.taste-skill/
+/.impeccable/review/
+/.impeccable/hook.cache.json
+/.github/hooks/
+/skills-lock.json
+
+# builds y salidas generadas
+/.next-design/
+/.vitest/

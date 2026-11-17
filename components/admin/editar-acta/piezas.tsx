@@ -2,6 +2,7 @@
 
 import { reloj } from "@/lib/ui/video";
 import type { FotoForm, SubSeleccion } from "@/lib/ui/borrador";
+import type { Giro } from "@/lib/ui/imagen";
 import type { Visita } from "@/lib/types";
 
 // Las piezas de la edición del acta: la sección con su número, los botones, las
@@ -41,9 +42,9 @@ export function Seccion({
   return (
     <section
       id={`ea-sec-${id}`}
-      className="scroll-mt-[120px] border border-[var(--color-divider-soft)] bg-[var(--color-surface-3)]"
+      className="scroll-mt-[120px] border-2 border-[var(--color-text)] bg-[var(--color-surface-3)]"
     >
-      <div className="flex items-start gap-3.5 px-5 py-4 border-b border-[var(--color-divider-soft)]">
+      <div className="flex items-start gap-3.5 px-5 py-4 bg-[var(--color-neutral-300)] border-b-2 border-[var(--color-text)]">
         <span
           className="w-7 h-7 flex-none grid place-items-center font-extrabold text-cap tabular-nums mt-0.5"
           style={{
@@ -54,7 +55,7 @@ export function Seccion({
           {n}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="font-extrabold text-lead leading-[1.25] tracking-[-.01em]">
+          <div className="font-extrabold text-h3 leading-[1.2] tracking-[-.01em]">
             {titulo}
             {cuenta !== undefined ? <span className="font-normal opacity-55 tabular-nums"> · {cuenta}</span> : null}
           </div>
@@ -69,7 +70,7 @@ export function Seccion({
           </span>
         ) : null}
       </div>
-      <div className="px-5 py-5">{children}</div>
+      <div className="px-5 py-6">{children}</div>
     </section>
   );
 }
@@ -226,10 +227,41 @@ export function Subtitulo({ texto, cuenta }: { texto: string; cuenta: number }) 
   );
 }
 
+/** Girar una foto 90° a un lado: la flecha curva apunta hacia donde gira. */
+function BotonGirar({ sentido, onClick }: { sentido: Giro; onClick: () => void }) {
+  const izquierda = sentido === -90;
+  const texto = izquierda ? "Girar a la izquierda" : "Girar a la derecha";
+  const nombre = izquierda ? "Girar la foto a la izquierda" : "Girar la foto a la derecha";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={nombre}
+      title={texto}
+      className="w-7 h-7 grid place-items-center bg-[rgba(31,28,33,.78)] text-white border-0 cursor-pointer hover:bg-[var(--color-accent)] focus-visible:bg-[var(--color-accent)]"
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        style={izquierda ? undefined : { transform: "scaleX(-1)" }}
+        aria-hidden="true"
+      >
+        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+        <path d="M3 3v5h5" />
+      </svg>
+    </button>
+  );
+}
+
 export function Fotos({
   titulo,
   fotos,
   onQuitar,
+  onGirar,
   onAgregar,
   onPegar,
   onCopiar,
@@ -238,6 +270,8 @@ export function Fotos({
   titulo: string;
   fotos: FotoForm[];
   onQuitar: (id: number) => void;
+  /** Gira la foto 90°: -90 a la izquierda, 90 a la derecha. */
+  onGirar: (id: number, sentido: Giro) => void;
   onAgregar: (e: React.ChangeEvent<HTMLInputElement>) => void;
   /** «Pegar imagen»: trae lo que haya en el portapapeles. */
   onPegar: () => void;
@@ -272,7 +306,15 @@ export function Fotos({
               <span className="absolute left-0 bottom-0 px-1.5 py-0.5 bg-[var(--color-accent)] text-white text-cap font-extrabold ">
                 Nueva
               </span>
+            ) : f.girada ? (
+              <span className="absolute left-0 bottom-0 px-1.5 py-0.5 bg-[var(--color-accent)] text-white text-cap font-extrabold ">
+                Girada
+              </span>
             ) : null}
+            <div className="absolute right-1.5 bottom-1.5 flex gap-1 opacity-80 group-hover:opacity-100 focus-within:opacity-100">
+              <BotonGirar sentido={-90} onClick={() => onGirar(f.id, -90)} />
+              <BotonGirar sentido={90} onClick={() => onGirar(f.id, 90)} />
+            </div>
             <button
               type="button"
               onClick={() => onCopiar(f.id)}

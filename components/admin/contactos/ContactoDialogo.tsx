@@ -6,7 +6,7 @@ import Dialogo, { type FormValores } from "@/components/admin/Dialogo";
 import SelectBuscable from "@/components/ui/SelectBuscable";
 import { guardarContactoAction } from "@/app/actions/contactos";
 import { ALCANCES, ETIQUETA_ALCANCE, problemaDeCargos, type AlcanceTipo, type CargoContacto, type Contacto } from "@/lib/ui/contactos";
-import { fmtTel } from "@/lib/ui/formato";
+import { mensajeTel } from "@/lib/ui/formato";
 import { useReferencias } from "@/lib/ui/referencias";
 import { REGIONES } from "@/lib/ui/regiones";
 
@@ -92,6 +92,8 @@ export default function ContactoDialogo({
       })),
     };
     if (!datos.nombre) return setError("El nombre del contacto es obligatorio.");
+    const errorTel = mensajeTel(datos.telefono);
+    if (errorTel) return setError(errorTel);
     const fallo = problemaDeCargos(datos.cargos);
     if (fallo) return setError(fallo);
     setGuardando(true);
@@ -110,13 +112,13 @@ export default function ContactoDialogo({
       campos={[
         { k: "nombre", label: "Nombre", span: 2 },
         { k: "email", label: "Correo (opcional)", tipo: "email" },
-        { k: "telefono", label: "Teléfono (opcional)", tipo: "tel", ph: "+56 9 1234 5678" },
+        { k: "telefono", label: "Teléfono (opcional)", tipo: "tel" },
         { k: "activo", label: "Estado", tipo: "toggle" },
       ]}
       form={form}
       onCampo={(k, v) => {
         setError(null);
-        setForm((prev) => ({ ...prev, [k]: k === "telefono" ? fmtTel(String(v)) : v }));
+        setForm((prev) => ({ ...prev, [k]: v }));
       }}
       onCerrar={onCerrar}
       onGuardar={guardar}

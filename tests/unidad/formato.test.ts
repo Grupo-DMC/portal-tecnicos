@@ -4,11 +4,15 @@ import {
   fmtTel,
   hayDireccion,
   mensajeRut,
+  mensajeTel,
+  normalizarTel,
   rutCompleto,
   rutDvCorrecto,
   rutLimpio,
   sinTildes,
   telCompleto,
+  telDesdeLocal,
+  telLocal,
   urlMapa,
   urlTel,
 } from "@/lib/ui/formato";
@@ -102,6 +106,50 @@ describe("teléfono", () => {
   it("urlTel deja solo + y dígitos", () => {
     expect(urlTel("+56 9 1234-5678")).toBe("tel:+56912345678");
     expect(urlTel(null)).toBe("tel:");
+  });
+});
+
+describe("teléfono con «+56 9» fijo", () => {
+  it("telLocal saca los dígitos que se escriben después del prefijo", () => {
+    expect(telLocal("")).toBe("");
+    expect(telLocal(null)).toBe("");
+    expect(telLocal("+56 9 1234 5678")).toBe("12345678");
+    expect(telLocal("+56 9 1234")).toBe("1234");
+    expect(telLocal("+56 9 9")).toBe("9");
+    expect(telLocal("+56 9")).toBe("");
+    expect(telLocal("912345678")).toBe("12345678");
+    expect(telLocal("56912345678")).toBe("12345678");
+    expect(telLocal("12345678")).toBe("12345678");
+  });
+
+  it("telLocal no inventa un móvil con un valor de antes que no lo es", () => {
+    expect(telLocal("+56 2 2299 4100")).toBeNull();
+    expect(telLocal("22994100")).toBe("22994100");
+    expect(telLocal("(2) 2299 4100")).toBeNull();
+  });
+
+  it("telDesdeLocal arma el valor que se guarda", () => {
+    expect(telDesdeLocal("")).toBe("");
+    expect(telDesdeLocal("1234")).toBe("+56 9 1234");
+    expect(telDesdeLocal("12345")).toBe("+56 9 1234 5");
+    expect(telDesdeLocal("1234 5678")).toBe("+56 9 1234 5678");
+    expect(telDesdeLocal("123456789012")).toBe("+56 9 1234 5678");
+    expect(telDesdeLocal("9a9b")).toBe("+56 9 99");
+  });
+
+  it("mensajeTel: vacío y completo valen; a medias no; lo de antes se conserva", () => {
+    expect(mensajeTel("")).toBeNull();
+    expect(mensajeTel("+56 9 1234 5678")).toBeNull();
+    expect(mensajeTel("+56 9 1234 567")).toMatch(/8 dígitos/);
+    expect(mensajeTel("+56 9 1")).toMatch(/8 dígitos/);
+    expect(mensajeTel("+56 2 2299 4100")).toBeNull();
+  });
+
+  it("normalizarTel deja el formato de siempre y no toca lo que no es móvil", () => {
+    expect(normalizarTel("56912345678")).toBe("+56 9 1234 5678");
+    expect(normalizarTel("+56 9 12345678")).toBe("+56 9 1234 5678");
+    expect(normalizarTel(null)).toBe("");
+    expect(normalizarTel(" +56 2 2299 4100 ")).toBe("+56 2 2299 4100");
   });
 });
 

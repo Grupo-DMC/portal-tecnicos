@@ -239,10 +239,13 @@ export async function guardarActa(
     await escribirTrabajos(ej, id, entrada.trabajos, entrada.motivosCodigos);
 
     // 4 · Problemas levantados. Se limpian los que nacieron acá y todavía no
-    //     los agarró nadie más (una visita de resolución, una foto o el panel).
+    //     los agarró nadie más (una visita de resolución, una foto). Los que
+    //     coordinación anotó desde el panel antes del cierre no son de este
+    //     intento: se quedan, y los que el técnico levantó se suman a ellos.
     await ej.ejecutar(
       `DELETE FROM dmc.problema
         WHERE visita_id = @id
+          AND registrado_en_panel = 0
           AND NOT EXISTS (SELECT 1 FROM dmc.problema_visita_resolucion r WHERE r.problema_id = dmc.problema.id)
           AND NOT EXISTS (SELECT 1 FROM dmc.visita v2 WHERE v2.problema_origen_id = dmc.problema.id)
           AND NOT EXISTS (SELECT 1 FROM dmc.visita_foto f WHERE f.problema_id = dmc.problema.id)`,
@@ -415,17 +418,19 @@ export async function insertarProblema(
   ej: Ejecutor,
   visitaId: number,
   pr: ProblemaActa,
-  orden: number
+  orden: number,
+  /** true = lo anota coordinación desde el panel en una visita sin cerrar: el cierre del acta no lo borra. */
+  desdePanel = false
 ): Promise<number> {
   // dmc.problema tiene el trigger tg_problema_cambio (AFTER INSERT), y SQL
   // Server rechaza OUTPUT sin INTO sobre una tabla con triggers para esa
   // acción: el id se recoge en una tabla de paso.
   const [fila] = await ej.consulta<{ id: number }>(
     `DECLARE @nuevo TABLE (id bigint);
-     INSERT INTO dmc.problema (visita_id, tipo_codigo, estado, descripcion, solucion, orden, resuelto_en)
+     INSERT INTO dmc.problema (visita_id, tipo_codigo, estado, descripcion, solucion, orden, resuelto_en, registrado_en_panel)
      OUTPUT INSERTED.id INTO @nuevo
      VALUES (@visita, @tipo, @estado, @desc, @sol, @orden,
-             CASE WHEN @estado = 'RESUELTO' THEN SYSDATETIME() ELSE NULL END);
+             CASE WHEN @estado = 'RESUELTO' THEN SYSDATETIME() ELSE NULL END, @panel);
      SELECT id FROM @nuevo;`,
     [
       ["visita", sql.BigInt, visitaId],
@@ -434,6 +439,7 @@ export async function insertarProblema(
       ["desc", sql.NVarChar(sql.MAX), pr.descripcion?.trim() || null],
       ["sol", sql.NVarChar(sql.MAX), pr.solucion?.trim() || null],
       ["orden", sql.SmallInt, orden],
+      ["panel", sql.Bit, desdePanel],
     ]
   );
   const problemaId = num(fila.id);

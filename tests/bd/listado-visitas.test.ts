@@ -96,8 +96,10 @@ describe.skipIf(!hayBd)("BD · listado de visitas con filtros", () => {
     expect(await folios({ regiones: ["Valparaíso"] })).toEqual([porId.e, porId.d]);
     expect(await folios({ regiones: ["Metropolitana"] })).toEqual([porId.c, porId.b, porId.a]);
     expect((await folios({ regiones: ["Metropolitana", "Valparaíso"] })).length).toBe(5);
-    expect(await folios({ mallId: String(mallId) })).toEqual([porId.e, porId.d]);
-    expect(await folios({ mallId: String(mallCentroId) })).toEqual([porId.c, porId.b, porId.a]);
+    expect(await folios({ mallIds: [String(mallId)] })).toEqual([porId.e, porId.d]);
+    expect(await folios({ mallIds: [String(mallCentroId)] })).toEqual([porId.c, porId.b, porId.a]);
+    // Varios malls: la visita que cumpla con cualquiera.
+    expect((await folios({ mallIds: [String(mallId), String(mallCentroId)] })).length).toBe(5);
   });
 
   it("por marca (la de hoy de la tienda), dentro de los clientes elegidos", async () => {
@@ -114,13 +116,10 @@ describe.skipIf(!hayBd)("BD · listado de visitas con filtros", () => {
   });
 
   it("por técnico incluye las visitas donde va de ayudante", async () => {
-    expect((await folios({ tecnicoId: String(m.tecnico2Id) }))).toEqual([porId.e]);
-    expect((await folios({ tecnicoId: String(m.tecnicoId) })).length).toBe(5);
-  });
-
-  it("por tipo de falla registrada", async () => {
-    expect(await folios({ tipo: "ANTENA_NO_DETECTA" })).toEqual([porId.c]);
-    expect(await folios({ tipo: "OTRO" })).toEqual([]);
+    expect((await folios({ tecnicoIds: [String(m.tecnico2Id)] }))).toEqual([porId.e]);
+    expect((await folios({ tecnicoIds: [String(m.tecnicoId)] })).length).toBe(5);
+    // Varios técnicos: la visita de cualquiera de ellos, sin repetirse.
+    expect((await folios({ tecnicoIds: [String(m.tecnicoId), String(m.tecnico2Id)] })).length).toBe(5);
   });
 
   it("la búsqueda de texto ignora mayúsculas y tildes y mira folio, cliente, sucursal, técnico y motivo", async () => {
@@ -184,12 +183,12 @@ describe.skipIf(!hayBd)("BD · listado de visitas con filtros", () => {
   it("cascada: un mall, cliente, marca o tienda fuera de la zona elegida se descarta", async () => {
     const { filtros } = await opciones({
       regiones: ["Metropolitana"],
-      mallId: String(mallId),
+      mallIds: [String(mallId)],
       clienteIds: [String(otroClienteId)],
       marcaIds: [String(marca2)],
       sucursalIds: [String(otraSucursalId)],
     });
-    expect(filtros.mallId).toBe("");
+    expect(filtros.mallIds).toEqual([]);
     expect(filtros.clienteIds).toEqual([]);
     expect(filtros.marcaIds).toEqual([]);
     expect(filtros.sucursalIds).toEqual([]);

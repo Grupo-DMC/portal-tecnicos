@@ -88,7 +88,7 @@ export function HojaTrabajo({ fv }: { fv: FormularioVisitaApi }) {
             ) : null}
             <div>
               <PasoTitulo n="1" texto={ofrecidos.some((t) => yaAgregado(t.codigo)) ? "¿Qué más hiciste?" : "¿Qué trabajo hiciste?"} />
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-3.5">
                 {hayAlgunaSeccion(ofrecidos)
                   ? agruparPorSeccion(ofrecidos).map((g) => {
                       const marcadosAca = g.items.filter((t) => nt.codigo === t.codigo || yaAgregado(t.codigo)).length;

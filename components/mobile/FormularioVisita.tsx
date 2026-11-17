@@ -70,7 +70,7 @@ function PantallaDelActa({ fv }: { fv: FormularioVisitaApi }) {
     <div className="animate-fade-in">
       <Encabezado fv={fv} />
 
-      <div className="border-t-2 border-[var(--color-divider)]">
+      <div className="pt-5">
         <SeccionResponsable fv={fv} />
         <SeccionTrabajo fv={fv} />
         <SeccionProblemas fv={fv} />

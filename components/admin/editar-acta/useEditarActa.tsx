@@ -4,10 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
 import { editarActaAdminAction } from "@/app/actions/ediciones";
-import { formularioDesdeActa } from "@/lib/ui/edicion";
-import { mensajeRut } from "@/lib/ui/formato";
+import { faltaEnProblemas, formularioDesdeActa } from "@/lib/ui/edicion";
+import { mensajeRut, mensajeTel } from "@/lib/ui/formato";
 import { useReferencias } from "@/lib/ui/referencias";
 import { comprimirFoto } from "@/lib/ui/imagen";
+import { useGirarFotos } from "@/components/ui/useGirarFotos";
 import { ajustarVideo, trozoBase64, VIDEO_TROZO_BYTES } from "@/lib/ui/video";
 import { abrirVideoAction, cerrarVideoAction, subirTrozoVideoAction } from "@/app/actions/videos";
 import type { FotoForm, ProblemaForm, SubSeleccion, TrabajoForm } from "@/lib/ui/borrador";
@@ -144,6 +145,11 @@ export function useEditarActa({
     }
   }
 
+  /** Gira una foto 90°: la imagen que se guarda queda girada (también la ya guardada). */
+  const girarFoto = useGirarFotos(fotos, setFotos, {
+    alFallar: () => aviso("No se pudo girar la foto. Inténtalo otra vez."),
+  });
+
   /**
    * Copia una foto a la otra lista (de interna a trabajo o al revés). La
    * original se queda donde estaba: si sobra, se quita aparte. La copia entra
@@ -256,6 +262,8 @@ export function useEditarActa({
   function falta(): string | null {
     if (!respNombre.trim()) return "Falta el nombre del responsable de tienda.";
     if (errorRut) return `RUT del responsable: ${errorRut}`;
+    const errorTel = mensajeTel(respTel);
+    if (errorTel) return `Teléfono del responsable: ${errorTel}`;
     if (motivosCodigos.length === 0) return "Marca al menos un motivo de la visita.";
     const vigentes = trabajos.filter((t) => motivosCodigos.includes(motivoDe(t)));
     if (!vigentes.length) return "Agrega al menos un trabajo realizado.";
@@ -265,14 +273,8 @@ export function useEditarActa({
         return `En «${cat.nombre}» marca al menos un ${cat.singular ?? "subtrabajo"}.`;
       }
     }
-    for (const p of problemas) {
-      const cat = catalogoProblema.find((c) => c.codigo === p.codigo);
-      const conOpciones = !!cat && cat.opciones.length > 0;
-      if (conOpciones && p.items.length === 0) {
-        return `En el problema «${cat.nombre}» marca al menos un ${cat.singular ?? "detalle"}.`;
-      }
-      if (!conOpciones && !p.desc.trim()) return `Escribe qué se encontró en el problema «${nombreProblema(p.codigo)}».`;
-    }
+    const faltaProblema = faltaEnProblemas(problemas, catalogoProblema);
+    if (faltaProblema) return faltaProblema;
     if (subida) return "Espera a que termine de subir el video.";
     if (motivoEdicion.trim().length < 5) return "Escribe por qué se edita el acta: queda en el registro.";
     return null;
@@ -316,6 +318,7 @@ export function useEditarActa({
         })),
         fotosConservadas: fotos.filter((f) => f.dbId).map((f) => f.dbId!),
         fotosNuevas: fotos.filter((f) => !f.dbId).map((f) => ({ dataUrl: f.src, etiqueta: null, interno: Boolean(f.interno) })),
+        fotosGiradas: fotos.filter((f) => f.dbId && f.girada).map((f) => ({ id: f.dbId!, dataUrl: f.src })),
         videosIds: videos.map((v) => v.id),
         videosInternosIds: videos.filter((v) => v.interno).map((v) => v.id),
       });
@@ -348,10 +351,13 @@ export function useEditarActa({
     interno: JSON.stringify([
       [...internos].sort(),
       interno.trim(),
-      fotos.filter((f) => f.interno).map((f) => f.id),
+      fotos.filter((f) => f.interno).map((f) => [f.id, !!f.girada]),
       videos.filter((v) => v.interno).map((v) => v.id),
     ]),
-    media: JSON.stringify([fotos.filter((f) => !f.interno).map((f) => f.id), videos.filter((v) => !v.interno).map((v) => v.id)]),
+    media: JSON.stringify([
+      fotos.filter((f) => !f.interno).map((f) => [f.id, !!f.girada]),
+      videos.filter((v) => !v.interno).map((v) => v.id),
+    ]),
   };
   const [huellasIniciales] = useState(huellas);
   const SECCIONES = [
@@ -437,6 +443,7 @@ export function useEditarActa({
     pegarFotos,
     pegarDesdePortapapeles,
     copiarFoto,
+    girarFoto,
     agregarVideo,
     falta,
     guardar,

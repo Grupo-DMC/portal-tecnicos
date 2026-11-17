@@ -54,6 +54,12 @@ export interface FotoActa {
   interno?: boolean;
 }
 
+/** Una foto ya guardada que se giró: su id y la imagen nueva, ya girada. */
+export interface FotoGirada {
+  id: number;
+  dataUrl: string;
+}
+
 export interface ActaEntrada {
   folio: string;
   responsableNombre: string;
@@ -135,6 +141,11 @@ export interface EdicionActaEntrada {
   /** Ids de las fotos del acta que se conservan. Las demás quedan inactivas. */
   fotosConservadas: number[];
   fotosNuevas: FotoActa[];
+  /**
+   * Fotos del acta que se giraron: la imagen ya girada, que reemplaza a la
+   * guardada (misma fila, mismo orden). Cada id tiene que estar en `fotosConservadas`.
+   */
+  fotosGiradas?: FotoGirada[];
   /** Los clips que quedan, en orden. Los nuevos ya están subidos. */
   videosIds: number[];
   /** De los nuevos, los que son del comentario interno. */

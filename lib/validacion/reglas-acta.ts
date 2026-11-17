@@ -1,4 +1,4 @@
-import type { ActaEntrada, EdicionActaEntrada } from "@/lib/contratos/acta";
+import type { ActaEntrada, EdicionActaEntrada, ProblemaEdicion } from "@/lib/contratos/acta";
 import type { EstadoVisita } from "@/lib/types";
 
 // Las reglas del acta que no son de forma (eso lo ve zod en actas.ts): qué
@@ -58,6 +58,14 @@ export function errorDeActa(entrada: ActaEntrada): string | null {
   // valida antes: descubrirlo a mitad del guardado dejaría el acta a medias.
   if (entrada.problemas.some((pr) => pr.tipoCodigo === "OTRO" && !txt(pr.descripcion))) {
     return "El problema marcado como «Otro» necesita que escribas qué encontraste.";
+  }
+  return null;
+}
+
+/** Lo que le falta a una lista de problemas anotada desde el panel, o null si está completa. */
+export function errorDeProblemasVisita(problemas: ProblemaEdicion[]): string | null {
+  if (problemas.some((pr) => pr.tipoCodigo === "OTRO" && !txt(pr.descripcion))) {
+    return "El problema marcado como «Otro» necesita que escribas qué se encontró.";
   }
   return null;
 }

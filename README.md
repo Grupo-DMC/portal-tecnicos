@@ -25,6 +25,12 @@ dar seguimiento, y una vista móvil para que el técnico registre el trabajo y c
   propios cambios. Cada cuenta elige por tipo si le **avisa** (número rojo y, si lo activa, aviso del
   navegador), solo lo **muestra** o lo **oculta**; cada tipo exige el permiso del módulo. Catálogo en
   `lib/notificaciones.ts`, registro en `lib/data/actividad.ts` (migración 035).
+- **Problemas desde el panel**: en una visita sin cerrar, «Registrar problemas» (permiso «Corregir visitas»)
+  anota uno o varios con sus equipos y cantidades, y se pueden corregir o quitar; el cierre del acta del técnico
+  no los borra (migración 038). En una visita cerrada se hace desde «Editar el acta».
+- **Girar fotos**: cada foto del acta (al llenar el formulario y al corregir una ya guardada) se gira 90° a
+  izquierda o derecha; se vuelve a codificar la imagen, así el detalle y el PDF la muestran girada. La
+  orientación EXIF se aplica al reducirla (`lib/ui/imagen.ts`).
 - **Acta en PDF** por visita, con las partes editadas resaltadas y quién las modificó.
 - **Sucursales y malls**: una sucursal puede estar en un mall; con mall y marca su nombre se arma solo
   («Cliente · Marca · Mall»). El alta masiva permite mezclar clientes y marcas en una misma carga, y

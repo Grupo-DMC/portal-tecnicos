@@ -764,6 +764,7 @@ CREATE TABLE dmc.problema (
     solucion        nvarchar(max) NULL,          -- qué hizo o qué sugiere
     orden           smallint      NOT NULL CONSTRAINT df_problema_orden DEFAULT (1),
     resuelto_en     datetime2(0)  NULL,
+    registrado_en_panel bit       NOT NULL CONSTRAINT df_problema_en_panel DEFAULT (0), -- 1 = lo anotó coordinación en una visita sin cerrar
     creado_en       datetime2(0)  NOT NULL CONSTRAINT df_problema_creado DEFAULT (SYSDATETIME()),
     actualizado_en  datetime2(0)  NOT NULL CONSTRAINT df_problema_actualizado DEFAULT (SYSDATETIME()),
     CONSTRAINT pk_problema         PRIMARY KEY (id),
@@ -1524,6 +1525,11 @@ CREATE INDEX ix_push_suscripcion_usuario ON dmc.push_suscripcion (usuario_id);
 GO
 INSERT INTO dmc.schema_version (version, descripcion)
 VALUES (36, N'Avisos push: suscripciones por navegador');
+GO
+/* Y la marca de los problemas anotados desde el panel (migración 038; la 037
+   solo renombra sucursales existentes: en una base nueva no hay nada). */
+INSERT INTO dmc.schema_version (version, descripcion)
+VALUES (38, N'Problemas registrados desde el panel en visitas sin cerrar');
 GO
 
 

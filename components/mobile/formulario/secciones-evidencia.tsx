@@ -36,6 +36,7 @@ export function SeccionInterno({ fv }: { fv: FormularioVisitaApi }) {
     abrirCamara,
     abrirVideo,
     pedirQuitarFoto,
+    girarFoto,
     pedirQuitarVideo,
     reintentarVideo,
   } = fv;
@@ -115,6 +116,7 @@ export function SeccionInterno({ fv }: { fv: FormularioVisitaApi }) {
           <GaleriaFotos
             fotos={fotosInternas}
             onQuitar={pedirQuitarFoto}
+            onGirar={(f, sentido) => void girarFoto(f.id, sentido)}
             onCamara={() => abrirCamara("interno")}
             onArchivos={(e) => onArchivos(e, true)}
           />
@@ -161,6 +163,7 @@ export function SeccionFotos({ fv }: { fv: FormularioVisitaApi }) {
     abrirCamara,
     abrirVideo,
     pedirQuitarFoto,
+    girarFoto,
     pedirQuitarVideo,
     reintentarVideo,
   } = fv;
@@ -191,6 +194,7 @@ export function SeccionFotos({ fv }: { fv: FormularioVisitaApi }) {
           <GaleriaFotos
             fotos={fotosTrabajo}
             onQuitar={pedirQuitarFoto}
+            onGirar={(f, sentido) => void girarFoto(f.id, sentido)}
             onCamara={() => abrirCamara("trabajo")}
             onArchivos={(e) => onArchivos(e, false)}
           />

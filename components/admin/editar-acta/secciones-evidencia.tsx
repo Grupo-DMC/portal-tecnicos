@@ -24,6 +24,7 @@ export function SeccionInterno({ fv }: { fv: EditarActaApi }) {
     pegarFotos,
     pegarDesdePortapapeles,
     copiarFoto,
+    girarFoto,
     agregarVideo,
     cambio,
     quitarFoto,
@@ -75,6 +76,7 @@ export function SeccionInterno({ fv }: { fv: EditarActaApi }) {
             titulo="Fotos internas"
             fotos={fotos.filter((f) => f.interno)}
             onQuitar={quitarFoto}
+            onGirar={(id, sentido) => void girarFoto(id, sentido)}
             onAgregar={(e) => agregarFotos(e, true)}
             onPegar={() => void pegarDesdePortapapeles(true)}
             onCopiar={(id) => void copiarFoto(id, false)}
@@ -106,6 +108,7 @@ export function SeccionFotos({ fv }: { fv: EditarActaApi }) {
     pegarFotos,
     pegarDesdePortapapeles,
     copiarFoto,
+    girarFoto,
     agregarVideo,
     cambio,
     quitarFoto,
@@ -126,6 +129,7 @@ export function SeccionFotos({ fv }: { fv: EditarActaApi }) {
             titulo="Fotos del trabajo"
             fotos={fotos.filter((f) => !f.interno)}
             onQuitar={quitarFoto}
+            onGirar={(id, sentido) => void girarFoto(id, sentido)}
             onAgregar={(e) => agregarFotos(e, false)}
             onPegar={() => void pegarDesdePortapapeles(false)}
             onCopiar={(id) => void copiarFoto(id, true)}

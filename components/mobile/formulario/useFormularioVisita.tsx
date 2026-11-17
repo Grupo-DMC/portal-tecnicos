@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import type { ConfirmarCfg } from "@/components/ui/Confirmar";
 import type { FirmaGuardada } from "@/components/mobile/FirmaSheet";
 import { useToast } from "@/components/ui/Toast";
-import { fmtRut, fmtTel, mensajeRut, rutCompleto, rutDvCorrecto, telCompleto } from "@/lib/ui/formato";
+import { fmtRut, mensajeRut, normalizarTel, rutCompleto, rutDvCorrecto, telCompleto } from "@/lib/ui/formato";
 import { ajustarFotos, comprimirFoto, PRESUPUESTO_FOTOS_BYTES, pesoDeFotos } from "@/lib/ui/imagen";
+import { useGirarFotos } from "@/components/ui/useGirarFotos";
 import { useUsuarioLocal } from "@/lib/ui/usuario-local";
 import { cargoVigente } from "@/lib/ui/cargos";
 import { usePersonasLocal } from "@/lib/ui/personas-local";
@@ -142,7 +143,7 @@ export function useFormularioVisita({
     // Lo que ya haya en el acta manda; si no, lo que se anotó al agendar.
     inicial?.respRut ?? fmtRut(visita.ejecucion?.responsableRut ?? visita.responsableRut ?? "")
   );
-  const [respTel, setRespTel] = useState(inicial?.respTel ?? fmtTel(visita.responsableTelefono ?? ""));
+  const [respTel, setRespTel] = useState(inicial?.respTel ?? normalizarTel(visita.responsableTelefono));
   // El cargo es opcional y no vive en la visita: sale de la lista de la tienda.
   const [respCargo, setRespCargo] = useState(visita.ejecucion?.responsableCargo ?? visita.responsableCargo ?? "");
   const personasLocal = usePersonasLocal(visita.sucursalId);
@@ -741,6 +742,7 @@ export function useFormularioVisita({
       fotosNuevas: fotos
         .filter((f) => !f.dbId)
         .map((f) => ({ dataUrl: f.src, etiqueta: null, interno: Boolean(f.interno) })),
+      fotosGiradas: fotos.filter((f) => f.dbId && f.girada).map((f) => ({ id: f.dbId!, dataUrl: f.src })),
       videosIds: videosListos.map((v) => v.id),
       videosInternosIds: videosListos.filter((v) => v.interno).map((v) => v.id),
     };
@@ -943,6 +945,12 @@ export function useFormularioVisita({
     setGuardadas((g) => ({ ...g, [interna ? "interno" : "fotos"]: false }));
   }
 
+  /** Gira una foto 90° antes de subirla (o, al corregir un acta, una ya guardada). */
+  const girarFoto = useGirarFotos(fotos, setFotos, {
+    alGirar: (f) => setGuardadas((g) => ({ ...g, [f.interno ? "interno" : "fotos"]: false })),
+    alFallar: () => aviso("No se pudo girar la foto. Inténtalo otra vez."),
+  });
+
   function onArchivos(e: React.ChangeEvent<HTMLInputElement>, interna: boolean) {
     const files = Array.from(e.target.files ?? []);
     files.forEach((file) => {
@@ -1142,6 +1150,7 @@ export function useFormularioVisita({
     sucursalCompleta,
     cambiarCantidad,
     agregarFoto,
+    girarFoto,
     onArchivos,
     abrirCamara,
     abrirVideo,

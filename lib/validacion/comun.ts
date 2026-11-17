@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { log } from "@/lib/log";
+import { mensajeTel } from "@/lib/ui/formato";
 
 // Validación en runtime de lo que llega a las Server Actions.
 //
@@ -68,8 +69,14 @@ export const rutEscrito = z.string().max(16, "El RUT es demasiado largo.");
 /** RUT ya guardable: varchar(12). */
 export const rutGuardable = z.string().max(12, "El RUT es demasiado largo.");
 
-/** Teléfono: varchar(30). */
-export const telefono = z.string().max(30, "El teléfono es demasiado largo.");
+/**
+ * Teléfono: varchar(30). Vacío vale; «+56 9» exige sus 8 dígitos (nada de números
+ * a medias). Un valor de antes con otra forma pasa tal cual: se conserva.
+ */
+export const telefono = z
+  .string()
+  .max(30, "El teléfono es demasiado largo.")
+  .refine((v) => mensajeTel(v) === null, { message: "El teléfono necesita 8 dígitos después del +56 9." });
 
 export const correo = z.string().max(160, "El correo es demasiado largo.");
 

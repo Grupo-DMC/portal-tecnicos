@@ -25,11 +25,11 @@ describe("filtros de la lista de visitas", () => {
       desde: "2026-01-01",
       hasta: "2026-01-31",
       regiones: ["Metropolitana", "Ñuble"],
-      mallId: "3",
+      mallIds: ["3", "4"],
       clienteIds: ["7", "8"],
       marcaIds: ["20", "21"],
       sucursalIds: ["12", "15"],
-      tecnicoId: "4",
+      tecnicoIds: ["4", "6"],
       q: "jumbo",
       limite: 15,
       pagina: 3,
@@ -58,7 +58,7 @@ describe("filtros de la lista de visitas", () => {
     expect(f.estados).toEqual([]);
     expect(f.desde).toBe("");
     expect(f.clienteIds).toEqual([]);
-    expect(f.tecnicoId).toBe("");
+    expect(f.tecnicoIds).toEqual([]);
     expect(f.pagina).toBe(1);
     expect(f.limite).toBe(50);
   });
@@ -73,6 +73,25 @@ describe("filtros de la lista de visitas", () => {
     expect(f.regiones).toEqual(["Maule"]);
   });
 
+  it("mall y técnico aceptan varios valores y descartan los inválidos", () => {
+    const f = leerFiltrosVisitas(
+      { mall: ["3", "3", "x", "5"], tecnico: ["9", "-2", "4"] },
+      { verEliminadas: false }
+    );
+    expect(f.mallIds).toEqual(["3", "5"]);
+    expect(f.tecnicoIds).toEqual(["9", "4"]);
+    // Un solo valor (los enlaces del panel) sigue funcionando.
+    expect(leer({ tecnico: "4", fecha: "2026-03-04" }).tecnicoIds).toEqual(["4"]);
+    expect(urlFiltrosVisitas({ ...SIN_FILTROS, mallIds: ["3", "5"], tecnicoIds: ["9"] })).toBe(
+      "/admin/visitas?mall=3&mall=5&tecnico=9"
+    );
+  });
+
+  it("el filtro por tipo de falla ya no existe: la URL lo ignora y no lo escribe", () => {
+    expect(leer({ tipo: "CABLE" })).toEqual(SIN_FILTROS);
+    expect(leer({ cliente: "1", tipo: "CABLE" }).clienteIds).toEqual(["1"]);
+  });
+
   it("el límite es uno de los permitidos", () => {
     expect(leer({ limite: "10" }).limite).toBe(10);
     expect(leer({ limite: "25" }).limite).toBe(25);
@@ -83,14 +102,12 @@ describe("filtros de la lista de visitas", () => {
     expect(leer({ semana: "2026-10-26" })).toEqual(SIN_FILTROS);
   });
 
-  it("la marca y la tienda solo cuentan con cliente, y el tipo de falla solo sin él", () => {
+  it("la marca y la tienda solo cuentan con cliente", () => {
     expect(leer({ tienda: "5" }).sucursalIds).toEqual([]);
     expect(leer({ marca: "9" }).marcaIds).toEqual([]);
     expect(leer({ cliente: "1", tienda: "5" }).sucursalIds).toEqual(["5"]);
     expect(leer({ cliente: "1", marca: "9" }).marcaIds).toEqual(["9"]);
     expect(urlFiltrosVisitas({ ...SIN_FILTROS, marcaIds: ["9"] })).toBe("/admin/visitas");
-    expect(leer({ cliente: "1", tipo: "CABLE" }).tipo).toBe("");
-    expect(leer({ tipo: "CABLE" }).tipo).toBe("CABLE");
   });
 
   it("las eliminadas solo se abren para quien puede verlas", () => {
@@ -157,13 +174,13 @@ describe("filtros en cascada (región → mall → cliente → marca → sucursa
 
   it("la zona y el mall acotan los clientes", () => {
     expect(ids(acotar({ regiones: ["Valparaíso"] }).opciones.clientes)).toEqual([1, 2]);
-    expect(ids(acotar({ mallId: "1" }).opciones.clientes)).toEqual([1]);
+    expect(ids(acotar({ mallIds: ["1"] }).opciones.clientes)).toEqual([1]);
   });
 
   it("un mall que ya no está en la zona elegida se descarta", () => {
-    const { filtros } = acotar({ regiones: ["Valparaíso"], mallId: "1" });
-    expect(filtros.mallId).toBe("");
-    expect(acotar({ regiones: ["Metropolitana"], mallId: "1" }).filtros.mallId).toBe("1");
+    const { filtros } = acotar({ regiones: ["Valparaíso"], mallIds: ["1"] });
+    expect(filtros.mallIds).toEqual([]);
+    expect(acotar({ regiones: ["Metropolitana"], mallIds: ["1"] }).filtros.mallIds).toEqual(["1"]);
   });
 
   it("y la limpieza baja por la cadena: sin ese mall el cliente que solo estaba ahí también sale", () => {
@@ -183,7 +200,7 @@ describe("filtros en cascada (región → mall → cliente → marca → sucursa
   });
 
   it("la marca también respeta zona y mall", () => {
-    const { opciones } = acotar({ mallId: "1", clienteIds: ["1"] });
+    const { opciones } = acotar({ mallIds: ["1"], clienteIds: ["1"] });
     expect(ids(opciones.marcas)).toEqual([10]);
     expect(ids(opciones.tiendas)).toEqual([100]);
   });
@@ -200,7 +217,7 @@ describe("filtros en cascada (región → mall → cliente → marca → sucursa
   });
 
   it("lo que sigue cabiendo no se toca, ni los filtros que no son de la cadena", () => {
-    const f = { regiones: ["Metropolitana"], mallId: "2", clienteIds: ["1"], marcaIds: ["10"], sucursalIds: ["101"], estados: ["PENDIENTE"], desde: "2026-01-01" };
+    const f = { regiones: ["Metropolitana"], mallIds: ["2"], clienteIds: ["1"], marcaIds: ["10"], sucursalIds: ["101"], estados: ["PENDIENTE"], desde: "2026-01-01" };
     expect(acotar(f).filtros).toEqual({ ...SIN_FILTROS, ...f });
   });
 });

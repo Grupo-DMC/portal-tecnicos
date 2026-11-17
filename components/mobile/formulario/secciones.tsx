@@ -1,6 +1,7 @@
 "use client";
 
-import { fmtRut, fmtTel } from "@/lib/ui/formato";
+import { fmtRut, normalizarTel } from "@/lib/ui/formato";
+import CampoTelefono from "@/components/ui/CampoTelefono";
 import SelectBuscable from "@/components/ui/SelectBuscable";
 import { cargoVigente } from "@/lib/ui/cargos";
 import { etiquetaPersona } from "@/lib/ui/personas-local";
@@ -95,7 +96,7 @@ export function Encabezado({ fv }: { fv: FormularioVisitaApi }) {
                   guardadoEn: new Date().toISOString(),
                   respNombre: visita.responsableNombre ?? "",
                   respRut: fmtRut(visita.responsableRut ?? ""),
-                  respTel: fmtTel(visita.responsableTelefono ?? ""),
+                  respTel: normalizarTel(visita.responsableTelefono),
                   motivosCodigos: visita.motivosCodigos ?? [visita.motivoCodigo],
                   obs: "",
                   interno: "",
@@ -163,7 +164,7 @@ export function SeccionResponsable({ fv }: { fv: FormularioVisitaApi }) {
                   if (!p) return;
                   setRespNombre(p.nombre);
                   setRespRut(fmtRut(p.rut ?? ""));
-                  setRespTel(fmtTel(p.telefono ?? ""));
+                  setRespTel(normalizarTel(p.telefono));
                   setRespCargo(cargoVigente(cargos, p.cargo));
                 }}
                 ariaLabel="Personas del local"
@@ -200,18 +201,7 @@ export function SeccionResponsable({ fv }: { fv: FormularioVisitaApi }) {
               {errorRut ? <div className="mt-1 text-cap text-[var(--color-danger-800)]">{errorRut}</div> : null}
             </Campo>
             <Campo label="Teléfono" htmlFor="f-tel" className="flex-1 min-w-0">
-              <input
-                id="f-tel"
-                inputMode="tel"
-                value={respTel}
-                onChange={(e) => setRespTel(fmtTel(e.target.value))}
-                onFocus={() => {
-                  if (!respTel) setRespTel("+56 9 ");
-                }}
-                placeholder="+56 9 1234 5678"
-                autoComplete="off"
-                className={`${entrada} tabular-nums`}
-              />
+              <CampoTelefono id="f-tel" value={respTel} onChange={setRespTel} variante="movil" className={entrada} />
             </Campo>
           </div>
           {cargos.length > 0 ? (

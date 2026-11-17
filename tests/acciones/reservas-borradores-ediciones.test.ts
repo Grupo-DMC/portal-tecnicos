@@ -213,6 +213,18 @@ describe("edición del acta ya cerrada", () => {
       expect(editarActa).toHaveBeenCalledWith(expect.anything(), { usuarioId: 2, tecnicoId: null, origen: "WEB", sinPlazo: true });
     });
 
+    it("las fotos giradas viajan con su id y la imagen ya girada", async () => {
+      const girada = { id: 12, dataUrl: "data:image/jpeg;base64,/9j/4AAQ" };
+      expect((await editarActaAdminAction(edicion({ fotosConservadas: [12], fotosGiradas: [girada] }) as never)).ok).toBe(true);
+      expect(editarActa).toHaveBeenCalledWith(expect.objectContaining({ fotosGiradas: [girada] }), expect.anything());
+    });
+
+    it("una foto girada que no es una imagen se rechaza", async () => {
+      const r = await editarActaAdminAction(edicion({ fotosConservadas: [12], fotosGiradas: [{ id: 12, dataUrl: "javascript:alert(1)" }] }) as never);
+      expect(r.ok).toBe(false);
+      expect(editarActa).not.toHaveBeenCalled();
+    });
+
     it("un problema «Otro» sin descripción se rechaza antes de guardar", async () => {
       const r = await editarActaAdminAction(edicion({ problemas: [{ id: null, tipoCodigo: "OTRO", descripcion: " ", items: [] }] }) as never);
       expect(r.error).toMatch(/«Otro»/);

@@ -75,18 +75,18 @@ function condiciones(f: FiltrosVisitas): Condiciones {
     );
   }
   // El mall de hoy de la tienda, no el que tenía el día de la visita.
-  if (f.mallId) {
-    partes.push("v.sucursal_id IN (SELECT ms.id FROM dmc.sucursal ms WHERE ms.mall_id = @mall)");
-    params.push(["mall", sql.BigInt, Number(f.mallId)]);
+  if (f.mallIds.length) {
+    partes.push(
+      `v.sucursal_id IN (SELECT ms.id FROM dmc.sucursal ms WHERE ${enLista("ms.mall_id", "mall", sql.BigInt, f.mallIds.map(Number), params)})`
+    );
   }
-  // Filtrar por técnico trae también las visitas en las que va de ayudante.
-  if (f.tecnicoId) {
-    partes.push("(v.tecnico_id = @tecnico OR v.tecnico_ayudante_id = @tecnico)");
-    params.push(["tecnico", sql.BigInt, Number(f.tecnicoId)]);
-  }
-  if (f.tipo && !f.clienteIds.length) {
-    partes.push("EXISTS (SELECT 1 FROM dmc.problema p WHERE p.visita_id = v.id AND p.tipo_codigo = @tipo)");
-    params.push(["tipo", sql.VarChar(40), f.tipo]);
+  // Filtrar por técnico trae también las visitas en las que va de ayudante; con
+  // varios elegidos basta con que la visita sea de cualquiera de ellos.
+  if (f.tecnicoIds.length) {
+    const ids = f.tecnicoIds.map(Number);
+    const principal = enLista("v.tecnico_id", "tecnico", sql.BigInt, ids, params);
+    const ayudante = enLista("v.tecnico_ayudante_id", "tecnicoa", sql.BigInt, ids, params);
+    partes.push(`(${principal} OR ${ayudante})`);
   }
   const q = f.q.trim();
   if (q) {

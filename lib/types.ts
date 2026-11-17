@@ -472,7 +472,7 @@ export interface Visita {
   /** La marca de la tienda de la visita. */
   marca?: Pick<Marca, "id" | "nombre">;
   /** Su mall; null = a la calle. */
-  mall?: Pick<Mall, "id" | "nombre"> | null;
+  mall?: Pick<Mall, "id" | "nombre" | "direccion" | "comuna"> | null;
   sucursal?: Sucursal;
   tecnico?: Tecnico;
   tecnicoAyudante?: Pick<Tecnico, "id" | "nombreCompleto" | "telefono">;

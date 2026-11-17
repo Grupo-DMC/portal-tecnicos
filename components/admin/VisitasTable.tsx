@@ -57,7 +57,7 @@ export default function VisitasTable({
   const router = useRouter();
   const pantalla = usePathname();
   const ref = useReferencias();
-  const { tecnicos, problemas: catalogoProblema } = ref;
+  const { tecnicos } = ref;
   const { toast, aviso } = useToast();
   const [cargando, iniciar] = useTransition();
   const visitas = pagina.visitas;
@@ -193,9 +193,9 @@ export default function VisitasTable({
   for (const r of f.regiones) {
     chips.push({ label: `Zona: ${r}`, onQuitar: () => setF((p) => ({ regiones: sinEste(p.regiones, r) })) });
   }
-  if (f.mallId) {
-    const m = malls.find(([id]) => String(id) === f.mallId);
-    chips.push({ label: `Mall: ${m?.[1] ?? ""}`, onQuitar: () => setF(() => ({ mallId: "" })) });
+  for (const mid of f.mallIds) {
+    const m = malls.find(([id]) => String(id) === mid);
+    chips.push({ label: `Mall: ${m?.[1] ?? ""}`, onQuitar: () => setF((p) => ({ mallIds: sinEste(p.mallIds, mid) })) });
   }
   for (const cid of f.clienteIds) {
     const c = clientes.find(([id]) => String(id) === cid);
@@ -211,13 +211,9 @@ export default function VisitasTable({
   }
   if (f.desde) chips.push({ label: `Desde: ${fechaCL(f.desde)}`, onQuitar: () => setF(() => ({ desde: "" })) });
   if (f.hasta) chips.push({ label: `Hasta: ${fechaCL(f.hasta)}`, onQuitar: () => setF(() => ({ hasta: "" })) });
-  if (f.tecnicoId) {
-    const t = tecnicos.find((x) => String(x.id) === f.tecnicoId);
-    chips.push({ label: `Técnico: ${t?.nombreCompleto ?? ""}`, onQuitar: () => setF(() => ({ tecnicoId: "" })) });
-  }
-  if (f.tipo && !f.clienteIds.length) {
-    const t = catalogoProblema.find((x) => x.codigo === f.tipo);
-    chips.push({ label: `Falla: ${t?.nombre ?? f.tipo}`, onQuitar: () => setF(() => ({ tipo: "" })) });
+  for (const tid of f.tecnicoIds) {
+    const t = tecnicos.find((x) => String(x.id) === tid);
+    chips.push({ label: `Técnico: ${t?.nombreCompleto ?? ""}`, onQuitar: () => setF((p) => ({ tecnicoIds: sinEste(p.tecnicoIds, tid) })) });
   }
 
   return (
@@ -325,9 +321,13 @@ export default function VisitasTable({
             {
               id: "fv-mall",
               label: "Mall",
-              valor: f.mallId,
-              opciones: [{ v: "", t: "Todos los malls" }, ...malls.map(([id, n]) => ({ v: String(id), t: n }))],
-              onChange: (v) => setF(() => ({ mallId: v })),
+              tipo: "multi",
+              textoVacio: "Todos los malls",
+              valor: "",
+              valores: f.mallIds,
+              opciones: malls.map(([id, n]) => ({ v: String(id), t: n })),
+              onChange: () => {},
+              onChangeMulti: (v) => setF(() => ({ mallIds: v })),
             },
             {
               id: "fv-cliente",
@@ -338,8 +338,7 @@ export default function VisitasTable({
               valores: f.clienteIds,
               opciones: clientes.map(([id, n]) => ({ v: String(id), t: n })),
               onChange: () => {},
-              // Con algún cliente elegido el tipo de falla deja de aplicar: se limpia.
-              onChangeMulti: (v) => setF((p) => ({ clienteIds: v, tipo: v.length ? "" : p.tipo })),
+              onChangeMulti: (v) => setF(() => ({ clienteIds: v })),
             },
             ...(f.clienteIds.length
               ? [
@@ -386,27 +385,14 @@ export default function VisitasTable({
             {
               id: "fv-tecnico",
               label: "Técnico",
-              valor: f.tecnicoId,
-              opciones: [
-                { v: "", t: "Todos los técnicos" },
-                ...tecnicos.map((t) => ({ v: String(t.id), t: t.nombreCompleto })),
-              ],
-              onChange: (v) => setF(() => ({ tecnicoId: v })),
+              tipo: "multi",
+              textoVacio: "Todos los técnicos",
+              valor: "",
+              valores: f.tecnicoIds,
+              opciones: tecnicos.map((t) => ({ v: String(t.id), t: t.nombreCompleto })),
+              onChange: () => {},
+              onChangeMulti: (v) => setF(() => ({ tecnicoIds: v })),
             },
-            ...(f.clienteIds.length
-              ? []
-              : [
-            {
-              id: "fv-tipo",
-              label: "Tipo de falla registrada",
-              valor: f.tipo,
-              opciones: [
-                { v: "", t: "Todas las fallas" },
-                ...catalogoProblema.map((t) => ({ v: t.codigo, t: t.nombre })),
-              ],
-              onChange: (v: string) => setF(() => ({ tipo: v })),
-            },
-              ]),
           ]}
         />
 

@@ -1,6 +1,6 @@
-import { fmtRut, fmtTel } from "@/lib/ui/formato";
+import { fmtRut, normalizarTel } from "@/lib/ui/formato";
 import type { FirmaForm, FotoForm, ProblemaForm, TrabajoForm } from "@/lib/ui/borrador";
-import type { Visita, VisitaEdicion } from "@/lib/types";
+import type { CatalogoProblema, Visita, VisitaEdicion } from "@/lib/types";
 
 // Edición del acta ya cerrada: lo que comparten el formulario del celular y el
 // editor del panel. Los dos parten de lo que quedó guardado en la base, no de
@@ -49,7 +49,7 @@ export function formularioDesdeActa(visita: Visita): ActaEnFormulario {
   return {
     respNombre: ejec?.responsableNombre ?? visita.responsableNombre ?? "",
     respRut: fmtRut(ejec?.responsableRut ?? ""),
-    respTel: fmtTel(ejec?.responsableTelefono ?? ""),
+    respTel: normalizarTel(ejec?.responsableTelefono),
     // Los que confirmó el técnico mandan: puede haber quitado alguno agendado.
     motivosCodigos: ejec?.motivosRealesCodigos?.filter(Boolean).length
       ? [...new Set(ejec.motivosRealesCodigos.filter(Boolean))]
@@ -64,21 +64,44 @@ export function formularioDesdeActa(visita: Visita): ActaEnFormulario {
       subs: t.subtrabajos.map((s) => ({ etiqueta: s.etiqueta, cantidad: s.cantidad })),
       detalle: t.detalle ?? "",
     })),
-    problemas: (visita.problemas ?? []).map((p) => ({
-      id: id++,
-      dbId: p.id,
-      codigo: p.tipoCodigo,
-      items: p.items.map((it) => ({ etiqueta: it.etiqueta, cantidad: it.cantidad })),
-      desc: p.descripcion ?? "",
-      sol: p.solucion ?? "",
-      estado: p.estado,
-    })),
+    problemas: (visita.problemas ?? []).map((p) => problemaEnFormulario(p, id++)),
     fotos: (visita.fotos ?? []).map((f) => ({ id: id++, dbId: f.id, src: f.archivoUrl, interno: f.interno })),
     firma: firma
       ? { imagen: firma.imagenUrl, nombre: firma.nombre, rut: firma.rut ?? "", hora: firma.firmadoEn.slice(11, 16) }
       : null,
     siguienteId: id,
   };
+}
+
+/** Un problema ya guardado, puesto en la forma en que lo maneja el editor de problemas. */
+export function problemaEnFormulario(p: NonNullable<Visita["problemas"]>[number], id: number): ProblemaForm {
+  return {
+    id,
+    dbId: p.id,
+    codigo: p.tipoCodigo,
+    items: p.items.map((it) => ({ etiqueta: it.etiqueta, cantidad: it.cantidad })),
+    desc: p.descripcion ?? "",
+    sol: p.solucion ?? "",
+    estado: p.estado,
+  };
+}
+
+/**
+ * Qué le falta a la lista de problemas para poder guardarse, o null si está
+ * completa: un tipo con opciones pide marcar al menos una; uno sin opciones
+ * pide contar qué se encontró.
+ */
+export function faltaEnProblemas(problemas: ProblemaForm[], catalogo: CatalogoProblema[]): string | null {
+  for (const p of problemas) {
+    const cat = catalogo.find((c) => c.codigo === p.codigo);
+    const nombre = cat?.nombre ?? p.codigo;
+    if (cat && cat.opciones.length > 0) {
+      if (p.items.length === 0) return `En el problema «${nombre}» marca al menos un ${cat.singular ?? "detalle"}.`;
+    } else if (!p.desc.trim()) {
+      return `Escribe qué se encontró en el problema «${nombre}».`;
+    }
+  }
+  return null;
 }
 
 /** "2026-08-13T08:30:00" → "13/08/2026 a las 08:30". */

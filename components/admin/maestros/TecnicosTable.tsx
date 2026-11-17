@@ -3,7 +3,7 @@
 import MaestroTable from "@/components/admin/MaestroTable";
 import Tag from "@/components/Tag";
 import { guardarTecnicoAction } from "@/app/actions/maestros";
-import { mensajeRut, rutLimpio } from "@/lib/ui/formato";
+import { mensajeRut, mensajeTel, rutLimpio } from "@/lib/ui/formato";
 import type { Tecnico } from "@/lib/types";
 
 export default function TecnicosTable({
@@ -41,7 +41,7 @@ export default function TecnicosTable({
         { k: "apellidoPaterno", label: "Apellido paterno" },
         { k: "apellidoMaterno", label: "Apellido materno" },
         { k: "email", label: "Correo", tipo: "email" },
-        { k: "telefono", label: "Teléfono", tipo: "tel", ph: "+56 9" },
+        { k: "telefono", label: "Teléfono", tipo: "tel" },
         { k: "activo", label: "Estado", span: 2, tipo: "toggle" },
       ]}
       validar={(f, id) => {
@@ -51,6 +51,8 @@ export default function TecnicosTable({
         if (!String(f.email).includes("@")) return "Escribe un correo válido";
         const error = mensajeRut(String(f.rut));
         if (error) return error;
+        const errorTel = mensajeTel(String(f.telefono ?? ""));
+        if (errorTel) return errorTel;
         // El RUT es único entre personas: si ya está, hay que editar esa ficha.
         const limpio = rutLimpio(String(f.rut));
         const repetido = tecnicos.find((t) => t.id !== id && rutLimpio(t.rut) === limpio);

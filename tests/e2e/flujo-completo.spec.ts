@@ -59,7 +59,8 @@ test.describe("flujo completo: agendar → acta móvil → panel → PDF", () =>
     // 1 · Responsable: el nombre viene de lo que se anotó al agendar.
     await expect(page.getByLabel("Responsable de tienda")).toHaveValue(FIRMANTE.nombre);
     await page.getByLabel("RUT", { exact: true }).fill(FIRMANTE.rut);
-    await page.getByLabel("Teléfono").fill(FIRMANTE.telefono);
+    // El «+56 9» es un adorno fijo del campo: se escriben solo los 8 dígitos.
+    await page.getByLabel("Teléfono").fill(FIRMANTE.telefono.replace("+56 9 ", ""));
     await page.getByRole("button", { name: "Guardar y seguir" }).click();
 
     // 2 · Trabajo realizado: el motivo agendado ya viene marcado.
@@ -96,12 +97,12 @@ test.describe("flujo completo: agendar → acta móvil → panel → PDF", () =>
     await expect(confirmacion).toBeVisible();
     await expect(page).toHaveURL(new RegExp(`/tecnico/visitas/${folio}/formulario`));
 
-    // «Ver el acta guardada» lleva al acta en la base, y el detalle ya la muestra cerrada.
-    await page.getByRole("button", { name: "Ver el acta guardada" }).click();
+    // «Ver acta» lleva al acta en la base, y el detalle ya la muestra cerrada.
+    await page.getByRole("button", { name: "Ver acta" }).click();
     await expect(page).toHaveURL(new RegExp(`/tecnico/visitas/${folio}/revisar`));
     await page.goto(`/tecnico/visitas/${folio}`);
     await expect(page.getByText("Completada").first()).toBeVisible();
-    await expect(page.getByRole("button", { name: /Ver acta guardada/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Ver acta" })).toBeVisible();
     await contexto.close();
   });
 

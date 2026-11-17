@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TEXTO_CALLE, problemaDeUbicacion, textoMall } from "@/lib/ui/ubicacion";
+import { TEXTO_CALLE, problemaDeUbicacion, textoDireccion, textoMall } from "@/lib/ui/ubicacion";
 import { DISPOSITIVO_PAPEL, esInformePapel } from "@/lib/ui/papel";
 import { REGIONES } from "@/lib/ui/regiones";
 import { REFERENCIAS_VACIAS, nombreProblema, nombreTrabajo, puede, trabajoVaConMotivo } from "@/lib/ui/referencias";
@@ -11,6 +11,20 @@ describe("ubicación de la sucursal", () => {
     expect(textoMall(null)).toBe(TEXTO_CALLE);
     expect(textoMall({ nombre: "  " })).toBe(TEXTO_CALLE);
     expect(textoMall({ nombre: "Mall Plaza" })).toBe("Mall Plaza");
+  });
+
+  it("el campo «Dirección» del detalle: mall con su dirección, o la de la calle", () => {
+    const sucursal = { direccion: "Los Leones 45", comuna: "Providencia" };
+    expect(textoDireccion({ nombre: "Mall Plaza", direccion: "Av. 1", comuna: "Valparaíso" }, sucursal)).toBe(
+      "Mall Plaza · Av. 1, Valparaíso"
+    );
+    expect(textoDireccion(null, sucursal)).toBe("Los Leones 45, Providencia");
+    // Un mall sin dirección propia usa la de la sucursal, que la copió al crearse.
+    expect(textoDireccion({ nombre: "Mall Viejo", direccion: "", comuna: "" }, sucursal)).toBe(
+      "Mall Viejo · Los Leones 45, Providencia"
+    );
+    expect(textoDireccion({ nombre: "Mall Viejo" }, null)).toBe("Mall Viejo");
+    expect(textoDireccion(null, { direccion: "  ", comuna: "" })).toBe("Sin dirección");
   });
 
   it("a la calle exige dirección; en un mall no", () => {

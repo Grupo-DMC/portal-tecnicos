@@ -12,7 +12,8 @@ import { useAdjuntosPendientes } from "@/lib/ui/adjuntos";
 import { useReferencias } from "@/lib/ui/referencias";
 import { cargoVigente } from "@/lib/ui/cargos";
 import { etiquetaPersona, usePersonasLocal } from "@/lib/ui/personas-local";
-import { fmtRut, fmtTel, mensajeRut } from "@/lib/ui/formato";
+import { fmtRut, mensajeRut, mensajeTel, normalizarTel } from "@/lib/ui/formato";
+import CampoTelefono from "@/components/ui/CampoTelefono";
 import { algunoPideHora } from "@/lib/ui/motivos";
 import { agruparPorSeccion, hayAlgunaSeccion } from "@/lib/ui/secciones";
 
@@ -124,6 +125,11 @@ export default function NuevaVisitaSheet({
       onError(errorRut);
       return;
     }
+    const errorTel = mensajeTel(telefono);
+    if (errorTel) {
+      onError(errorTel);
+      return;
+    }
     setGuardando(true);
     const res = await crearVisitaTecnicoAction({
       sucursalId: Number(sucursalId),
@@ -213,7 +219,7 @@ export default function NuevaVisitaSheet({
           <div className={LABEL}>
             Motivo de la visita <span className="opacity-70 normal-case tracking-normal">(marca todos los que correspondan)</span>
           </div>
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-3.5">
             {conSecciones
               ? agruparPorSeccion(catalogoMotivo).map((g) => {
                   const marcadosAca = g.items.filter((m) => motivos.includes(m.codigo)).length;
@@ -300,7 +306,7 @@ export default function NuevaVisitaSheet({
                 if (!p) return;
                 setEncargado(p.nombre);
                 setRut(fmtRut(p.rut ?? ""));
-                setTelefono(fmtTel(p.telefono ?? ""));
+                setTelefono(normalizarTel(p.telefono));
                 setCargo(cargoVigente(referencias.cargos, p.cargo));
               }}
               ariaLabel="Personas del local"
@@ -353,18 +359,7 @@ export default function NuevaVisitaSheet({
             <label htmlFor="nv-tel" className={LABEL}>
               Teléfono del responsable
             </label>
-            <input
-              id="nv-tel"
-              inputMode="tel"
-              value={telefono}
-              onChange={(e) => setTelefono(fmtTel(e.target.value))}
-              onFocus={() => {
-                if (!telefono) setTelefono("+56 9 ");
-              }}
-              placeholder="+56 9 1234 5678"
-              autoComplete="off"
-              className={`${CAMPO} tabular-nums`}
-            />
+            <CampoTelefono id="nv-tel" value={telefono} onChange={setTelefono} variante="movil" className={CAMPO} />
           </div>
         </div>
 

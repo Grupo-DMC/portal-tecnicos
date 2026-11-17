@@ -36,20 +36,20 @@ export default function SeccionPlegable({
   const movil = tono === "movil";
 
   return (
-    <div className="border border-black/[.35] bg-[var(--color-surface-3)]">
+    <div className="border-2 border-[var(--color-text)] bg-[var(--color-surface-3)]">
       <button
         type="button"
         onClick={() => setAbierta(!visible)}
         aria-expanded={visible}
-        className={`w-full flex items-center gap-2.5 px-3 ${movil ? "min-h-[52px]" : "min-h-10"} bg-transparent border-0 cursor-pointer text-left text-[var(--color-text)]`}
-        style={{ background: visible ? "#e3e1e5" : "var(--color-surface)" }}
+        className={`w-full flex items-center gap-2.5 px-3.5 ${movil ? "min-h-[56px]" : "min-h-11"} border-0 cursor-pointer text-left text-[var(--color-text)] ${visible ? "border-b-2 border-[var(--color-text)]" : ""}`}
+        style={{ background: visible ? "var(--color-neutral-300)" : "var(--color-neutral-200)" }}
       >
         {etiqueta ? (
-          <span className="flex-none text-cap px-1.5 py-0.5 border border-black/[.35] opacity-70">
+          <span className="flex-none text-cap px-1.5 py-0.5 border border-[var(--color-text)]">
             {etiqueta}
           </span>
         ) : null}
-        <span className={`flex-1 min-w-0 font-extrabold ${movil ? "text-body" : "text-meta"} leading-[1.2]`}>
+        <span className={`flex-1 min-w-0 font-extrabold ${movil ? "text-lead" : "text-body"} leading-[1.2]`}>
           {titulo}
         </span>
         {marcados > 0 ? (
@@ -72,7 +72,7 @@ export default function SeccionPlegable({
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
-      {visible ? <div className="p-2 border-t border-black/[.25]">{children}</div> : null}
+      {visible ? <div className={movil ? "p-3" : "p-2.5"}>{children}</div> : null}
     </div>
   );
 }

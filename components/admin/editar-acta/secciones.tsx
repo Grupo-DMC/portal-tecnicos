@@ -1,15 +1,15 @@
 "use client";
 
-import Tag from "@/components/Tag";
 import SelectBuscable from "@/components/ui/SelectBuscable";
-import EstadoProblemaTag from "@/components/EstadoProblemaTag";
+import EditorProblemas from "@/components/admin/EditorProblemas";
 import { fechaHoraCorta } from "@/lib/ui/edicion";
-import { fmtRut, fmtTel } from "@/lib/ui/formato";
+import { fmtRut } from "@/lib/ui/formato";
+import CampoTelefono from "@/components/ui/CampoTelefono";
 import { trabajosDelMotivo } from "@/lib/ui/motivos";
 import { agruparPorSeccion, hayAlgunaSeccion } from "@/lib/ui/secciones";
 import { gruposDeSubtrabajos } from "@/lib/ui/subtrabajos";
 import SeccionPlegable from "@/components/ui/SeccionPlegable";
-import { BotonAgregar, BotonQuitar, ListaMarcable, Seccion } from "@/components/admin/editar-acta/piezas";
+import { BotonQuitar, ListaMarcable, Seccion } from "@/components/admin/editar-acta/piezas";
 import type { EditarActaApi } from "@/components/admin/editar-acta/useEditarActa";
 
 // La edición del acta, de arriba hacia abajo: de qué acta se trata, el
@@ -105,14 +105,7 @@ export function SeccionResponsable({ fv }: { fv: EditarActaApi }) {
           </div>
           <div className="field min-w-0">
             <label htmlFor="ea-tel">Teléfono</label>
-            <input
-              id="ea-tel"
-              className="input tabular-nums"
-              value={respTel}
-              onChange={(e) => setRespTel(fmtTel(e.target.value))}
-              placeholder="+56 9 1234 5678"
-              autoComplete="off"
-            />
+            <CampoTelefono id="ea-tel" value={respTel} onChange={setRespTel} />
           </div>
           {cargos.length > 0 || respCargo ? (
             <div className="field min-w-0">
@@ -288,7 +281,7 @@ export function SeccionTrabajo({ fv }: { fv: EditarActaApi }) {
       </button>
                 );
                 return hayAlgunaSeccion(faltan) ? (
-                  <div className="flex flex-col gap-1.5 max-w-[560px]">
+                  <div className="flex flex-col gap-3.5 max-w-[560px]">
                     {agruparPorSeccion(faltan).map((g) => (
                       <SeccionPlegable key={g.nombre ?? "__sin"} titulo={g.nombre ?? "Sin sección"} total={g.items.length}>
                         <div className="flex flex-wrap gap-2">{g.items.map(chip)}</div>
@@ -321,7 +314,7 @@ export function SeccionTrabajo({ fv }: { fv: EditarActaApi }) {
 
 /** 3 · Problemas. */
 export function SeccionProblemas({ fv }: { fv: EditarActaApi }) {
-  const { catalogoProblema, nuevoId, problemas, setProblemas, nombreProblema, cambiarProblema, cambio } = fv;
+  const { catalogoProblema, nuevoId, problemas, setProblemas, cambio } = fv;
   return (
     <>
       {/* ── 3 · Problemas ── */}
@@ -329,98 +322,17 @@ export function SeccionProblemas({ fv }: { fv: EditarActaApi }) {
         id="problemas"
         n={3}
         titulo="Problemas detectados"
-        ayuda="El estado de cada problema se cambia en Problemas. Uno que coordinación ya gestionó se puede corregir, pero no quitar."
+        ayuda="Agrega los que faltan, corrige los que hay o quita los que sobran. El estado de cada problema se cambia en Problemas: uno que coordinación ya gestionó se puede corregir, pero no quitar."
         cuenta={problemas.length}
         cambio={cambio("problemas")}
       >
-        <div className="flex flex-col gap-3.5">
-          {problemas.map((p, i) => {
-            const cat = catalogoProblema.find((c) => c.codigo === p.codigo);
-            const opciones = [
-              ...(cat?.opciones ?? []).map((o) => ({ etiqueta: o.etiqueta, conCantidad: o.permiteCantidad })),
-              ...p.items
-                .filter((it) => !(cat?.opciones ?? []).some((o) => o.etiqueta === it.etiqueta))
-                .map((it) => ({ etiqueta: it.etiqueta, conCantidad: true })),
-            ];
-            return (
-              <div key={p.id} className="border border-[var(--color-divider-soft)] bg-white">
-                <div className="flex items-center gap-2.5 pl-4 pr-2 py-2 border-b border-[var(--color-divider-faint)]">
-                  <span className="w-6 h-6 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap tabular-nums">
-                    {i + 1}
-                  </span>
-                  <div className="font-extrabold text-body leading-[1.3] flex-1 min-w-0 truncate">
-                    {nombreProblema(p.codigo)}
-                  </div>
-                  {p.dbId ? (
-                    <EstadoProblemaTag estado={p.estado} />
-                  ) : (
-                    <Tag variant="accent">Nuevo</Tag>
-                  )}
-                  <BotonQuitar
-                    etiqueta={`Quitar el problema ${i + 1}`}
-                    onClick={() => setProblemas((prev) => prev.filter((x) => x.id !== p.id))}
-                  />
-                </div>
-                <div className="px-4 py-4 flex flex-col gap-4">
-                  <div className="field max-w-[440px]">
-                    <label htmlFor={`ea-tipo-${p.id}`}>Tipo de problema</label>
-                    <SelectBuscable
-                      id={`ea-tipo-${p.id}`}
-                      valor={p.codigo}
-                      opciones={[
-                        ...(cat ? [] : [{ v: p.codigo, t: p.codigo }]),
-                        ...catalogoProblema.map((c) => ({ v: c.codigo, t: c.nombre })),
-                      ]}
-                      // Cada tipo tiene sus propias opciones: al cambiarlo, lo marcado del anterior no aplica.
-                      onChange={(v) => {
-                        if (v && v !== p.codigo) cambiarProblema(p.id, { codigo: v, items: [] });
-                      }}
-                      ariaLabel="Tipo de problema"
-                    />
-                  </div>
-                  {opciones.length > 0 ? (
-                    <div>
-                      <div className="text-cap opacity-62 mb-2">
-                        {cat?.grupoLabel ?? "Detalle"}
-                      </div>
-                      <ListaMarcable
-                        opciones={opciones}
-                        marcados={p.items}
-                        onCambiar={(fn) => cambiarProblema(p.id, { items: fn(p.items) })}
-                      />
-                    </div>
-                  ) : null}
-                  <div className="field">
-                    <label htmlFor={`ea-desc-${p.id}`}>{opciones.length > 0 ? "Nota · opcional" : "Qué se encontró"}</label>
-                    <textarea
-                      id={`ea-desc-${p.id}`}
-                      className="input leading-[1.5]"
-                      style={{ minHeight: 68 }}
-                      rows={2}
-                      value={p.desc}
-                      onChange={(e) => cambiarProblema(p.id, { desc: e.target.value })}
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-          {problemas.length === 0 ? (
-            <div className="text-meta opacity-66">Esta acta no tiene problemas registrados.</div>
-          ) : null}
-          {catalogoProblema.length > 0 ? (
-            <BotonAgregar
-              texto="Agregar un problema"
-              onClick={() => {
-                const id = nuevoId();
-                setProblemas((prev) => [
-                  ...prev,
-                  { id, codigo: catalogoProblema[0].codigo, items: [], desc: "", sol: "", estado: "ABIERTO" },
-                ]);
-              }}
-            />
-          ) : null}
-        </div>
+        <EditorProblemas
+          catalogoProblema={catalogoProblema}
+          problemas={problemas}
+          setProblemas={setProblemas}
+          nuevoId={nuevoId}
+          vacio="Esta acta no tiene problemas registrados."
+        />
       </Seccion>
     </>
   );

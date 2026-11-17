@@ -57,7 +57,7 @@ export default function EditarActa(props: Parameters<typeof useEditarActa>[0]) {
       </AdminHeader>
 
       <div className="px-4 md:px-7 pt-6 grid grid-cols-1 xl:grid-cols-[minmax(0,860px)_264px] gap-x-8 items-start">
-        <div className="min-w-0 flex flex-col gap-6">
+        <div className="min-w-0 flex flex-col gap-8">
           <Encabezado fv={fv} />
           <SeccionResponsable fv={fv} />
           <SeccionTrabajo fv={fv} />

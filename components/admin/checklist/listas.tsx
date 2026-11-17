@@ -41,7 +41,7 @@ export function ListaMotivos({ fv }: { fv: ChecklistEditorApi }) {
             {motivosVisibles.map(({ m, i }) => filaMotivo(m, i, motivos.length, () => true, "todos"))}
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-6">
             {seccionesMotivo.map((sec, si) => {
               const miembros = motivos.filter((m) => m.seccion === sec.key);
               const visibles = motivosVisibles.filter(({ m }) => m.seccion === sec.key);
@@ -241,7 +241,7 @@ export function ListaTrabajos({ fv }: { fv: ChecklistEditorApi }) {
         {seccionesTrabajo.length === 0 ? (
           trabajosVisibles.map(({ t, i }) => filaTrabajoL3(t, i))
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-6">
             {seccionesTrabajo.map((sec, si) => {
               const miembros = trabajos.filter((t) => t.seccion === sec.key);
               const visibles = trabajosVisibles.filter(({ t }) => t.seccion === sec.key);

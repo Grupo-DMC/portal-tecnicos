@@ -7,7 +7,8 @@ import SelectConAlta from "@/components/ui/SelectConAlta";
 import { camposFecha, errorMargen, fechaHastaDe, opciones } from "@/components/admin/VisitaDialogos";
 import { useReferencias } from "@/lib/ui/referencias";
 import { crearVisitasMasivasAction } from "@/app/actions/admin";
-import { fmtRut, fmtTel, mensajeRut } from "@/lib/ui/formato";
+import { fmtRut, mensajeRut, mensajeTel, normalizarTel } from "@/lib/ui/formato";
+import CampoTelefono from "@/components/ui/CampoTelefono";
 import { hoyISO, fechaCL } from "@/lib/ui/fecha";
 import { algunoPideHora } from "@/lib/ui/motivos";
 import { cargoVigente } from "@/lib/ui/cargos";
@@ -32,10 +33,9 @@ interface LocalRuta {
 const PROPIOS = ["responsable", "respRut", "respTelefono", "respCargo", "hora", "trabajo", "acceso"] as const;
 type CampoPropio = (typeof PROPIOS)[number];
 
-/** El campo pone "+56 9 " al enfocarlo: eso solo no es un teléfono. */
+/** El teléfono del local: vacío si no se escribió ninguno. */
 function telefono(l: LocalRuta): string {
-  const t = l.respTelefono.trim();
-  return t === "+56 9" ? "" : t;
+  return l.respTelefono.trim();
 }
 
 function tienePropio(l: LocalRuta): boolean {
@@ -202,6 +202,8 @@ export default function VisitasMasivasDialogo({
     for (const l of locales) {
       const errorRut = mensajeRut(l.respRut);
       if (errorRut) return onHecho(`${nombreLocal(l)}: ${errorRut}`, 0);
+      const errorTel = mensajeTel(l.respTelefono);
+      if (errorTel) return onHecho(`${nombreLocal(l)}: ${errorTel}`, 0);
       if (!l.trabajo.trim() && !String(form.trabajo).trim()) {
         return onHecho(`Escribe qué se necesita hacer: para todos, o en ${nombreLocal(l)}.`, 0);
       }
@@ -424,7 +426,6 @@ export default function VisitasMasivasDialogo({
                   local={l}
                   k="respTelefono"
                   label="Teléfono del responsable"
-                  ph="+56 9 8123 4455"
                   tipo="tel"
                   onCambiar={cambiar}
                 />
@@ -482,7 +483,7 @@ function PersonasDeLocal({
           onCambiar(local.sucursalId, {
             responsable: p.nombre,
             respRut: p.rut ?? "",
-            respTelefono: p.telefono ?? "",
+            respTelefono: normalizarTel(p.telefono),
             respCargo: cargoVigente(ref.cargos, p.cargo),
           });
         }}
@@ -526,24 +527,20 @@ function CampoLocal({
           autoComplete="off"
           className="input min-h-[64px] px-3.5 py-3 resize-y leading-[1.5]"
         />
+      ) : tipo === "tel" ? (
+        <CampoTelefono id={id} value={valor} onChange={poner} />
       ) : (
         <input
           id={id}
           type={tipo === "time" ? "time" : "text"}
-          inputMode={tipo === "tel" ? "tel" : undefined}
           autoCapitalize={tipo === "rut" ? "characters" : undefined}
           value={valor}
-          onChange={(e) =>
-            poner(tipo === "rut" ? fmtRut(e.target.value) : tipo === "tel" ? fmtTel(e.target.value) : e.target.value)
-          }
-          onFocus={() => {
-            if (tipo === "tel" && !valor) poner("+56 9 ");
-          }}
+          onChange={(e) => poner(tipo === "rut" ? fmtRut(e.target.value) : e.target.value)}
           placeholder={ph}
           autoComplete="off"
           autoCorrect="off"
           spellCheck={false}
-          className={`input ${tipo === "rut" || tipo === "tel" ? "tabular-nums" : ""}`}
+          className={`input ${tipo === "rut" ? "tabular-nums" : ""}`}
         />
       )}
       {tipo === "rut" && mensajeRut(valor) ? (

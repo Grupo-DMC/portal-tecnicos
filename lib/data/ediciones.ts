@@ -22,6 +22,7 @@ import {
   listarProblemas,
   listarTrabajos,
 } from "@/lib/data/catalogos";
+import { problemaGestionado, textoGestionado } from "@/lib/data/problemas-visita";
 import { rutLimpio } from "@/lib/ui/formato";
 import { SECCION_EDICION } from "@/lib/ui/edicion";
 import type { EstadoVisita, OrigenRegistro, Visita } from "@/lib/types";
@@ -59,6 +60,8 @@ export interface ContextoEdicion {
 }
 
 const SECCION = SECCION_EDICION;
+
+type ImagenDecodificada = NonNullable<ReturnType<typeof decodificarImagen>>;
 
 const PLAZO_VENCIDO = `Ya pasó el plazo de ${DIAS_PARA_EDITAR === 1 ? "un día" : `${DIAS_PARA_EDITAR} días`} para editar esta acta desde el celular. Pídele el cambio a coordinación.`;
 const EDITADA_POR_OTRO = "Esta acta se editó mientras la tenías abierta. Vuelve a abrirla para ver cómo quedó.";
@@ -98,6 +101,8 @@ interface Cambios {
   internos: boolean;
   problemas: { quitados: number[]; modificados: ProblemaNormal[]; nuevos: ProblemaNormal[]; orden: ProblemaNormal[] };
   fotosQuitadas: number[];
+  /** Fotos conservadas a las que se les cambia la imagen: giradas. */
+  fotosGiradas: { id: number; img: ImagenDecodificada }[];
   videos: { cambio: boolean; ids: number[]; internos: Set<number> };
   /** Nombre y RUT bajo la firma, cuando eran los del responsable y este se corrigió. */
   firma: { id: number; nombre: string | null; rut: string | null } | null;
@@ -133,7 +138,13 @@ function textoItems(items: SubtrabajoActa[]): string {
   return items.map((s) => `${s.etiqueta}${s.cantidad > 1 ? ` × ${s.cantidad}` : ""}`).join(", ");
 }
 
-function comparar(antes: Visita, e: EdicionActaEntrada, fotosNuevas: FotoLista[], nombres: Nombres): Cambios {
+function comparar(
+  antes: Visita,
+  e: EdicionActaEntrada,
+  fotosNuevas: FotoLista[],
+  giradas: { id: number; img: ImagenDecodificada }[],
+  nombres: Nombres
+): Cambios {
   const ejec = antes.ejecucion!;
   const lineas: Cambios["lineas"] = [];
   const anotar = (seccion: string, texto: string) => lineas.push({ seccion, texto });
@@ -293,6 +304,15 @@ function comparar(antes: Visita, e: EdicionActaEntrada, fotosNuevas: FotoLista[]
     }
   }
 
+  // Una foto girada se reemplaza en su misma fila: conserva su lugar y de qué
+  // lado va (trabajo o interno).
+  for (const interna of [false, true]) {
+    const ids = giradas.map((g) => g.id).filter((id) => fotosAntes.find((f) => f.id === id)?.interno === interna);
+    if (ids.length) {
+      anotar(SECCION.media, `Fotos ${interna ? "internas" : "del trabajo"} giradas: ${ids.length} (${numeros(ids)})`);
+    }
+  }
+
   const videosAntes = antes.videos ?? [];
   const idsAntes = new Set(videosAntes.map((v) => v.id));
   const videosAhora = [...new Set(e.videosIds.filter((n) => Number.isInteger(n) && n > 0))];
@@ -322,6 +342,7 @@ function comparar(antes: Visita, e: EdicionActaEntrada, fotosNuevas: FotoLista[]
     internos: marcados.length > 0 || desmarcados.length > 0,
     problemas,
     fotosQuitadas: fotosQuitadas.map((f) => f.id),
+    fotosGiradas: giradas,
     videos: { cambio: videosNuevos.length > 0 || videosQuitados.length > 0, ids: videosAhora, internos: internosVideo },
     firma,
   };
@@ -359,6 +380,18 @@ export async function editarActa(entrada: EdicionActaEntrada, ctx: ContextoEdici
     fotosNuevas.push({ ...img, etiqueta: f.etiqueta, interno: Boolean(f.interno) });
   }
 
+  // Las fotos giradas: solo valen las que siguen en el acta y que son de esta
+  // visita (la lista de fotos conservadas ya sale de ella), una vez cada una.
+  const fotosGiradas: { id: number; img: ImagenDecodificada }[] = [];
+  const activas = new Set((antes.fotos ?? []).map((f) => f.id));
+  const conservadas = new Set(entrada.fotosConservadas ?? []);
+  for (const g of entrada.fotosGiradas ?? []) {
+    if (!activas.has(g.id) || !conservadas.has(g.id) || fotosGiradas.some((x) => x.id === g.id)) continue;
+    const img = decodificarImagen(g.dataUrl);
+    if (!img) return { ok: false, error: "Una de las fotos giradas llegó dañada. Vuelve a girarla." };
+    fotosGiradas.push({ id: g.id, img });
+  }
+
   // Los nombres con que se anota cada cambio: el del checklist de hoy y, si la
   // entrada ya no existe, su código.
   const [catMotivos, catTrabajos, catProblemas, catInternos] = await Promise.all([
@@ -386,7 +419,13 @@ export async function editarActa(entrada: EdicionActaEntrada, ctx: ContextoEdici
         : await cargoDelChecklist(entrada.responsableCargo);
   }
 
-  const cambios = comparar(antes, { ...entrada, responsableCargo: cargo, motivosCodigos: motivos }, fotosNuevas, nombres);
+  const cambios = comparar(
+    antes,
+    { ...entrada, responsableCargo: cargo, motivosCodigos: motivos },
+    fotosNuevas,
+    fotosGiradas,
+    nombres
+  );
   if (!cambios.lineas.length) return { ok: false, error: "No cambiaste nada: el acta quedó como estaba." };
   const secciones = [...new Set(cambios.lineas.map((l) => l.seccion))];
 
@@ -421,22 +460,9 @@ export async function editarActa(entrada: EdicionActaEntrada, ctx: ContextoEdici
       // Un problema que coordinación ya gestionó no se quita del acta: se
       // perdería su historial y la visita agendada para resolverlo.
       for (const problemaId of cambios.problemas.quitados) {
-        const [gestionado] = await ej.consulta<{ id: number }>(
-          `SELECT p.id FROM dmc.problema p
-            WHERE p.id = @p AND p.visita_id = @id
-              AND (p.estado <> 'ABIERTO'
-                   OR EXISTS (SELECT 1 FROM dmc.problema_visita_resolucion r WHERE r.problema_id = p.id)
-                   OR EXISTS (SELECT 1 FROM dmc.visita v2 WHERE v2.problema_origen_id = p.id)
-                   OR EXISTS (SELECT 1 FROM dmc.problema_historial h WHERE h.problema_id = p.id)
-                   OR EXISTS (SELECT 1 FROM dmc.visita_foto f WHERE f.problema_id = p.id)
-                   OR EXISTS (SELECT 1 FROM dmc.visita_video w WHERE w.problema_id = p.id))`,
-          p([["p", sql.BigInt, problemaId]])
-        );
-        if (gestionado) {
+        if (await problemaGestionado(ej, id, problemaId)) {
           const tipo = antes.problemas?.find((x) => x.id === problemaId)?.tipoCodigo ?? "";
-          throw new EdicionRechazada(
-            `El problema «${nombres.problema(tipo)}» ya lo gestionó coordinación (cambió su estado o tiene una visita agendada): no se puede quitar del acta. Su estado se cambia en Problemas.`
-          );
+          throw new EdicionRechazada(textoGestionado(nombres.problema(tipo), "del acta"));
         }
       }
 
@@ -533,6 +559,20 @@ export async function editarActa(entrada: EdicionActaEntrada, ctx: ContextoEdici
           `UPDATE dmc.visita_foto SET activo = 0
             WHERE visita_id = @id AND activo = 1 AND id IN ${subIds("quitadas")}`,
           p([paramIds("quitadas", cambios.fotosQuitadas)])
+        );
+      }
+      // Las giradas reemplazan los bytes de su misma fila: la ruta con que se
+      // sirve no cambia, y el detalle y el PDF leen la imagen nueva.
+      for (const g of cambios.fotosGiradas) {
+        await ej.ejecutar(
+          `UPDATE dmc.visita_foto SET contenido = @contenido, mime = @mime, bytes = @bytes
+            WHERE id = @foto AND visita_id = @id AND activo = 1`,
+          p([
+            ["foto", sql.BigInt, g.id],
+            ["contenido", sql.VarBinary(sql.MAX), g.img.bytes],
+            ["mime", sql.VarChar(40), g.img.mime],
+            ["bytes", sql.Int, g.img.bytes.length],
+          ])
         );
       }
       const ultimoOrden = Math.max(0, ...(antes.fotos ?? []).map((f) => f.orden));

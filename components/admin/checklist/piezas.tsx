@@ -41,10 +41,10 @@ export function CajaSeccion({
   children: React.ReactNode;
 }) {
   return (
-    <div className="border-2 border-black/[.45] bg-[var(--color-bg)]">
+    <div className="border-2 border-[var(--color-text)] bg-[var(--color-surface-3)]">
       <div
-        className="flex items-center gap-2.5 flex-wrap px-3 py-2.5"
-        style={{ background: abierta ? "#d7d4da" : "var(--color-surface)" }}
+        className={`flex items-center gap-2.5 flex-wrap px-3.5 py-3 ${abierta ? "border-b-2 border-[var(--color-text)]" : ""}`}
+        style={{ background: abierta ? "var(--color-neutral-300)" : "var(--color-neutral-200)" }}
       >
         <button
           type="button"
@@ -67,13 +67,13 @@ export function CajaSeccion({
           </svg>
         </button>
         {fija || !onRenombrar ? (
-          <div className="flex-1 min-w-[160px] font-extrabold text-body opacity-80">{nombre}</div>
+          <div className="flex-1 min-w-[160px] font-extrabold text-lead">{nombre}</div>
         ) : (
           <input
             value={nombre}
             onChange={(e) => onRenombrar(e.target.value)}
             placeholder={phNombre}
-            className="input flex-1 min-w-[160px] min-h-10 font-extrabold text-body bg-[var(--color-bg)]"
+            className="input flex-1 min-w-[160px] min-h-10 font-extrabold text-lead bg-[var(--color-bg)]"
             aria-label="Nombre de la sección"
             autoComplete="off"
           />
@@ -121,7 +121,7 @@ export function CajaSeccion({
           </button>
         )}
       </div>
-      {abierta ? <div className="p-3 flex flex-col gap-2.5 border-t border-black/[.25]">{children}</div> : null}
+      {abierta ? <div className="p-3.5 flex flex-col gap-2.5">{children}</div> : null}
     </div>
   );
 }

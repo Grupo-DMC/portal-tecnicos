@@ -12,6 +12,9 @@ import { minutosDelPlazo, type ReservaAjena } from "@/lib/reserva";
 import ActaConservada from "@/components/mobile/ActaConservada";
 import { AdjuntosVista } from "@/components/ui/AdjuntosTrabajo";
 import { puede, useReferencias } from "@/lib/ui/referencias";
+import { fechaHoraCorta } from "@/lib/ui/edicion";
+import { nombreArchivoActa } from "@/lib/ui/nombre-acta";
+import { pedirEdicionActaAction } from "@/app/actions/ediciones";
 import { hayDireccion, urlMapa, urlTel } from "@/lib/ui/formato";
 import type { HistorialVista } from "@/lib/contratos/panel";
 import type { EstadoVisita, Visita } from "@/lib/types";
@@ -77,7 +80,8 @@ export default function DetalleVisita({
   const [openDatos, setOpenDatos] = useState(false);
   const [openHistorial, setOpenHistorial] = useState(false);
   const [openAcciones, setOpenAcciones] = useState(false);
-  const puedeCambiarEstado = puede(useReferencias(), "celular.estado");
+  const referencias = useReferencias();
+  const puedeCambiarEstado = puede(referencias, "celular.estado");
   const [sheet, setSheet] = useState<AccionEstado | null>(null);
   const [motivo, setMotivo] = useState("");
   const [fecha, setFecha] = useState("");
@@ -85,6 +89,13 @@ export default function DetalleVisita({
 
   const abierta = visita.estado === "PROGRAMADA" || visita.estado === "EN_CURSO";
   const cerradaConActa = visita.estado === "COMPLETADA" || visita.estado === "PENDIENTE";
+  // El técnico corrige su acta hasta un día después de cerrarla; pasado el plazo
+  // (o sin permiso) la pide a coordinación, desde acá mismo.
+  const completada = visita.estado === "COMPLETADA";
+  const puedeEditarActa = puede(referencias, "celular.editarActa");
+  const editable = completada && puedeEditarActa && Boolean(visita.ejecucion?.editablePorTecnico);
+  const [pidiendoEdicion, setPidiendoEdicion] = useState(false);
+  const [edicionPedidaEn, setEdicionPedidaEn] = useState<string | null>(visita.ejecucion?.edicionSolicitadaEn ?? null);
   const reagenda = visita.reagendamientos?.[0];
 
   // La dirección tal como se cargó en la sucursal: es la que abre el mapa.
@@ -131,6 +142,19 @@ export default function DetalleVisita({
       }
       router.push(`/tecnico/visitas/${visita.folio}/formulario`);
     });
+  }
+
+  async function pedirEdicion() {
+    setPidiendoEdicion(true);
+    try {
+      const r = await pedirEdicionActaAction(visita.folio);
+      if (r.ok) setEdicionPedidaEn(new Date().toISOString());
+      aviso(r.ok ? "Listo: le avisamos a coordinación" : (r.error ?? "No se pudo enviar el pedido."));
+    } catch {
+      aviso("Sin señal: no se pudo enviar el pedido. Inténtalo otra vez.");
+    } finally {
+      setPidiendoEdicion(false);
+    }
   }
 
   function abrirSheet(a: AccionEstado) {
@@ -428,15 +452,77 @@ export default function DetalleVisita({
             ) : null}
           </>
         ) : cerradaConActa ? (
-          <button
-            onClick={() => router.push(`/tecnico/visitas/${visita.folio}/revisar`)}
-            className="w-full min-h-[54px] flex items-center justify-between px-4 mt-4.5 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
-          >
-            <span>Ver acta guardada</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <path d="M5 12h14M13 6l6 6-6 6" />
-            </svg>
-          </button>
+          <div className="flex flex-col gap-2.5 mt-4.5">
+            {/* Lo que el técnico busca de una visita cerrada, a un toque: editar,
+                bajar el PDF o mirar el acta. */}
+            {editable ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/tecnico/visitas/${encodeURIComponent(visita.folio)}/editar`)}
+                  className="w-full min-h-[54px] flex items-center justify-between px-4 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-ui cursor-pointer text-left hover:bg-[var(--color-accent-hover)]"
+                >
+                  <span>Editar acta</span>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+                    <path d="M4 20h4l10-10-4-4L4 16v4z" />
+                    <path d="M14 6l4 4" />
+                  </svg>
+                </button>
+                <div className="-mt-1 text-cap opacity-66">
+                  Puedes corregirla hasta el {fechaHoraCorta(visita.ejecucion?.editableHasta)}. La firma de la tienda se conserva.
+                </div>
+              </>
+            ) : completada ? (
+              edicionPedidaEn ? (
+                <div className="px-3.5 py-3 bg-[var(--color-surface)] border border-[var(--color-line-control)] text-meta leading-[1.45]">
+                  Pediste editar esta acta. Coordinación te la habilita y te avisamos aquí: vuelve a abrir la visita en
+                  unos minutos.
+                </div>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => void pedirEdicion()}
+                    disabled={pidiendoEdicion}
+                    className="w-full min-h-[54px] flex items-center justify-between px-4 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-ui cursor-pointer text-left hover:bg-[var(--color-accent-hover)] disabled:opacity-60"
+                  >
+                    <span>{pidiendoEdicion ? "Enviando…" : "Pedir edición a coordinación"}</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+                      <path d="M4 20h4l10-10-4-4L4 16v4z" />
+                      <path d="M14 6l4 4" />
+                    </svg>
+                  </button>
+                  <div className="-mt-1 text-cap opacity-66">
+                    {puedeEditarActa ? "Ya pasó el plazo de un día para editarla tú." : "Tu rol no puede editar actas cerradas."}{" "}
+                    Coordinación recibe el pedido y te abre la edición.
+                  </div>
+                </>
+              )
+            ) : null}
+            {completada ? (
+              <a
+                href={`/api/visita/acta/${encodeURIComponent(visita.folio)}`}
+                download={nombreArchivoActa(visita)}
+                className="w-full min-h-[54px] flex items-center justify-between px-4 border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui hover:bg-black/[.07]"
+              >
+                <span>Descargar PDF</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+                  <path d="M12 4v11M7 11l5 5 5-5M4 20h16" />
+                </svg>
+              </a>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => router.push(`/tecnico/visitas/${encodeURIComponent(visita.folio)}/revisar`)}
+              className="w-full min-h-[54px] flex items-center justify-between px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
+            >
+              <span>Ver acta</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+                <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </button>
+          </div>
         ) : (
           <p className="mt-4.5 text-ui opacity-62">
             Esta visita quedó {ESTADO_VISITA_LABEL[visita.estado].toLowerCase()}. Coordinación debe reagendarla.

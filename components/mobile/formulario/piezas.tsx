@@ -3,6 +3,7 @@
 import type { ClipGrabado } from "@/components/mobile/VideoSheet";
 import { mb, reloj, repararDuracionPreview } from "@/lib/ui/video";
 import { haceCuanto, type FotoForm, type VideoForm } from "@/lib/ui/borrador";
+import type { Giro } from "@/lib/ui/imagen";
 
 // Las piezas chicas del formulario del acta: cabeceras de sección, campos,
 // contadores, botones y las listas de fotos y videos.
@@ -20,6 +21,11 @@ export function ahora(): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
+/**
+ * La cabecera de una sección del acta. Cada sección es un bloque propio: banda
+ * gris con borde de 2px y aire arriba, para que no se confunda con la anterior.
+ * El cuerpo (`Cuerpo`) cuelga de ella y cierra el mismo marco.
+ */
 export function Cabecera({
   n,
   titulo,
@@ -35,19 +41,21 @@ export function Cabecera({
 }) {
   return (
     <button
+      type="button"
       onClick={onToggle}
-      className="w-full flex items-center gap-2.5 min-h-[60px] px-4 bg-transparent border-0 border-b border-black/[.25] cursor-pointer text-left text-[var(--color-text)] hover:bg-black/[.04]"
+      className="w-full flex items-center gap-3 min-h-[64px] px-4 mt-5 first:mt-0 bg-[var(--color-neutral-300)] border-2 border-[var(--color-text)] cursor-pointer text-left text-[var(--color-text)] hover:bg-[var(--color-neutral-400)]"
     >
       <span
-        className="w-6.5 h-6.5 flex-none grid place-items-center font-extrabold text-cap tabular-nums"
+        className="w-8 h-8 flex-none grid place-items-center font-extrabold text-ui tabular-nums border-2 border-[var(--color-text)]"
         style={{
-          background: ok ? "var(--color-accent)" : "transparent",
+          background: ok ? "var(--color-accent)" : "var(--color-bg)",
           color: ok ? "var(--color-bg)" : "var(--color-text)",
+          borderColor: ok ? "var(--color-accent)" : "var(--color-text)",
         }}
       >
         {n}
       </span>
-      <span className="font-extrabold text-body leading-[1.2] flex-1">{titulo}</span>
+      <span className="font-extrabold text-lead leading-[1.2] flex-1">{titulo}</span>
       <span className={`tag tag-${chip.variante}`}>{chip.texto}</span>
     </button>
   );
@@ -157,7 +165,7 @@ export function EstadoBorrador({
 
 export function Cuerpo({ children, gap = true }: { children: React.ReactNode; gap?: boolean }) {
   return (
-    <div className={`p-4 bg-[var(--color-surface)] border-b border-black/[.25] ${gap ? "flex flex-col gap-3.5" : ""}`}>
+    <div className={`p-4 bg-[var(--color-surface)] border-2 border-t-0 border-[var(--color-text)] ${gap ? "flex flex-col gap-3.5" : ""}`}>
       {children}
     </div>
   );
@@ -251,15 +259,46 @@ export function BotonGuardar({ texto, onClick, habilitado }: { texto: string; on
   );
 }
 
+/** Girar una foto 90° a un lado: la flecha curva apunta hacia donde gira. */
+function BotonGirar({ sentido, onClick }: { sentido: Giro; onClick: () => void }) {
+  const izquierda = sentido === -90;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={izquierda ? "Girar la foto a la izquierda" : "Girar la foto a la derecha"}
+      className="flex-1 h-9 grid place-items-center bg-[rgba(31,28,33,.78)] text-white border-0 cursor-pointer active:bg-[var(--color-accent)]"
+    >
+      <svg
+        width="17"
+        height="17"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="square"
+        style={izquierda ? undefined : { transform: "scaleX(-1)" }}
+        aria-hidden="true"
+      >
+        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+        <path d="M3 3v5h5" />
+      </svg>
+    </button>
+  );
+}
+
 /** Grilla de fotos con sus botones de cámara y galería. La usan el trabajo y el comentario interno. */
 export function GaleriaFotos({
   fotos,
   onQuitar,
+  onGirar,
   onCamara,
   onArchivos,
 }: {
   fotos: FotoForm[];
   onQuitar: (f: FotoForm) => void;
+  /** Gira la foto 90°: -90 a la izquierda, 90 a la derecha. */
+  onGirar: (f: FotoForm, sentido: Giro) => void;
   onCamara: () => void;
   onArchivos: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }) {
@@ -278,6 +317,10 @@ export function GaleriaFotos({
               <path d="M6 6l12 12M18 6L6 18" />
             </svg>
           </button>
+          <div className="absolute bottom-0 inset-x-0 flex">
+            <BotonGirar sentido={-90} onClick={() => onGirar(f, -90)} />
+            <BotonGirar sentido={90} onClick={() => onGirar(f, 90)} />
+          </div>
         </div>
       ))}
       <button

@@ -16,7 +16,7 @@ import { fechaCL } from "@/lib/ui/fecha";
 /**
  * El acta ya guardada, vista desde el celular del técnico.
  *
- * Es lo que se abre con "Ver acta guardada": lo que quedó escrito en la base,
+ * Es lo que se abre con "Ver acta": lo que quedó escrito en la base,
  * no un borrador ni la pantalla previa a guardar. Muestra el acta completa
  * —horarios, responsable, trabajos, problemas, fotos y firma—, porque antes se
  * quedaba en cuatro datos y no servía para revisar lo que se firmó.
@@ -118,7 +118,7 @@ export default function ActaGuardada({
             download={nombreArchivoActa(visita)}
             className="w-full min-h-[50px] flex items-center justify-between px-4 mt-3.5 bg-[var(--color-accent)] text-[var(--color-bg)] font-extrabold text-ui hover:bg-[var(--color-accent-hover)]"
           >
-            <span>Descargar acta en PDF</span>
+            <span>Descargar PDF</span>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M12 4v11M7 11l5 5 5-5M4 20h16" />
             </svg>
@@ -130,7 +130,7 @@ export default function ActaGuardada({
               href={`/tecnico/visitas/${encodeURIComponent(visita.folio)}/editar`}
               className="w-full min-h-[50px] flex items-center justify-between px-4 mt-2.5 border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui hover:bg-black/[.07]"
             >
-              <span>Editar el acta</span>
+              <span>Editar acta</span>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                 <path d="M4 20h4l10-10-4-4L4 16v4z" />
                 <path d="M14 6l4 4" />

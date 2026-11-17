@@ -41,6 +41,65 @@ async function rutTomado(tabla: "cliente" | "tecnico", rut: string, idPropio: nu
   return filas.length > 0;
 }
 
+/**
+ * Deja el nombre de toda sucursal en un mall como «Cliente · Marca · Mall»
+ * (sin la marca si repite el cliente), con la misma regla de la migración 033.
+ *
+ * `dmc.sucursal.nombre` es un texto guardado y lo leen tal cual las visitas,
+ * los filtros, las actas y el selector de «Agendar visita». Como se compone de
+ * tres tablas, cada cambio en cualquiera de ellas —renombrar cliente, marca o
+ * mall, cambiar la marca o el mall de una sucursal, mover tiendas entre malls—
+ * lo deja viejo si nadie lo recalcula. Se llama al final de todas esas
+ * operaciones; solo toca las filas cuyo nombre cambia, y las sucursales a la
+ * calle (sin mall) conservan el nombre que se les escribió.
+ *
+ * Si dos quedarían con el mismo nombre en la misma marca, la segunda en
+ * adelante lleva « (2)», « (3)»… Una que chocaría con una sucursal a la calle
+ * se deja como está.
+ */
+export async function sincronizarNombresDeSucursales(): Promise<void> {
+  await ejecutar(`
+    SET XACT_ABORT ON;
+    IF OBJECT_ID('tempdb..#cambios') IS NOT NULL DROP TABLE #cambios;
+    BEGIN TRANSACTION;
+
+    ;WITH base AS (
+        SELECT s.id, s.marca_id, s.nombre AS actual,
+               LEFT(c.nombre_fantasia
+                    + CASE WHEN m.nombre <> c.nombre_fantasia THEN N' · ' + m.nombre ELSE N'' END
+                    + N' · ' + ml.nombre, 120) AS fusionado
+          FROM dmc.sucursal s
+          JOIN dmc.cliente c  ON c.id  = s.cliente_id
+          JOIN dmc.marca   m  ON m.id  = s.marca_id
+          JOIN dmc.mall    ml ON ml.id = s.mall_id
+    ),
+    numerado AS (
+        SELECT *, ROW_NUMBER() OVER (PARTITION BY marca_id, fusionado ORDER BY id) AS n FROM base
+    ),
+    nuevo AS (
+        SELECT id, actual,
+               CASE WHEN n = 1 THEN fusionado
+                    ELSE LEFT(fusionado, 120 - LEN(N' (' + CAST(n AS nvarchar(10)) + N')'))
+                         + N' (' + CAST(n AS nvarchar(10)) + N')'
+               END AS nombre
+          FROM numerado
+    )
+    SELECT id, actual, nombre INTO #cambios FROM nuevo WHERE nombre COLLATE Latin1_General_BIN2 <> actual COLLATE Latin1_General_BIN2;
+
+    DELETE c FROM #cambios c
+     WHERE EXISTS (SELECT 1 FROM dmc.sucursal o
+                    WHERE o.marca_id = (SELECT marca_id FROM dmc.sucursal WHERE id = c.id)
+                      AND o.nombre = c.nombre AND o.id <> c.id
+                      AND o.id NOT IN (SELECT id FROM #cambios));
+
+    -- Dos pasos para no chocar con la restricción única mientras se renombra.
+    UPDATE s SET nombre = N'~' + CAST(s.id AS nvarchar(20)) FROM dmc.sucursal s JOIN #cambios c ON c.id = s.id;
+    UPDATE s SET nombre = c.nombre FROM dmc.sucursal s JOIN #cambios c ON c.id = s.id;
+
+    DROP TABLE #cambios;
+    COMMIT TRANSACTION;`);
+}
+
 // ── Clientes ────────────────────────────────────────────────────────────────
 
 /** Un bit que admite «no se sabe»: null sigue siendo null. */
@@ -130,6 +189,8 @@ export async function guardarCliente(id: number | null, d: DatosCliente): Promis
       WHERE id = @id`,
     [...params, ["id", sql.BigInt, id]]
   );
+  // El nombre del cliente es parte del de sus sucursales en mall.
+  await sincronizarNombresDeSucursales();
   return id;
 }
 
@@ -177,6 +238,8 @@ export async function guardarMarca(id: number | null, d: DatosMarca): Promise<nu
     ...params,
     ["id", sql.BigInt, id],
   ]);
+  // El nombre de la marca es parte del de sus sucursales en mall.
+  await sincronizarNombresDeSucursales();
   return id;
 }
 
@@ -245,6 +308,8 @@ export async function guardarMall(id: number | null, d: DatosMall): Promise<numb
       WHERE id = @id`,
     [...params, ["id", sql.BigInt, id]]
   );
+  // El nombre del mall es parte del de sus tiendas.
+  await sincronizarNombresDeSucursales();
   return id;
 }
 
@@ -286,6 +351,8 @@ export async function ponerTiendasDeMall(mallId: number, sucursalIds: number[]):
          OR (t.id IS NOT NULL AND s.mall_id IS NULL)`,
     params
   );
+  // Cada tienda que entra o sale cambia de mall, y con él su nombre.
+  await sincronizarNombresDeSucursales();
 }
 
 // ── Sucursales ──────────────────────────────────────────────────────────────
@@ -421,6 +488,7 @@ export async function guardarSucursal(id: number | null, d: DatosSucursal): Prom
                @instalacion, @remota, @garantia, @plan)`,
       params
     );
+    await sincronizarNombresDeSucursales();
     return num(fila.id);
   }
   await ejecutar(
@@ -432,6 +500,8 @@ export async function guardarSucursal(id: number | null, d: DatosSucursal): Prom
       WHERE id = @id`,
     [...params, ["id", sql.BigInt, id]]
   );
+  // Otra marca o mall cambia el nombre «Cliente · Marca · Mall».
+  await sincronizarNombresDeSucursales();
   return id;
 }
 
@@ -464,7 +534,7 @@ export async function crearSucursalesLote(filas: DatosSucursalLote[]): Promise<n
       region: f.region,
     }))
   );
-  return ejecutar(
+  const creadas = await ejecutar(
     `INSERT INTO dmc.sucursal (cliente_id, marca_id, mall_id, nombre, codigo, direccion, comuna, region, activo)
      SELECT j.cliente, j.marca, j.mall, j.nombre, j.codigo, j.direccion, j.comuna, j.region, 1
        FROM OPENJSON(@filas)
@@ -472,6 +542,8 @@ export async function crearSucursalesLote(filas: DatosSucursalLote[]): Promise<n
                   direccion nvarchar(180) '$.direccion', comuna nvarchar(80) '$.comuna', region nvarchar(80) '$.region') j`,
     [["filas", sql.NVarChar(sql.MAX), json]]
   );
+  await sincronizarNombresDeSucursales();
+  return creadas;
 }
 
 // ── Técnicos ────────────────────────────────────────────────────────────────

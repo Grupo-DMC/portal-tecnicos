@@ -17,7 +17,7 @@ import {
   reprogramarVisitaAction,
 } from "@/app/actions/admin";
 import { ESTADO_VISITA_LABEL, nombreDeQuienLaTomo } from "@/lib/ui/estado";
-import { mensajeRut } from "@/lib/ui/formato";
+import { mensajeRut, mensajeTel, normalizarTel } from "@/lib/ui/formato";
 import { hoyISO, fechaCL } from "@/lib/ui/fecha";
 import { algunoPideHora } from "@/lib/ui/motivos";
 import { cargoVigente } from "@/lib/ui/cargos";
@@ -308,7 +308,7 @@ export default function VisitaDialogo({
       ph: "12.345.678-9",
       ayuda: "Opcional al agendar. Si va, el técnico lo encuentra ya escrito en el acta.",
     },
-    { k: "respTelefono", label: "Teléfono del responsable", tipo: "tel", ph: "+56 9 8123 4455" },
+    { k: "respTelefono", label: "Teléfono del responsable", tipo: "tel" },
     ...(ref.cargos.length
       ? [
           {
@@ -351,7 +351,7 @@ export default function VisitaDialogo({
               persona: valor,
               responsable: p.nombre,
               respRut: p.rut ?? "",
-              respTelefono: p.telefono ?? "",
+              respTelefono: normalizarTel(p.telefono),
               respCargo: cargoVigente(ref.cargos, p.cargo),
             }
           : { ...prev, persona: "" }
@@ -381,6 +381,12 @@ export default function VisitaDialogo({
     const errorRut = mensajeRut(String(form.respRut ?? ""));
     if (errorRut) {
       onHecho(errorRut);
+      return;
+    }
+    // El teléfono también es opcional: o van los 8 dígitos, o nada.
+    const errorTel = mensajeTel(String(form.respTelefono ?? ""));
+    if (errorTel) {
+      onHecho(errorTel);
       return;
     }
     if (esInstalacion && !form.hora) {

@@ -135,6 +135,8 @@ interface FilaVisita {
   s_mall_id: number | null;
   mk_nombre: string;
   ml_nombre: string | null;
+  ml_direccion: string | null;
+  ml_comuna: string | null;
 
   t_rut: string;
   t_nombres: string;
@@ -213,6 +215,7 @@ const SELECT_VISITA = `
          s.activo AS s_activo, s.cliente_id AS s_cliente_id,
          s.marca_id AS s_marca_id, s.mall_id AS s_mall_id,
          mk.nombre AS mk_nombre, ml.nombre AS ml_nombre,
+         ml.direccion AS ml_direccion, ml.comuna AS ml_comuna,
 
          t.rut AS t_rut, t.nombres AS t_nombres, t.apellido_paterno AS t_apellido_paterno,
          t.apellido_materno AS t_apellido_materno, t.nombre_completo AS t_nombre_completo,
@@ -569,7 +572,10 @@ async function cargar(filtro: Filtro): Promise<Visita[]> {
       },
       marca: { id: num(v.s_marca_id), nombre: v.mk_nombre },
       // Null = la tienda está a la calle: se muestra su dirección en vez del mall.
-      mall: v.s_mall_id === null ? null : { id: num(v.s_mall_id), nombre: v.ml_nombre ?? "" },
+      mall:
+        v.s_mall_id === null
+          ? null
+          : { id: num(v.s_mall_id), nombre: v.ml_nombre ?? "", direccion: v.ml_direccion ?? "", comuna: v.ml_comuna ?? "" },
       sucursal: {
         id: num(v.sucursal_id),
         clienteId: num(v.s_cliente_id),

@@ -12,7 +12,8 @@ import {
 import type { PerfilCuenta } from "@/lib/data/cuenta";
 import { iniciales, nombreVisible, prepararFotoPerfil, urlFotoUsuario } from "@/lib/ui/cuenta";
 import { fechaHoraLegible } from "@/lib/ui/fecha";
-import { fmtTel } from "@/lib/ui/formato";
+import { normalizarTel } from "@/lib/ui/formato";
+import CampoTelefono from "@/components/ui/CampoTelefono";
 import { Toast, useToast } from "@/components/ui/Toast";
 
 const INICIAL: CuentaState = { ok: false, error: null };
@@ -172,7 +173,7 @@ function SeccionDatos({ perfil, aviso }: { perfil: PerfilCuenta; aviso: (t: stri
   const router = useRouter();
   const [state, accion, pendiente] = useActionState(guardarDatosCuentaAction, INICIAL);
   const [email, setEmail] = useState(perfil.email);
-  const [telefono, setTelefono] = useState(perfil.telefono ?? "");
+  const [telefono, setTelefono] = useState(normalizarTel(perfil.telefono));
   const cambiaCorreo = email.trim().toLowerCase() !== perfil.email;
 
   useEffect(() => {
@@ -213,17 +214,7 @@ function SeccionDatos({ perfil, aviso }: { perfil: PerfilCuenta; aviso: (t: stri
         </div>
         <div className="field">
           <label htmlFor="cu-telefono">Teléfono</label>
-          <input
-            id="cu-telefono"
-            name="telefono"
-            type="tel"
-            className="input tabular-nums"
-            maxLength={30}
-            autoComplete="tel"
-            placeholder="+56 9 1234 5678"
-            value={telefono}
-            onChange={(e) => setTelefono(fmtTel(e.target.value))}
-          />
+          <CampoTelefono id="cu-telefono" name="telefono" value={telefono} onChange={setTelefono} autoComplete="tel-national" />
         </div>
         {cambiaCorreo ? (
           <div className="field sm:col-span-2">

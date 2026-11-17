@@ -5,7 +5,8 @@ import SelectBuscable from "@/components/ui/SelectBuscable";
 import SelectConAlta, { type TipoAlta } from "@/components/ui/SelectConAlta";
 import SeccionPlegable from "@/components/ui/SeccionPlegable";
 import { agruparPorSeccion, hayAlgunaSeccion } from "@/lib/ui/secciones";
-import { fmtRut, fmtTel, mensajeRut, sinTildes } from "@/lib/ui/formato";
+import { fmtRut, mensajeRut, sinTildes } from "@/lib/ui/formato";
+import CampoTelefono from "@/components/ui/CampoTelefono";
 
 export type CampoTipo =
   | "text"
@@ -364,33 +365,23 @@ export default function Dialogo({
                       autoComplete="off"
                       className="input min-h-[260px] p-3.5 resize-y text-ui leading-[1.6] bg-[var(--color-surface-3)]"
                     />
+                  ) : c.tipo === "tel" ? (
+                    // El «+56 9» es un adorno fijo: se escriben solo los 8 dígitos.
+                    <CampoTelefono id={`dlg-${c.k}`} value={texto} onChange={(v) => onCampo(c.k, v)} />
                   ) : (
                     <input
                       id={`dlg-${c.k}`}
                       type={c.tipo === "rut" ? "text" : c.tipo ?? "text"}
-                      inputMode={c.tipo === "tel" ? "tel" : undefined}
                       autoCapitalize={c.tipo === "rut" ? "characters" : undefined}
                       value={texto}
-                      // RUT y teléfono se formatean en cada pulsación: nadie tiene
-                      // que escribir los puntos, el guion ni el +56 9.
-                      onChange={(e) =>
-                        onCampo(
-                          c.k,
-                          c.tipo === "rut"
-                            ? fmtRut(e.target.value)
-                            : c.tipo === "tel"
-                              ? fmtTel(e.target.value)
-                              : e.target.value
-                        )
-                      }
-                      onFocus={() => {
-                        if (c.tipo === "tel" && !texto) onCampo(c.k, "+56 9 ");
-                      }}
+                      // El RUT se formatea en cada pulsación: nadie tiene que
+                      // escribir los puntos ni el guion.
+                      onChange={(e) => onCampo(c.k, c.tipo === "rut" ? fmtRut(e.target.value) : e.target.value)}
                       placeholder={c.ph}
                       autoComplete="off"
                       autoCorrect="off"
                       spellCheck={false}
-                      className={`input ${c.tipo === "rut" || c.tipo === "tel" ? "tabular-nums" : ""}`}
+                      className={`input ${c.tipo === "rut" ? "tabular-nums" : ""}`}
                     />
                   )}
 
@@ -528,7 +519,7 @@ export function CasillasMultiples({
         />
       ) : null}
       {grupos ? (
-        <div className="max-h-[300px] overflow-y-auto p-2 flex flex-col gap-1.5">
+        <div className="max-h-[300px] overflow-y-auto p-2 flex flex-col gap-3.5">
           {grupos.map((g) => {
             const marcadosAca = g.items.filter((o) => marcados.includes(o.v)).length;
             return (

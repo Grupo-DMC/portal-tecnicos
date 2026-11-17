@@ -13,6 +13,7 @@ import VisitaDialogo, {
   ReprogramarDialogo,
   type OrigenProblema,
 } from "@/components/admin/VisitaDialogos";
+import ProblemasVisitaDialogo from "@/components/admin/ProblemasVisitaDialogo";
 import VisorFotos, { useVisorFotos } from "@/components/ui/VisorFotos";
 import { Toast, useToast } from "@/components/ui/Toast";
 import { enviarActaAction } from "@/app/actions/admin";
@@ -26,7 +27,7 @@ import { descargarZip, extensionDe, type ArchivoADescargar } from "@/lib/ui/desc
 import { SECCION_EDICION, quienModifico, resumenEdicion } from "@/lib/ui/edicion";
 import { esInformePapel } from "@/lib/ui/papel";
 import { nombreArchivoActa, nombreZipMultimedia } from "@/lib/ui/nombre-acta";
-import { textoMall } from "@/lib/ui/ubicacion";
+import { textoDireccion } from "@/lib/ui/ubicacion";
 import { urlVisitasRecordada } from "@/lib/ui/filtro-recordado";
 import type { Visita, VisitaEdicion } from "@/lib/types";
 import { AdjuntosVista } from "@/components/ui/AdjuntosTrabajo";
@@ -86,7 +87,7 @@ export default function ActaView({
   const [trazaAbierta, setTrazaAbierta] = useState(false);
   const [zonaAbierta, setZonaAbierta] = useState(false);
   const [dialogo, setDialogo] = useState<
-    "correo" | "editar" | "reprogramar" | "liberar" | "cancelarAdmin" | "eliminar" | null
+    "correo" | "editar" | "problemas" | "reprogramar" | "liberar" | "cancelarAdmin" | "eliminar" | null
   >(null);
   const [agendarProblema, setAgendarProblema] = useState<OrigenProblema | null>(null);
   const visor = useVisorFotos();
@@ -124,6 +125,9 @@ export default function ActaView({
     editada(sec) ? "border-l-4 border-l-[var(--color-accent)] bg-[var(--color-accent-100)]" : "";
   // Editar el acta ya cerrada: solo con el permiso, y sin plazo.
   const editableActa = cerrada && permite("visitas.editarActa");
+  // Anotar problemas en una visita que todavía no se cierra: con el permiso de
+  // corregir visitas. En una cerrada se hace desde «Editar el acta».
+  const registraProblemas = !cerrada && visita.estado !== "CANCELADA_ADMIN" && permite("visitas.editar");
   const [habilitando, setHabilitando] = useState(false);
   async function permitirEditarTecnico() {
     setHabilitando(true);
@@ -176,7 +180,7 @@ export default function ActaView({
     { k: "Cliente", v: visita.cliente?.nombreFantasia ?? "—" },
     { k: "Marca", v: visita.marca?.nombre ?? "—" },
     { k: "Sucursal", v: visita.sucursal?.nombre ?? "—" },
-    { k: "Mall", v: textoMall(visita.mall) },
+    { k: "Dirección", v: textoDireccion(visita.mall, visita.sucursal), span: 2 },
     { k: visita.motivosCodigos.length > 1 ? "Motivos de la visita" : "Motivo de la visita", v: textoMotivos(visita) },
     { k: "Técnico", v: visita.tecnico?.nombreCompleto ?? "—" },
     { k: "Técnico ayudante", v: visita.tecnicoAyudante?.nombreCompleto ?? "Sin ayudante" },
@@ -561,6 +565,49 @@ export default function ActaView({
             </div>
           ) : null}
 
+          {/* Una visita sin iniciar no muestra el acta, pero coordinación puede
+              haberse enterado de problemas y tiene que poder anotarlos. */}
+          {!ejecutada && (registraProblemas || (visita.problemas?.length ?? 0) > 0) ? (
+            <div className="px-5 py-5 border-t border-black/[.2]">
+              <div className="flex items-center gap-3 flex-wrap mb-3">
+                <div className="text-cap opacity-66">Problemas registrados ({visita.problemas?.length ?? 0})</div>
+                {registraProblemas ? (
+                  <button onClick={() => setDialogo("problemas")} className="btn btn-secondary min-h-[34px] px-3 gap-2 text-meta ml-auto">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    <span>{visita.problemas?.length ? "Agregar o corregir problemas" : "Registrar problemas"}</span>
+                  </button>
+                ) : null}
+              </div>
+              {visita.problemas && visita.problemas.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  {visita.problemas.map((p) => (
+                    <div key={p.id} className="border border-black/[.35] bg-white px-4 py-3">
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <div className="font-extrabold text-body">{nombreProblema(catalogoProblema, p.tipoCodigo)}</div>
+                        <EstadoProblemaTag estado={p.estado} className="ml-auto" />
+                      </div>
+                      {p.items.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {p.items.map((it) => (
+                            <span key={it.id} className="tag tag-dark font-extrabold">
+                              {it.etiqueta}
+                              {it.cantidad > 1 ? ` × ${it.cantidad}` : ""}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                      {p.descripcion ? <div className="text-body leading-[1.4] mt-2 max-w-[70ch]">{p.descripcion}</div> : null}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-body opacity-66">Sin problemas registrados en esta visita.</div>
+              )}
+            </div>
+          ) : null}
+
           {ejec?.observaciones ? (
             <div className={`px-5 py-5 border-b border-black/[.2] ${resalte(SECCION_EDICION.trabajo)}`}>
               <div className="text-cap opacity-66">
@@ -607,9 +654,29 @@ export default function ActaView({
                 </>
               ) : null}
 
-              <div className="text-cap opacity-66 mb-3">
-                Problemas levantados ({visita.problemas?.length ?? 0})
-                <MarcaEdicion edicion={editada(SECCION_EDICION.problemas)} />
+              <div className="flex items-center gap-3 flex-wrap mb-3">
+                <div className="text-cap opacity-66">
+                  Problemas levantados ({visita.problemas?.length ?? 0})
+                  <MarcaEdicion edicion={editada(SECCION_EDICION.problemas)} />
+                </div>
+                {registraProblemas ? (
+                  <button onClick={() => setDialogo("problemas")} className="btn btn-secondary min-h-[34px] px-3 gap-2 text-meta ml-auto">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    <span>Agregar o corregir problemas</span>
+                  </button>
+                ) : editableActa ? (
+                  <Link
+                    href={`/admin/visitas/${encodeURIComponent(visita.folio)}/editar#ea-sec-problemas`}
+                    className="btn btn-secondary min-h-[34px] px-3 gap-2 text-meta ml-auto no-underline"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    <span>Agregar o corregir problemas</span>
+                  </Link>
+                ) : null}
               </div>
               {visita.problemas && visita.problemas.length > 0 ? (
                 <div className="flex flex-col gap-3.5">
@@ -1022,6 +1089,16 @@ export default function ActaView({
       ) : null}
       {dialogo === "editar" ? (
         <VisitaDialogo
+          visita={visita}
+          onCerrar={() => setDialogo(null)}
+          onHecho={(m) => {
+            aviso(m);
+            router.refresh();
+          }}
+        />
+      ) : null}
+      {dialogo === "problemas" ? (
+        <ProblemasVisitaDialogo
           visita={visita}
           onCerrar={() => setDialogo(null)}
           onHecho={(m) => {

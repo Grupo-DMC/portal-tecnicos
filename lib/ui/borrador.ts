@@ -67,6 +67,11 @@ export interface FotoForm {
   src: string;
   /** Foto del comentario interno: no la ve el cliente. */
   interno?: boolean;
+  /**
+   * Una foto ya guardada (con `dbId`) que se giró al editar: `src` trae la
+   * imagen ya girada y hay que mandarla al servidor para que reemplace a la guardada.
+   */
+  girada?: boolean;
 }
 
 /**

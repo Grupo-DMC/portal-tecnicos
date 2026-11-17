@@ -8,6 +8,7 @@ import { useReferencias } from "@/lib/ui/referencias";
 import { REGIONES } from "@/lib/ui/regiones";
 import { OPCIONES_SI_NO, formASiNo, mesesDeForm, siNoAForm } from "@/lib/ui/sino";
 import { nombreLocal } from "@/lib/ui/nombre-local";
+import { mensajeTel } from "@/lib/ui/formato";
 import type { Cliente, Mall, Sucursal } from "@/lib/types";
 
 export interface SucursalForm {
@@ -80,7 +81,7 @@ export function useSucursalForm({
             visible: (f) => !(f.mallId && f.marcaId),
           },
           { k: "codigo", label: "Código interno (opcional)", ph: "MS-118" },
-          { k: "telefono", label: "Teléfono", tipo: "tel", ph: "+56 2 2299 4100" },
+          { k: "telefono", label: "Teléfono", tipo: "tel" },
           { k: "direccion", label: "Dirección", span: 2 },
           { k: "comuna", label: "Comuna" },
           { k: "region", label: "Región", tipo: "select", opciones: REGIONES.map((r) => ({ v: r, t: r })) },
@@ -124,6 +125,8 @@ export function useSucursalForm({
     validar: (f) => {
           if (!String(f.nombre).trim() || !f.clienteId) return "Nombre y cliente son obligatorios";
           if (!f.marcaId) return "Elige la marca";
+          const errorTel = mensajeTel(String(f.telefono ?? ""));
+          if (errorTel) return errorTel;
           if (mesesDeForm(f.garantiaMeses) === undefined) return "La garantía va en meses, entre 1 y 240";
           if (!f.mallId && !String(f.direccion).trim()) return "Sin mall, la sucursal necesita su dirección de calle";
           if (f.activo === false && !String(f.motivoInactivo ?? "").trim()) {

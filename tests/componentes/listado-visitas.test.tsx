@@ -19,7 +19,10 @@ import { pintar, router, visitaFalsa } from "../helpers/componentes";
 
 const opciones: OpcionesFiltroVisitas = {
   regiones: ["Valparaíso", "Metropolitana"],
-  malls: [[5, "Mall Plaza"]],
+  malls: [
+    [5, "Mall Plaza"],
+    [6, "Mall Centro"],
+  ],
   clientes: [
     [1, "Cliente Uno"],
     [2, "Cliente Dos"],
@@ -162,8 +165,26 @@ describe("filtros del listado (viven en la URL: cambiar uno es navegar)", () => 
     await abrirFiltros(u);
     expect(otra.container.querySelector("label[for=fv-marca]")).toHaveTextContent("Marca");
     expect(otra.container.querySelector("label[for=fv-tienda]")).toHaveTextContent("Sucursal");
-    // Con un cliente elegido el filtro por tipo de falla deja de aplicar.
+  });
+
+  it("ya no existe el filtro «Tipo de falla registrada»", async () => {
+    const u = userEvent.setup();
+    const { container } = pintar(tabla());
+    await abrirFiltros(u);
+    expect(container.querySelector("#fv-tipo")).toBeNull();
     expect(screen.queryByText("Tipo de falla registrada")).toBeNull();
+  });
+
+  it("el mall se elige de a varios y navega con todos los elegidos", async () => {
+    const u = userEvent.setup();
+    pintar(tabla({}, [visitaFalsa()], {}));
+    await abrirFiltros(u);
+    await u.click(screen.getByRole("combobox", { name: /Mall|Todos los malls/ }));
+    await u.click(screen.getByRole("option", { name: /Mall Plaza/ }));
+    await u.click(screen.getByRole("option", { name: /Mall Centro/ }));
+    await u.click(screen.getByRole("button", { name: "Aplicar" }));
+    const url = new URL(router.replace.mock.calls[0][0] as string, "http://x");
+    expect(url.searchParams.getAll("mall")).toEqual(["5", "6"]);
   });
 
   it("filtrar por región", async () => {
@@ -206,7 +227,7 @@ describe("filtros del listado (viven en la URL: cambiar uno es navegar)", () => 
 
   it("cambiar la zona navega sin tocar el mall: el servidor descarta lo que ya no cabe", async () => {
     const u = userEvent.setup();
-    pintar(tabla({ mallId: "5" }));
+    pintar(tabla({ mallIds: ["5"] }));
     await abrirFiltros(u);
     await u.click(screen.getByRole("combobox", { name: /Zona|Todas las zonas/ }));
     await u.click(screen.getByRole("option", { name: "Valparaíso" }));
@@ -225,7 +246,7 @@ describe("filtros del listado (viven en la URL: cambiar uno es navegar)", () => 
         marcaIds: ["8"],
         sucursalIds: ["10"],
         regiones: ["Valparaíso"],
-        mallId: "5",
+        mallIds: ["5"],
       })
     );
     for (const chip of [

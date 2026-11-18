@@ -2,11 +2,10 @@ import "server-only";
 import { sendNotification, setVapidDetails } from "web-push";
 import { env } from "@/lib/env";
 import { consultaCon, ejecutar, num, sql } from "@/lib/data/sql";
-import { leerConfiguracion } from "@/lib/data/actividad";
-import { accesoDeUsuario } from "@/lib/data/roles";
-import { getUsuarioPorId } from "@/lib/data/usuarios";
+import { cachePerfiles } from "@/lib/data/preferencias-canal";
+import { avisosCorreoActivos } from "@/lib/correo/avisos-config";
 import { log } from "@/lib/log";
-import { tiposPara } from "@/lib/notificaciones";
+import { quierePush } from "@/lib/notificaciones";
 
 // Avisos push: llegan al navegador aunque no haya ninguna pestaña abierta.
 // Las suscripciones viven en dmc.push_suscripcion (migración 036). Todo es de
@@ -126,7 +125,9 @@ interface FilaSuscripcion {
 
 /**
  * Manda el aviso a quien lo pidió: tiene el navegador suscrito, no lo hizo él,
- * y ese tipo está en «Avisar» para su rol y sus preferencias.
+ * su rol lo deja ver y quiere el push de ese tipo (por defecto, si está en
+ * «Avisar»; con los avisos por correo activos, también lo que eligió en «Mi
+ * cuenta»). La decisión es la de lib/data/preferencias-canal.ts.
  */
 export async function enviarPush(aviso: AvisoPush): Promise<void> {
   if (!pushConfigurado()) return;
@@ -139,22 +140,15 @@ export async function enviarPush(aviso: AvisoPush): Promise<void> {
     if (filas.length === 0) return;
     prepararVapid();
 
-    const permitido = new Map<number, boolean>();
+    const perfil = cachePerfiles(avisosCorreoActivos());
     const puede = async (uid: number) => {
-      const antes = permitido.get(uid);
-      if (antes !== undefined) return antes;
-      let ok = false;
       try {
-        const reg = await getUsuarioPorId(uid);
-        if (reg && reg.usuario.activo && reg.usuario.rol !== "TECNICO") {
-          const [acceso, config] = await Promise.all([accesoDeUsuario(reg.usuario), leerConfiguracion(uid)]);
-          ok = tiposPara(acceso.permisos, config.niveles).avisar.includes(aviso.tipo);
-        }
+        const p = await perfil(uid);
+        return p ? quierePush(p.permisos, p.niveles, p.canales, aviso.tipo) : false;
       } catch (err) {
         log.error("push.destinatario", { err, usuarioId: uid });
+        return false;
       }
-      permitido.set(uid, ok);
-      return ok;
     };
 
     const carga = JSON.stringify({

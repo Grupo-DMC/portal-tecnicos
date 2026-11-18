@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Dialogo, { type FormValores } from "@/components/admin/Dialogo";
-import Tag from "@/components/Tag";
+import EstadoActivo from "@/components/ui/EstadoActivo";
 import { guardarMarcaAction } from "@/app/actions/maestros";
 import { sinTildes } from "@/lib/ui/formato";
+import { problemaDeBaja } from "@/lib/ui/estado-activo";
 import { puede, useReferencias } from "@/lib/ui/referencias";
 import type { Marca } from "@/lib/types";
 
@@ -33,7 +34,10 @@ export default function MarcasSeccion({
 
   function abrir(marca: Marca | null) {
     setError(null);
-    setDialogo({ marca, form: { nombre: marca?.nombre ?? "", activo: marca?.activo ?? true } });
+    setDialogo({
+      marca,
+      form: { nombre: marca?.nombre ?? "", activo: marca?.activo ?? true, motivoInactivo: marca?.motivoInactivo ?? "" },
+    });
   }
 
   async function guardar() {
@@ -42,11 +46,16 @@ export default function MarcasSeccion({
     if (!nombre) return setError("El nombre de la marca es obligatorio.");
     const repetida = marcas.find((m) => m.id !== dialogo.marca?.id && sinTildes(m.nombre) === sinTildes(nombre));
     if (repetida) return setError(`Este cliente ya tiene la marca «${repetida.nombre}».`);
+    const activo = dialogo.form.activo !== false;
+    const motivo = String(dialogo.form.motivoInactivo ?? "").trim();
+    const sinMotivo = problemaDeBaja(activo, motivo, "la marca");
+    if (sinMotivo) return setError(sinMotivo);
     setGuardando(true);
     const res = await guardarMarcaAction(dialogo.marca?.id ?? null, {
       clienteId,
       nombre,
-      activo: dialogo.form.activo !== false,
+      activo,
+      motivoInactivo: activo ? null : motivo,
     });
     setGuardando(false);
     if (!res.ok) return setError(res.error ?? "No se pudo guardar.");
@@ -79,7 +88,7 @@ export default function MarcasSeccion({
                     · {n} {n === 1 ? "sucursal" : "sucursales"}
                   </span>
                 </div>
-                {!m.activo ? <Tag variant="neutral">Inactiva</Tag> : null}
+                {!m.activo ? <EstadoActivo activo={false} baja={m.baja} motivo={m.motivoInactivo} femenino /> : null}
                 {puede(ref, "marcas.editar") ? (
                   <button type="button" className="btn btn-ghost flex-none" onClick={() => abrir(m)}>
                     Editar
@@ -98,7 +107,8 @@ export default function MarcasSeccion({
           nota="Las sucursales de la marca se eligen al crearlas o al editarlas."
           campos={[
             { k: "nombre", label: "Nombre de la marca", span: 2 },
-            { k: "activo", label: "Estado", tipo: "toggle" },
+            // Pasar a «Inactiva» pide el motivo en un diálogo (migración 039).
+            { k: "activo", label: "Estado", tipo: "toggle", desactiva: "la marca" },
           ]}
           form={dialogo.form}
           onCampo={(k, v) => {

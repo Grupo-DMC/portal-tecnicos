@@ -1,3 +1,4 @@
+import { autoriaDeBaja } from "@/lib/ui/estado-activo";
 import { notFound } from "next/navigation";
 import SinAcceso from "@/components/admin/SinAcceso";
 import FichaVisitas from "@/components/admin/maestros/FichaVisitas";
@@ -42,6 +43,17 @@ export default async function SucursalFichaPage({ params }: { params: Promise<{ 
     ? await contactosCandidatos({ id: s.id, clienteId: s.clienteId, marcaId: s.marcaId, region: s.region })
     : [];
   const aplicables = contactosDeTienda(candidatos, { id: s.id, clienteId: s.clienteId, marcaId: s.marcaId, region: s.region });
+  // Los propios de la tienda van aparte de los que vienen del cliente, la marca o la región.
+  const filaDe = (a: (typeof aplicables)[number]) => ({
+    contactoId: a.contacto.id,
+    cargoId: a.cargo.id,
+    cargo: a.cargo.cargo,
+    origen: origenDe(a, nombres),
+    heredado: a.heredado,
+    quitable: !a.heredado,
+  });
+  const propios = aplicables.filter((a) => !a.heredado).map(filaDe);
+  const heredados = aplicables.filter((a) => a.heredado).map(filaDe);
   const nombres = {
     cliente: (i: number) => (i === s.clienteId ? cliente?.nombreFantasia : undefined),
     marca: (i: number) => marcas.find((m) => m.id === i)?.nombre,
@@ -68,6 +80,7 @@ export default async function SucursalFichaPage({ params }: { params: Promise<{ 
       valor: cal.valor === null ? "" : cal.valor ? (cal.porCliente ? "Sí, por su cliente" : "Sí") : "No",
     },
     { label: "Por qué está inactiva", valor: s.activo ? "" : (s.motivoInactivo ?? "") },
+    { label: "Quién la desactivó", valor: s.baja ? autoriaDeBaja(s.baja, true) : "" },
   ].filter((d) => d.valor);
 
   return (
@@ -84,18 +97,23 @@ export default async function SucursalFichaPage({ params }: { params: Promise<{ 
       hoy={hoyISO()}
       secciones={
         verContactos ? (
-          <ContactosSeccion
-            titulo="Contactos de esta tienda"
-            vacio="Esta tienda no tiene contactos, ni propios ni heredados de su marca, región o cliente."
-            filas={aplicables.map((a) => ({
-              contactoId: a.contacto.id,
-              cargo: a.cargo.cargo,
-              origen: origenDe(a, nombres),
-              heredado: a.heredado,
-            }))}
-            contactos={candidatos}
-            cargoInicial={{ alcanceTipo: "SUCURSAL", alcanceId: s.id, alcanceTexto: null }}
-          />
+          <>
+            <ContactosSeccion
+              titulo="Contactos de la tienda"
+              nota="El personal del local: jefe de tienda, encargados. Se le sugieren al técnico al llenar el acta."
+              vacio="Esta tienda todavía no tiene contactos propios."
+              filas={propios}
+              contactos={candidatos}
+              cargoInicial={{ alcanceTipo: "SUCURSAL", alcanceId: s.id, alcanceTexto: null }}
+            />
+            <ContactosSeccion
+              titulo="Contactos del cliente y la marca"
+              nota="Vienen de la ficha del cliente, de su marca o de su región. Se agregan y se quitan allá."
+              vacio="No hereda contactos de su cliente, marca ni región."
+              filas={heredados}
+              contactos={candidatos}
+            />
+          </>
         ) : undefined
       }
     />

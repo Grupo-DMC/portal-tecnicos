@@ -14,6 +14,7 @@ import { iniciales, nombreVisible, prepararFotoPerfil, urlFotoUsuario } from "@/
 import { fechaHoraLegible } from "@/lib/ui/fecha";
 import { normalizarTel } from "@/lib/ui/formato";
 import CampoTelefono from "@/components/ui/CampoTelefono";
+import AvisosCuenta, { type DatosAvisosCuenta } from "@/components/admin/AvisosCuenta";
 import { Toast, useToast } from "@/components/ui/Toast";
 
 const INICIAL: CuentaState = { ok: false, error: null };
@@ -22,10 +23,13 @@ export default function CuentaView({
   perfil,
   rol,
   largoMinimo,
+  avisos = null,
 }: {
   perfil: PerfilCuenta;
   rol: string;
   largoMinimo: number;
+  /** Solo con los avisos por correo activos en el servidor. */
+  avisos?: DatosAvisosCuenta | null;
 }) {
   const { toast, aviso } = useToast();
 
@@ -36,6 +40,7 @@ export default function CuentaView({
       <div className="flex flex-col gap-6 min-w-0">
         <SeccionDatos perfil={perfil} aviso={aviso} />
         <SeccionPassword largoMinimo={largoMinimo} aviso={aviso} />
+        {avisos ? <AvisosCuenta datos={avisos} aviso={aviso} /> : null}
       </div>
       <Toast texto={toast} variante="panel" />
     </div>

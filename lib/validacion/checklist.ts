@@ -34,6 +34,7 @@ export const borradorChecklist = z.object({
       nombre: texto(80),
       grupoLabel: texto(60).nullable(),
       opciones: arreglo(item, 300),
+      seccion: texto(80).nullable().optional(),
     }),
     300
   ),
@@ -50,9 +51,17 @@ export const borradorChecklist = z.object({
   ),
   seccionesMotivo: nombres.optional(),
   seccionesTrabajo: nombres.optional(),
+  seccionesProblema: nombres.optional(),
   internos: arreglo(simple, 300).optional(),
   pendientes: arreglo(simple, 300).optional(),
   cargos: arreglo(simple, 300).optional(),
   gestionProblemas: arreglo(simple, 300).optional(),
   estadosProblema: arreglo(simple, 300).optional(),
+});
+
+/** Qué secciones del acta del técnico son obligatorias (migración 042). */
+export const seccionesObligatoriasActa = z.object({
+  problemas: z.boolean(),
+  interno: z.boolean(),
+  fotos: z.boolean(),
 });

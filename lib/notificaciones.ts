@@ -29,7 +29,16 @@ export interface TipoNotificacion {
   permiso: string;
   /** Lo que vale mientras el usuario no lo cambie. */
   defecto: NivelAviso;
+  /** Cómo llega por correo mientras el usuario no lo cambie. Sin valor: nunca. */
+  correo?: ModoCorreo;
 }
+
+/**
+ * El correo de un tipo: NUNCA, MOMENTO (sale enseguida, agrupado con lo que
+ * llegue en los minutos siguientes) o RESUMEN (un correo al día).
+ */
+export type ModoCorreo = "NUNCA" | "MOMENTO" | "RESUMEN";
+export const MODOS_CORREO: readonly ModoCorreo[] = ["NUNCA", "MOMENTO", "RESUMEN"];
 
 export interface GrupoNotificacion {
   clave: string;
@@ -42,11 +51,11 @@ export const GRUPOS_NOTIFICACION: GrupoNotificacion[] = [
     clave: "tecnicos",
     label: "Técnicos en terreno",
     tipos: [
-      { clave: "tecnico.cierre", label: "Completa una visita (cierra el acta)", permiso: "visitas.ver", defecto: "AVISAR" },
-      { clave: "tecnico.estado", label: "Reagenda, deja pendiente o cancela una visita", permiso: "visitas.ver", defecto: "AVISAR" },
-      { clave: "tecnico.alta", label: "Agrega una visita en terreno", permiso: "visitas.ver", defecto: "AVISAR" },
-      { clave: "tecnico.pedido", label: "Pide permiso para corregir su acta", permiso: "visitas.ver", defecto: "AVISAR" },
-      { clave: "tecnico.correccion", label: "Corrige su acta ya cerrada", permiso: "visitas.ver", defecto: "AVISAR" },
+      { clave: "tecnico.cierre", label: "Completa una visita (cierra el acta)", permiso: "visitas.ver", defecto: "AVISAR", correo: "RESUMEN" },
+      { clave: "tecnico.estado", label: "Reagenda, deja pendiente o cancela una visita", permiso: "visitas.ver", defecto: "AVISAR", correo: "MOMENTO" },
+      { clave: "tecnico.alta", label: "Agrega una visita en terreno", permiso: "visitas.ver", defecto: "AVISAR", correo: "RESUMEN" },
+      { clave: "tecnico.pedido", label: "Pide permiso para corregir su acta", permiso: "visitas.ver", defecto: "AVISAR", correo: "MOMENTO" },
+      { clave: "tecnico.correccion", label: "Corrige su acta ya cerrada", permiso: "visitas.ver", defecto: "AVISAR", correo: "RESUMEN" },
       { clave: "tecnico.inicio", label: "Inicia una visita", permiso: "visitas.ver", defecto: "MOSTRAR" },
     ],
   },
@@ -56,8 +65,8 @@ export const GRUPOS_NOTIFICACION: GrupoNotificacion[] = [
     tipos: [
       { clave: "visita.alta", label: "Agenda visitas", permiso: "visitas.ver", defecto: "MOSTRAR" },
       { clave: "visita.cambio", label: "Corrige, reprograma o libera visitas", permiso: "visitas.ver", defecto: "MOSTRAR" },
-      { clave: "visita.cancelacion", label: "Cancela visitas por admin", permiso: "visitas.ver", defecto: "MOSTRAR" },
-      { clave: "visita.eliminacion", label: "Elimina visitas", permiso: "visitas.ver", defecto: "AVISAR" },
+      { clave: "visita.cancelacion", label: "Cancela visitas por admin", permiso: "visitas.ver", defecto: "MOSTRAR", correo: "RESUMEN" },
+      { clave: "visita.eliminacion", label: "Elimina visitas", permiso: "visitas.ver", defecto: "AVISAR", correo: "MOMENTO" },
       { clave: "acta.cambio", label: "Edita, envía o abre a corrección un acta", permiso: "visitas.ver", defecto: "MOSTRAR" },
     ],
   },
@@ -65,6 +74,7 @@ export const GRUPOS_NOTIFICACION: GrupoNotificacion[] = [
     clave: "seguimiento",
     label: "Seguimiento",
     tipos: [
+      { clave: "problema.alta", label: "Registra problemas nuevos en una visita", permiso: "problemas.ver", defecto: "MOSTRAR", correo: "RESUMEN" },
       { clave: "problema.cambio", label: "Cambia el estado de un problema", permiso: "problemas.ver", defecto: "MOSTRAR" },
       { clave: "gestion.pendiente", label: "Marca la gestión de un pendiente", permiso: "reagendas.ver", defecto: "OCULTAR" },
       { clave: "gestion.problema", label: "Marca la gestión de un problema", permiso: "problemas.ver", defecto: "OCULTAR" },
@@ -79,8 +89,8 @@ export const GRUPOS_NOTIFICACION: GrupoNotificacion[] = [
       { clave: "maestro.contactos", label: "Crea o edita contactos", permiso: "contactos.ver", defecto: "MOSTRAR" },
       { clave: "maestro.tecnicos", label: "Crea o edita técnicos", permiso: "tecnicos.ver", defecto: "MOSTRAR" },
       { clave: "maestro.checklist", label: "Cambia el checklist", permiso: "checklist.ver", defecto: "MOSTRAR" },
-      { clave: "cuenta.cambio", label: "Crea o edita usuarios, roles y permisos", permiso: "usuarios.ver", defecto: "MOSTRAR" },
-      { clave: "cuenta.password", label: "Alguien pide una contraseña nueva", permiso: "usuarios.contrasenas", defecto: "AVISAR" },
+      { clave: "cuenta.cambio", label: "Crea o edita usuarios, roles y permisos", permiso: "usuarios.ver", defecto: "MOSTRAR", correo: "MOMENTO" },
+      { clave: "cuenta.password", label: "Alguien pide una contraseña nueva", permiso: "usuarios.contrasenas", defecto: "AVISAR", correo: "MOMENTO" },
     ],
   },
 ];
@@ -147,6 +157,94 @@ export function preferenciasParaGuardar(permisos: readonly string[], niveles: Pr
     if (nivel !== tipo.defecto) limpio[clave] = nivel;
   }
   return limpio;
+}
+
+// ── Canales: push y correo ───────────────────────────────────────────────────
+//
+// La campanita usa el nivel de arriba. Push y correo se eligen aparte, por tipo,
+// en «Mi cuenta» (solo cuando los avisos por correo están activos en el
+// servidor; mientras no, el push sigue al nivel AVISAR como siempre).
+
+/** Lo que el usuario eligió para push y correo en un tipo. null = su defecto. */
+export interface PreferenciaCanal {
+  push: boolean | null;
+  correo: ModoCorreo | null;
+}
+export type PreferenciasCanal = Record<string, PreferenciaCanal>;
+
+/** Los ajustes generales del correo de una cuenta. */
+export interface AjustesCorreo {
+  /** El interruptor general: apagado, no llega ningún correo de avisos. */
+  activo: boolean;
+  /** A qué hora (0-23, hora del servidor) sale el resumen del día. */
+  horaResumen: number;
+}
+
+export const AJUSTES_CORREO_POR_DEFECTO: AjustesCorreo = { activo: true, horaResumen: 18 };
+
+/** Push en este tipo: lo elegido o, si no eligió, que el tipo esté en «Avisar». */
+export function pushDe(niveles: PreferenciasAviso, canales: PreferenciasCanal, clave: string): boolean {
+  const elegido = canales[clave]?.push;
+  return typeof elegido === "boolean" ? elegido : nivelDe(niveles, clave) === "AVISAR";
+}
+
+/** El correo de este tipo: lo elegido o su defecto del catálogo. */
+export function correoDe(canales: PreferenciasCanal, clave: string): ModoCorreo {
+  const elegido = canales[clave]?.correo;
+  if (elegido && MODOS_CORREO.includes(elegido)) return elegido;
+  return POR_CLAVE.get(clave)?.correo ?? "NUNCA";
+}
+
+/** ¿Le llega el push de este tipo? Pide el permiso del tipo. */
+export function quierePush(
+  permisos: readonly string[],
+  niveles: PreferenciasAviso,
+  canales: PreferenciasCanal,
+  clave: string
+): boolean {
+  const tipo = POR_CLAVE.get(clave);
+  return Boolean(tipo && tiene(permisos, tipo.permiso) && pushDe(niveles, canales, clave));
+}
+
+/** Cómo le llega por correo este tipo; NUNCA sin permiso o con el correo apagado. */
+export function modoCorreoPara(
+  permisos: readonly string[],
+  canales: PreferenciasCanal,
+  ajustes: AjustesCorreo,
+  clave: string
+): ModoCorreo {
+  const tipo = POR_CLAVE.get(clave);
+  if (!ajustes.activo || !tipo || !tiene(permisos, tipo.permiso)) return "NUNCA";
+  return correoDe(canales, clave);
+}
+
+/**
+ * Lo que vale la pena guardar de push y correo: tipos que existen y que puede
+ * ver, y solo lo que difiere del defecto (el de push depende del nivel que
+ * quede guardado para la campanita).
+ */
+export function canalesParaGuardar(
+  permisos: readonly string[],
+  niveles: PreferenciasAviso,
+  canales: PreferenciasCanal
+): PreferenciasCanal {
+  const limpio: PreferenciasCanal = {};
+  for (const [clave, pref] of Object.entries(canales)) {
+    const tipo = POR_CLAVE.get(clave);
+    if (!tipo || !tiene(permisos, tipo.permiso) || !pref) continue;
+    const push =
+      typeof pref.push === "boolean" && pref.push !== (nivelDe(niveles, clave) === "AVISAR") ? pref.push : null;
+    const correo =
+      pref.correo && MODOS_CORREO.includes(pref.correo) && pref.correo !== (tipo.correo ?? "NUNCA") ? pref.correo : null;
+    if (push !== null || correo !== null) limpio[clave] = { push, correo };
+  }
+  return limpio;
+}
+
+/** Hora del resumen válida (0-23); lo que no lo sea vale la de por defecto. */
+export function horaResumenValida(hora: unknown): number {
+  const n = Number(hora);
+  return Number.isInteger(n) && n >= 0 && n <= 23 ? n : AJUSTES_CORREO_POR_DEFECTO.horaResumen;
 }
 
 /** Una notificación tal como la recibe la campanita. */

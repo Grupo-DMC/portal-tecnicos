@@ -4,6 +4,7 @@ import { TRAMO_MAXIMO, leerRango } from "@/lib/rango-http";
 import { cabecerasEvidencia, sinPermisoDeVer, mimeSeguro } from "@/lib/evidencia-http";
 import { getDuenosDeVideo, getVideoMeta, getVideoTramo } from "@/lib/data/videos";
 import { esEvidenciaDeEliminada } from "@/lib/data/visitas";
+import { enModoTecnico, esAdmin } from "@/lib/roles";
 
 // Sirve el video que el técnico grabó en terreno. Los bytes viven en
 // dmc.visita_video.contenido: no hay almacenamiento de archivos contratado.
@@ -26,7 +27,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const id = Number(idParam);
   if (!Number.isInteger(id) || id <= 0) return new NextResponse("No encontrado", { status: 404 });
 
-  if (sesion.usuario.rol === "TECNICO") {
+  if (enModoTecnico(sesion)) {
     const duenos = await getDuenosDeVideo(id);
     if (!sesion.tecnico || !duenos.includes(sesion.tecnico.id)) {
       return new NextResponse("No encontrado", { status: 404 });
@@ -34,7 +35,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   // La evidencia de una visita eliminada solo la ve el administrador.
-  if (sesion.usuario.rol !== "ADMIN" && (await esEvidenciaDeEliminada("video", id))) {
+  if (!esAdmin(sesion) && (await esEvidenciaDeEliminada("video", id))) {
     return new NextResponse("No encontrado", { status: 404 });
   }
 

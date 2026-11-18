@@ -8,7 +8,9 @@ import {
   paramIds,
   sql,
   subIds,
+  type Parametro,
   F_HORA,
+  F_TS,
   type Ejecutor,
 } from "@/lib/data/sql";
 import { decodificarImagen } from "@/lib/imagen";
@@ -20,6 +22,7 @@ import { CERRADA_POR_OTRO, textoActaEnCurso } from "@/lib/reserva";
 import type { EstadoVisita } from "@/lib/types";
 import type { ActaEntrada, ProblemaActa, ResultadoActa, SubtrabajoActa, TrabajoActa } from "@/lib/contratos/acta";
 import { CERRADA_POR, TOMADA_POR } from "@/lib/data/visitas-lectura";
+import { leerCorreos, type ActaEnviada, type CorreoConocido } from "@/lib/ui/correo";
 
 // Visitas: el acta. El envío al cliente, el cierre desde el celular y las
 // escrituras de sus partes, que también usan la edición del acta y las
@@ -27,56 +30,164 @@ import { CERRADA_POR, TOMADA_POR } from "@/lib/data/visitas-lectura";
 
 // ── Envío del acta ──────────────────────────────────────────────────────────
 
-export interface ActaEnviada {
-  para: string;
-  cc: string;
-  adjuntos: number;
-}
+export type { ActaEnviada };
+
+/** Un archivo adjunto del envío, tal como se anota en dmc.acta_envio_adjunto. */
+export type AdjuntoRegistrado =
+  | { tipo: "PDF_ACTA"; nombre: string }
+  | { tipo: "FOTO"; fotoId: number; nombre: string }
+  | { tipo: "VIDEO"; videoId: number; nombre: string };
 
 /**
- * Registra el envío del acta en dmc.acta_envio. Todavía no hay SMTP: la fila
- * queda ENCOLADO, que es justo el estado que el esquema define para eso.
+ * Anota el envío en dmc.acta_envio, ENCOLADO, con sus adjuntos, antes de
+ * llamar al proveedor: si el proceso se corta a mitad, queda constancia de que
+ * se intentó. Cada foto y video del zip queda como su propia fila, con el
+ * nombre que lleva dentro del zip. Devuelve el id del envío.
  */
-export async function registrarEnvioActa(input: {
-  folio: string;
+export async function crearEnvioActa(input: {
+  visitaId: number;
   para: string;
   cc: string;
+  cco: string;
   asunto: string;
   cuerpo: string;
-  adjuntos: number;
+  adjuntos: AdjuntoRegistrado[];
   usuarioId: number | null;
-}): Promise<boolean> {
-  const [visita] = await consultaCon<{ id: number }>(`SELECT id FROM dmc.visita WHERE folio = @folio AND activo = 1`, [
-    ["folio", sql.VarChar(16), input.folio],
-  ]);
-  if (!visita) return false;
-
-  await ejecutar(
-    `INSERT INTO dmc.acta_envio (visita_id, para, cc, asunto, cuerpo, enviado_por)
-     VALUES (@visita, @para, @cc, @asunto, @cuerpo, @usuario)`,
-    [
-      ["visita", sql.BigInt, num(visita.id)],
-      ["para", sql.NVarChar(600), input.para],
-      ["cc", sql.NVarChar(600), input.cc || null],
-      ["asunto", sql.NVarChar(240), input.asunto],
-      ["cuerpo", sql.NVarChar(sql.MAX), input.cuerpo],
-      ["usuario", sql.BigInt, input.usuarioId],
-    ]
-  );
-  return true;
+}): Promise<number> {
+  return enTransaccion(async (ej) => {
+    const [fila] = await ej.consulta<{ id: number }>(
+      `INSERT INTO dmc.acta_envio (visita_id, para, cc, cco, asunto, cuerpo, enviado_por)
+       OUTPUT INSERTED.id AS id
+       VALUES (@visita, @para, @cc, @cco, @asunto, @cuerpo, @usuario)`,
+      [
+        ["visita", sql.BigInt, input.visitaId],
+        ["para", sql.NVarChar(600), input.para],
+        ["cc", sql.NVarChar(600), input.cc || null],
+        ["cco", sql.NVarChar(600), input.cco || null],
+        ["asunto", sql.NVarChar(240), input.asunto],
+        ["cuerpo", sql.NVarChar(sql.MAX), input.cuerpo],
+        ["usuario", sql.BigInt, input.usuarioId],
+      ]
+    );
+    const envioId = num(fila.id);
+    for (const a of input.adjuntos) {
+      await ej.ejecutar(
+        `INSERT INTO dmc.acta_envio_adjunto (envio_id, tipo, visita_foto_id, visita_video_id, nombre_archivo)
+         VALUES (@envio, @tipo, @foto, @video, @nombre)`,
+        [
+          ["envio", sql.BigInt, envioId],
+          ["tipo", sql.VarChar(9), a.tipo],
+          ["foto", sql.BigInt, a.tipo === "FOTO" ? a.fotoId : null],
+          ["video", sql.BigInt, a.tipo === "VIDEO" ? a.videoId : null],
+          ["nombre", sql.NVarChar(160), a.nombre.slice(0, 160)],
+        ]
+      );
+    }
+    return envioId;
+  });
 }
 
+/** Deja el envío ENVIADO (con la hora en que salió) o en ERROR con el motivo. */
+export async function cerrarEnvioActa(envioId: number, resultado: { ok: true } | { ok: false; error: string }): Promise<void> {
+  await ejecutar(
+    `UPDATE dmc.acta_envio
+        SET estado = @estado,
+            enviado_en = CASE WHEN @estado = 'ENVIADO' THEN SYSDATETIME() ELSE enviado_en END,
+            error_detalle = @error
+      WHERE id = @id`,
+    [
+      ["id", sql.BigInt, envioId],
+      ["estado", sql.VarChar(10), resultado.ok ? "ENVIADO" : "ERROR"],
+      ["error", sql.NVarChar(sql.MAX), resultado.ok ? null : resultado.error],
+    ]
+  );
+}
+
+/** El último envío del acta, salga bien o mal: el panel muestra cómo quedó. */
 export async function getActaEnviada(folio: string): Promise<ActaEnviada | null> {
-  const [fila] = await consultaCon<{ para: string; cc: string | null; adjuntos: number }>(
-    `SELECT TOP 1 e.para, e.cc,
+  const [fila] = await consultaCon<{
+    para: string;
+    cc: string | null;
+    cco: string | null;
+    adjuntos: number;
+    estado: ActaEnviada["estado"];
+    en: string;
+    error_detalle: string | null;
+    enviado_por: string | null;
+  }>(
+    `SELECT TOP 1 e.para, e.cc, e.cco, e.estado, e.error_detalle, u.email AS enviado_por,
+            ${F_TS("COALESCE(e.enviado_en, e.creado_en)")} AS en,
             (SELECT COUNT(*) FROM dmc.acta_envio_adjunto a WHERE a.envio_id = e.id) AS adjuntos
        FROM dmc.acta_envio e
        JOIN dmc.visita v ON v.id = e.visita_id
+       LEFT JOIN dmc.usuario u ON u.id = e.enviado_por
       WHERE v.folio = @folio
       ORDER BY e.creado_en DESC, e.id DESC`,
     [["folio", sql.VarChar(16), folio]]
   );
-  return fila ? { para: fila.para, cc: fila.cc ?? "", adjuntos: num(fila.adjuntos) } : null;
+  return fila
+    ? {
+        para: fila.para,
+        cc: fila.cc ?? "",
+        cco: fila.cco ?? "",
+        adjuntos: num(fila.adjuntos),
+        estado: fila.estado,
+        en: fila.en,
+        error: fila.error_detalle,
+        enviadoPor: fila.enviado_por,
+      }
+    : null;
+}
+
+/**
+ * Los correos que ya se usaron con esta tienda o su cliente, para sugerirlos:
+ *   - quienes recibieron y firmaron en la tienda (dmc.persona_local y las actas);
+ *   - a quienes ya se les mandó un acta de la tienda y, después, del cliente.
+ * Los más recientes primero. El orden final y los repetidos los resuelve
+ * `sugerenciasDeCorreo`.
+ */
+export async function correosConocidos(sucursalId: number, clienteId: number): Promise<CorreoConocido[]> {
+  const params: Parametro[] = [
+    ["sucursal", sql.BigInt, sucursalId],
+    ["cliente", sql.BigInt, clienteId],
+  ];
+  const [personas, envios] = await Promise.all([
+    consultaCon<{ nombre: string; email: string; cargo: string | null }>(
+      `SELECT TOP 40 nombre, email, cargo FROM (
+         SELECT pl.nombre, pl.email, pl.cargo, pl.ultima_vez AS cuando
+           FROM dmc.persona_local pl
+          WHERE pl.sucursal_id = @sucursal AND pl.email IS NOT NULL
+         UNION ALL
+         SELECT ve.responsable_nombre, ve.responsable_email, ve.responsable_cargo, ve.hora_termino
+           FROM dmc.visita_ejecucion ve
+           JOIN dmc.visita v ON v.id = ve.visita_id
+          WHERE v.sucursal_id = @sucursal AND v.activo = 1 AND ve.responsable_email IS NOT NULL
+       ) t
+       ORDER BY cuando DESC`,
+      params
+    ),
+    consultaCon<{ para: string; cc: string | null; cco: string | null; misma: number }>(
+      `SELECT TOP 40 e.para, e.cc, e.cco, CASE WHEN v.sucursal_id = @sucursal THEN 1 ELSE 0 END AS misma
+         FROM dmc.acta_envio e
+         JOIN dmc.visita v ON v.id = e.visita_id
+        WHERE e.estado = 'ENVIADO' AND (v.sucursal_id = @sucursal OR v.cliente_id = @cliente)
+        ORDER BY misma DESC, e.creado_en DESC`,
+      params
+    ),
+  ]);
+
+  const lista: CorreoConocido[] = personas.map((p) => ({
+    nombre: p.nombre,
+    email: p.email,
+    detalle: p.cargo ? `${p.cargo} · firmó en la tienda` : "Firmó en la tienda",
+  }));
+  for (const e of envios) {
+    const detalle = num(e.misma) ? "Envío anterior · esta tienda" : "Envío anterior · cliente";
+    for (const email of leerCorreos([e.para, e.cc ?? "", e.cco ?? ""].join(",")).validos) {
+      lista.push({ nombre: null, email, detalle });
+    }
+  }
+  return lista;
 }
 
 // ── Cierre del acta desde el celular ────────────────────────────────────────
@@ -199,6 +310,7 @@ export async function guardarActa(
           SET responsable_nombre   = @nombre,
               responsable_rut      = @rut,
               responsable_telefono = @telefono,
+              responsable_email    = @email,
               motivo_real_codigo   = @motivo,
               observaciones        = @obs,
               comentario_interno   = @interno,
@@ -221,6 +333,7 @@ export async function guardarActa(
         ["nombre", sql.NVarChar(120), entrada.responsableNombre.trim()],
         ["rut", sql.VarChar(12), entrada.responsableRut || null],
         ["telefono", sql.VarChar(30), entrada.responsableTelefono || null],
+        ["email", sql.NVarChar(160), entrada.responsableEmail?.trim() || null],
         ["cargo", sql.NVarChar(80), cargo],
         ["motivo", sql.VarChar(40), principal],
         ["obs", sql.NVarChar(sql.MAX), entrada.observaciones || null],

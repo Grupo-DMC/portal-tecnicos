@@ -151,6 +151,7 @@ export function PantallaRevision({ fv }: { fv: FormularioVisitaApi }) {
     respNombre,
     respRut,
     respTel,
+    respEmail,
     respCargo,
     motivosCodigos,
     obs,
@@ -183,6 +184,7 @@ export function PantallaRevision({ fv }: { fv: FormularioVisitaApi }) {
     { k: "Rut", v: respRut || "Sin RUT" },
     ...(respCargo ? [{ k: "Cargo", v: respCargo }] : []),
     { k: "Teléfono de contacto", v: respTel || "—" },
+    ...(respEmail.trim() ? [{ k: "Correo", v: respEmail.trim() }] : []),
     { k: "Detalle del trabajo", v: obs || "Sin detalle escrito." },
   ];
 

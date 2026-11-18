@@ -8,6 +8,8 @@ import { logoutAction } from "@/app/actions/auth";
 import { Toast, useToast } from "@/components/ui/Toast";
 import { prepararSalida } from "@/lib/ui/salir";
 import { useUsuarioLocal } from "@/lib/ui/usuario-local";
+import { useModoSesion } from "@/lib/ui/modo-sesion";
+import CambiarPanel from "@/components/ui/CambiarPanel";
 
 const TABS = [
   { href: "/tecnico", label: "Inicio" },
@@ -34,6 +36,8 @@ export default function MobileShell({
   const uid = useUsuarioLocal();
   const [saliendo, setSaliendo] = useState(false);
   const mostrarTabs = !volverHref;
+  // Quien también tiene el panel de admin ve siempre en qué panel está y cómo volver.
+  const puedePanel = useModoSesion().modos.includes("panel");
   const flecha = volverHref ?? atrasHref;
 
   return (
@@ -86,6 +90,17 @@ export default function MobileShell({
                 </svg>
               </button>
             </div>
+            {puedePanel ? (
+              <div className="flex items-center gap-2 px-4 py-2 bg-[var(--color-accent-200)] border-t border-[var(--color-divider)]">
+                <span className="w-1.5 h-1.5 shrink-0 bg-[var(--color-accent)]" aria-hidden="true" />
+                <span className="text-cap font-extrabold text-[var(--color-accent-800)] min-w-0 truncate">
+                  Panel de técnico
+                </span>
+                <div className="ml-auto">
+                  <CambiarPanel desde="tecnico" destino="panel" variante="franja" />
+                </div>
+              </div>
+            ) : null}
           </div>
 
           {/* overflow-wrap:anywhere — un trabajo, subtrabajo u observación con

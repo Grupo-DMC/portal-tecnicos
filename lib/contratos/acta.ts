@@ -65,6 +65,8 @@ export interface ActaEntrada {
   responsableNombre: string;
   responsableRut: string | null;
   responsableTelefono: string | null;
+  /** Opcional (migración 041). Queda en la lista de personas de la tienda. */
+  responsableEmail?: string | null;
   /** Opcional: el cargo de quien firma. Queda en la lista de personas de la tienda. */
   responsableCargo?: string | null;
   /** Los motivos que el técnico confirmó en terreno. El primero es el principal. */
@@ -130,6 +132,8 @@ export interface EdicionActaEntrada {
   responsableNombre: string;
   responsableRut: string | null;
   responsableTelefono: string | null;
+  /** Sin definir (undefined) = no se toca el que tenía. */
+  responsableEmail?: string | null;
   /** El cargo del checklist. Sin definir (undefined) = no se toca el que tenía. */
   responsableCargo?: string | null;
   motivosCodigos: string[];

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSesion } from "@/lib/auth";
 import { cabecerasEvidencia, sinPermisoDeVer, mimeSeguro } from "@/lib/evidencia-http";
 import { esEvidenciaDeEliminada, getDuenosDeImagen, getFirmaBinaria } from "@/lib/data/visitas";
+import { enModoTecnico, esAdmin } from "@/lib/roles";
 
 // Sirve la firma capturada en el canvas del celular. Mismo criterio que la
 // foto: bytes en la base y acceso limitado a quien corresponde.
@@ -17,7 +18,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const id = Number(idParam);
   if (!Number.isInteger(id) || id <= 0) return new NextResponse("No encontrada", { status: 404 });
 
-  if (sesion.usuario.rol === "TECNICO") {
+  if (enModoTecnico(sesion)) {
     const duenos = await getDuenosDeImagen("firma", id);
     if (!sesion.tecnico || !duenos.includes(sesion.tecnico.id)) {
       return new NextResponse("No encontrada", { status: 404 });
@@ -25,7 +26,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   }
 
   // La evidencia de una visita eliminada solo la ve el administrador.
-  if (sesion.usuario.rol !== "ADMIN" && (await esEvidenciaDeEliminada("firma", id))) {
+  if (!esAdmin(sesion) && (await esEvidenciaDeEliminada("firma", id))) {
     return new NextResponse("No encontrada", { status: 404 });
   }
 

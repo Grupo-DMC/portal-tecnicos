@@ -1,3 +1,4 @@
+import { autoriaDeBaja } from "@/lib/ui/estado-activo";
 import { notFound } from "next/navigation";
 import SinAcceso from "@/components/admin/SinAcceso";
 import FichaVisitas from "@/components/admin/maestros/FichaVisitas";
@@ -10,7 +11,7 @@ import { getFilasFicha } from "@/lib/data/visitas-lista";
 import { sesionCon } from "@/lib/auth";
 import { hoyISO } from "@/lib/ui/fecha";
 import { enGarantia as cubre, garantiaDe } from "@/lib/ui/garantia";
-import { describirAlcance } from "@/lib/ui/contactos";
+import { cargosDeCliente, describirAlcance } from "@/lib/ui/contactos";
 
 export const dynamic = "force-dynamic";
 
@@ -46,21 +47,18 @@ export default async function ClienteFichaPage({ params }: { params: Promise<{ i
     marca: (i: number) => marcas.find((m) => m.id === i)?.nombre,
     sucursal: (i: number) => tiendas.find((s) => s.id === i)?.nombre,
   };
-  // Los cargos que caen en este cliente, en una de sus marcas o en una de sus tiendas.
+  // Los contactos del cliente: los de la empresa y los de sus marcas. Los de
+  // cada tienda viven en la ficha de la sucursal.
+  const idsMarcas = new Set(marcas.map((m) => m.id));
   const filasContactos = contactos.flatMap((ct) =>
-    ct.cargos
-      .filter((cg) => {
-        if (cg.alcanceTipo === "CLIENTE") return cg.alcanceId === c.id;
-        if (cg.alcanceTipo === "MARCA") return marcas.some((m) => m.id === cg.alcanceId);
-        if (cg.alcanceTipo === "SUCURSAL") return tiendas.some((s) => s.id === cg.alcanceId);
-        return false;
-      })
-      .map((cg) => ({
-        contactoId: ct.id,
-        cargo: cg.cargo,
-        origen: describirAlcance(cg, nombres),
-        heredado: cg.alcanceTipo !== "CLIENTE",
-      }))
+    cargosDeCliente(ct, c.id, idsMarcas).map((cg) => ({
+      contactoId: ct.id,
+      cargoId: cg.id,
+      cargo: cg.cargo,
+      origen: describirAlcance(cg, nombres),
+      heredado: cg.alcanceTipo !== "CLIENTE",
+      quitable: true,
+    }))
   );
 
   const datos: DatoFicha[] = [
@@ -72,6 +70,7 @@ export default async function ClienteFichaPage({ params }: { params: Promise<{ i
     { label: "En garantía", valor: enGarantia ? `${enGarantia} ${enGarantia === 1 ? "local" : "locales"}` : "" },
     { label: "Plan de calibración", valor: c.planCalibracion === true ? "En plan" : c.planCalibracion === false ? "Sin plan" : "" },
     { label: "Por qué está inactivo", valor: c.activo ? "" : (c.motivoInactivo ?? "") },
+    { label: "Quién lo desactivó", valor: c.baja ? autoriaDeBaja(c.baja) : "" },
   ].filter((d) => d.valor);
 
   return (
@@ -106,7 +105,8 @@ export default async function ClienteFichaPage({ params }: { params: Promise<{ i
             {verContactos ? (
               <ContactosSeccion
                 titulo="Contactos del cliente"
-                vacio="Este cliente no tiene contactos, ni en el cliente ni en sus marcas o sucursales."
+                nota="De la empresa y de sus marcas. Los de cada tienda están en la ficha de la sucursal."
+                vacio="Este cliente todavía no tiene contactos, ni de la empresa ni de sus marcas."
                 filas={filasContactos}
                 contactos={contactos}
                 cargoInicial={{ alcanceTipo: "CLIENTE", alcanceId: c.id, alcanceTexto: null }}

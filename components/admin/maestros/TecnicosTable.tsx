@@ -1,7 +1,7 @@
 "use client";
 
 import MaestroTable from "@/components/admin/MaestroTable";
-import Tag from "@/components/Tag";
+import EstadoActivo from "@/components/ui/EstadoActivo";
 import { guardarTecnicoAction } from "@/app/actions/maestros";
 import { mensajeRut, mensajeTel, rutLimpio } from "@/lib/ui/formato";
 import type { Tecnico } from "@/lib/types";
@@ -32,7 +32,7 @@ export default function TecnicosTable({
         {
           key: "activo",
           label: "Estado",
-          render: (t) => <Tag variant={t.activo ? "accent" : "neutral"}>{t.activo ? "Activo" : "Inactivo"}</Tag>,
+          render: (t) => <EstadoActivo activo={t.activo} baja={t.baja} motivo={t.motivoInactivo} />,
         },
       ]}
       fields={[
@@ -42,7 +42,7 @@ export default function TecnicosTable({
         { k: "apellidoMaterno", label: "Apellido materno" },
         { k: "email", label: "Correo", tipo: "email" },
         { k: "telefono", label: "Teléfono", tipo: "tel" },
-        { k: "activo", label: "Estado", span: 2, tipo: "toggle" },
+        { k: "activo", label: "Estado", span: 2, tipo: "toggle", desactiva: "el técnico" },
       ]}
       validar={(f, id) => {
         if (!String(f.nombres).trim() || !String(f.rut).trim() || !String(f.email).trim()) {
@@ -69,6 +69,7 @@ export default function TecnicosTable({
         email: t.email,
         telefono: t.telefono ?? "",
         activo: t.activo,
+        motivoInactivo: t.motivoInactivo ?? "",
       })}
       guardarAction={(id, f) =>
         guardarTecnicoAction(id, {
@@ -79,6 +80,7 @@ export default function TecnicosTable({
           email: String(f.email).trim().toLowerCase(),
           telefono: String(f.telefono).trim() || null,
           activo: f.activo !== false,
+          motivoInactivo: String(f.motivoInactivo ?? "").trim() || null,
         })
       }
       emptyRow={{
@@ -89,6 +91,7 @@ export default function TecnicosTable({
         email: "",
         telefono: "",
         activo: true,
+        motivoInactivo: "",
       }}
     />
   );

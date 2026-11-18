@@ -3,6 +3,7 @@ import { after } from "next/server";
 import { consultaCon, ejecutar, F_TS, num, sql } from "@/lib/data/sql";
 import { log } from "@/lib/log";
 import { enviarPush } from "@/lib/data/push";
+import { avisarPorCorreo } from "@/lib/data/correo-avisos";
 import {
   CONFIGURACION_POR_DEFECTO,
   NIVELES,
@@ -84,11 +85,13 @@ export async function registrarActividad(actor: ActorActividad | null, evento: E
         cuerpo: fila.detalle,
         enlace: fila.enlace,
       };
-      // Después de responder, para no hacer esperar a quien hizo el cambio.
+      // Después de responder, para no hacer esperar a quien hizo el cambio. El
+      // correo solo hace algo con AVISOS_CORREO_ACTIVO (lib/correo/avisos-config.ts).
+      const avisar = () => Promise.all([enviarPush(aviso), avisarPorCorreo(aviso)]);
       try {
-        after(() => enviarPush(aviso));
+        after(avisar);
       } catch {
-        void enviarPush(aviso);
+        void avisar();
       }
     }
   } catch (err) {

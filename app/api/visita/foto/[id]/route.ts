@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSesion } from "@/lib/auth";
 import { cabecerasEvidencia, sinPermisoDeVer, mimeSeguro } from "@/lib/evidencia-http";
 import { esEvidenciaDeEliminada, getDuenosDeImagen, getFotoBinaria } from "@/lib/data/visitas";
+import { enModoTecnico, esAdmin } from "@/lib/roles";
 
 // Sirve la foto que el técnico tomó en terreno. Los bytes viven en
 // dmc.visita_foto.contenido: no hay almacenamiento de archivos contratado.
@@ -20,7 +21,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const id = Number(idParam);
   if (!Number.isInteger(id) || id <= 0) return new NextResponse("No encontrada", { status: 404 });
 
-  if (sesion.usuario.rol === "TECNICO") {
+  if (enModoTecnico(sesion)) {
     const duenos = await getDuenosDeImagen("foto", id);
     if (!sesion.tecnico || !duenos.includes(sesion.tecnico.id)) {
       return new NextResponse("No encontrada", { status: 404 });
@@ -28,7 +29,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   }
 
   // La evidencia de una visita eliminada solo la ve el administrador.
-  if (sesion.usuario.rol !== "ADMIN" && (await esEvidenciaDeEliminada("foto", id))) {
+  if (!esAdmin(sesion) && (await esEvidenciaDeEliminada("foto", id))) {
     return new NextResponse("No encontrada", { status: 404 });
   }
 

@@ -10,7 +10,7 @@ import Dialogo, { type FormValores } from "@/components/admin/Dialogo";
 import { useSucursalForm } from "@/components/admin/maestros/useSucursalForm";
 import Confirmar, { type ConfirmarCfg } from "@/components/ui/Confirmar";
 import SelectBuscable from "@/components/ui/SelectBuscable";
-import Tag from "@/components/Tag";
+import EstadoActivo from "@/components/ui/EstadoActivo";
 import { Toast, useToast } from "@/components/ui/Toast";
 import { guardarMallAction, guardarTiendasMallAction } from "@/app/actions/maestros";
 import { conMismaDireccion } from "@/lib/ui/direcciones";
@@ -112,7 +112,7 @@ export default function MallsTable({
           {
             key: "activo",
             label: "Estado",
-            render: (m) => <Tag variant={m.activo ? "accent" : "neutral"}>{m.activo ? "Activo" : "Inactivo"}</Tag>,
+            render: (m) => <EstadoActivo activo={m.activo} baja={m.baja} motivo={m.motivoInactivo} />,
           },
         ]}
         fields={[
@@ -120,7 +120,7 @@ export default function MallsTable({
           { k: "direccion", label: "Dirección", span: 2, ph: "Av. Vicuña Mackenna 7110" },
           { k: "comuna", label: "Comuna", ph: "La Florida" },
           { k: "region", label: "Región", tipo: "select", opciones: REGIONES.map((r) => ({ v: r, t: r })) },
-          { k: "activo", label: "Estado", tipo: "toggle", span: 2 },
+          { k: "activo", label: "Estado", tipo: "toggle", span: 2, desactiva: "el mall" },
         ]}
         validar={(f) =>
           String(f.nombre).trim() && String(f.direccion).trim() && String(f.comuna).trim()
@@ -140,6 +140,7 @@ export default function MallsTable({
           // Los malls de antes de la migración 012 no tienen región: el select parte en la primera.
           region: m.region || REGIONES[0],
           activo: m.activo,
+          motivoInactivo: m.motivoInactivo ?? "",
         })}
         guardarAction={(id, f) =>
           guardarMallAction(id, {
@@ -148,9 +149,10 @@ export default function MallsTable({
             comuna: String(f.comuna).trim(),
             region: String(f.region),
             activo: f.activo !== false,
+            motivoInactivo: String(f.motivoInactivo ?? "").trim() || null,
           })
         }
-        emptyRow={{ nombre: "", direccion: "", comuna: "", region: REGIONES[0], activo: true }}
+        emptyRow={{ nombre: "", direccion: "", comuna: "", region: REGIONES[0], activo: true, motivoInactivo: "" }}
         accionFila={(m) => (
           <>
             <Link
@@ -473,7 +475,7 @@ function TiendasDialogo({
           nota={`Se agrega a ${mall.nombre}. Es el mismo formulario de Maestros › Sucursales: con el mall elegido toma su dirección y se llama «Cliente · Marca · Mall».`}
           campos={sf.fields.filter((f) => !f.visible || f.visible(nuevo))}
           form={nuevo}
-          onCampo={(k, v) => setNuevo({ ...nuevo, [k]: v, ...sf.alCambiar(k, v, nuevo, null) })}
+          onCampo={(k, v) => setNuevo((n) => (n ? { ...n, [k]: v, ...sf.alCambiar(k, v, n, null) } : n))}
           onCerrar={() => setNuevo(null)}
           onGuardar={() => crearLocal()}
           guardando={guardandoNuevo}

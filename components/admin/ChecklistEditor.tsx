@@ -6,6 +6,8 @@ import { Toast } from "@/components/ui/Toast";
 import { Introduccion, ListasSimples, PieGuardar, PlantillaPropia } from "@/components/admin/checklist/listas-simples";
 import { ListaMotivos, ListaTiposProblema, ListaTrabajos } from "@/components/admin/checklist/listas";
 import { useChecklistEditor } from "@/components/admin/checklist/useChecklistEditor";
+import { SeccionesObligatoriasActa } from "@/components/admin/checklist/secciones-acta";
+import type { SeccionesObligatorias } from "@/lib/contratos/secciones-acta";
 
 /**
  * Editor de las listas del checklist.
@@ -21,9 +23,12 @@ import { useChecklistEditor } from "@/components/admin/checklist/useChecklistEdi
  *
  * El estado vive en useChecklistEditor; cada lista está en components/admin/checklist.
  */
-export default function ChecklistEditor(props: Parameters<typeof useChecklistEditor>[0]) {
+export default function ChecklistEditor({
+  seccionesActaIniciales,
+  ...props
+}: Parameters<typeof useChecklistEditor>[0] & { seccionesActaIniciales: SeccionesObligatorias }) {
   const fv = useChecklistEditor(props);
-  const { toast, confirmar, setConfirmar, guardando, soloLectura, sucio, pedirGuardar } = fv;
+  const { toast, aviso, confirmar, setConfirmar, guardando, soloLectura, sucio, pedirGuardar } = fv;
   return (
     <>
       <AdminHeader title="Checklist">
@@ -39,6 +44,7 @@ export default function ChecklistEditor(props: Parameters<typeof useChecklistEdi
 
       <div className="px-4 md:px-7 pt-6 pb-12 animate-fade-in max-w-[1000px]">
         <Introduccion fv={fv} />
+        <SeccionesObligatoriasActa iniciales={seccionesActaIniciales} soloLectura={soloLectura} aviso={aviso} />
         <ListaMotivos fv={fv} />
         <ListaTiposProblema fv={fv} />
         <ListaTrabajos fv={fv} />

@@ -3,10 +3,31 @@ import { consulta, consultaCon, ejecutar, enTransaccion, num, numONull, paramIds
 import { hashearPassword } from "@/lib/password";
 import { leerCuenta, leerRol, permisosDelPanel, type Cuenta } from "@/lib/data/roles";
 import { fmtRut, rutLimpio } from "@/lib/ui/formato";
+import { motivoParaGuardar } from "@/lib/ui/estado-activo";
+import {
+  anotarCambioDeEstado,
+  bajaDeFila,
+  columnasDeBaja,
+  estadoActual,
+  type ActorEstado,
+} from "@/lib/data/estado-activo";
 import type { Cliente, Mall, Marca, RolUsuario, Sucursal, Tecnico, Usuario } from "@/lib/types";
+import { mismosRoles, ordenarRoles, problemaDeRoles, tieneRolTecnico } from "@/lib/roles";
 
 // Maestros: dmc.cliente, dmc.mall, dmc.sucursal, dmc.tecnico y dmc.usuario.
 // Lectura para las tablas del panel y escritura para sus diálogos de alta/edición.
+//
+// Desactivar exige un motivo (migración 039): lo valida la acción y lo vuelve a
+// exigir la base con un CHECK. Cada cambio de estado se anota en
+// dmc.cambio_estado en la misma transacción que el guardado.
+
+/** Las columnas de la baja que traen las filas leídas con `columnasDeBaja`. */
+interface ConBaja {
+  activo: boolean;
+  motivo_inactivo: string | null;
+  baja_por: string | null;
+  baja_en: string | null;
+}
 
 /** El RUT no distingue de quién es: una empresa o una persona, pero uno solo. */
 export class RutRepetido extends Error {
@@ -105,13 +126,11 @@ export async function sincronizarNombresDeSucursales(): Promise<void> {
 /** Un bit que admite «no se sabe»: null sigue siendo null. */
 const bitONull = (v: boolean | number | null | undefined) => (v === null || v === undefined ? null : Boolean(v));
 
-interface FilaCliente {
+interface FilaCliente extends ConBaja {
   id: number;
   rut: string;
   razon_social: string;
   nombre_fantasia: string;
-  activo: boolean;
-  motivo_inactivo: string | null;
   notas: string | null;
   plan_calibracion: boolean | null;
   garantia_meses: number | null;
@@ -119,9 +138,12 @@ interface FilaCliente {
 
 /** Todos los clientes, o solo los de `ids`. */
 export async function listarClientes(filtro: { ids?: number[] } = {}): Promise<Cliente[]> {
+  const baja = columnasDeBaja("cliente", "c");
   const filas = await consultaCon<FilaCliente>(
-    `SELECT id, rut, razon_social, nombre_fantasia, activo, motivo_inactivo, notas, plan_calibracion, garantia_meses
-       FROM dmc.cliente
+    `SELECT id, rut, razon_social, nombre_fantasia, activo, motivo_inactivo, notas, plan_calibracion, garantia_meses,
+            ${baja.columnas}
+       FROM dmc.cliente c
+       ${baja.apply}
       ${filtro.ids ? `WHERE id IN ${subIds("ids")}` : ""}
       ORDER BY nombre_fantasia`,
     filtro.ids ? [paramIds("ids", filtro.ids)] : []
@@ -133,6 +155,7 @@ export async function listarClientes(filtro: { ids?: number[] } = {}): Promise<C
     nombreFantasia: f.nombre_fantasia,
     activo: Boolean(f.activo),
     motivoInactivo: f.motivo_inactivo,
+    baja: bajaDeFila(f),
     notas: f.notas,
     planCalibracion: bitONull(f.plan_calibracion),
     garantiaMeses: numONull(f.garantia_meses),
@@ -158,106 +181,140 @@ export interface DatosCliente {
   garantiaMeses: number | null;
 }
 
-export async function guardarCliente(id: number | null, d: DatosCliente): Promise<number> {
+export async function guardarCliente(id: number | null, d: DatosCliente, actor: ActorEstado | null = null): Promise<number> {
   const rut = fmtRut(d.rut);
   if (await rutTomado("cliente", rut, id)) throw new RutRepetido("cliente", rut);
 
+  const motivo = motivoParaGuardar(d.activo, d.motivoInactivo);
   const params: Parametros = [
     ["rut", sql.VarChar(12), rut],
     ["razon", sql.NVarChar(160), d.razonSocial],
     ["fantasia", sql.NVarChar(80), d.nombreFantasia],
     ["activo", sql.Bit, d.activo],
     // El motivo es del estado inactivo: al reactivar se borra.
-    ["motivo", sql.NVarChar(400), d.activo ? null : d.motivoInactivo?.trim() || null],
+    ["motivo", sql.NVarChar(400), motivo],
     ["notas", sql.NVarChar(sql.MAX), d.notas?.trim() || null],
     ["plan", sql.Bit, d.planCalibracion],
     ["garantia", sql.SmallInt, d.garantiaMeses],
   ];
-  if (id === null) {
-    const [fila] = await consultaCon<{ id: number }>(
-      `INSERT INTO dmc.cliente (rut, razon_social, nombre_fantasia, activo, motivo_inactivo, notas, plan_calibracion, garantia_meses)
-       OUTPUT INSERTED.id AS id
-       VALUES (@rut, @razon, @fantasia, @activo, @motivo, @notas, @plan, @garantia)`,
-      params
-    );
-    return num(fila.id);
-  }
-  await ejecutar(
-    `UPDATE dmc.cliente
-        SET rut = @rut, razon_social = @razon, nombre_fantasia = @fantasia, activo = @activo,
-            motivo_inactivo = @motivo, notas = @notas, plan_calibracion = @plan, garantia_meses = @garantia
-      WHERE id = @id`,
-    [...params, ["id", sql.BigInt, id]]
-  );
+  const guardado = await enTransaccion(async (ej) => {
+    const antes = id === null ? null : await estadoActual(ej, "cliente", id);
+    let filaId: number;
+    if (id === null) {
+      const [fila] = await ej.consulta<{ id: number }>(
+        `INSERT INTO dmc.cliente (rut, razon_social, nombre_fantasia, activo, motivo_inactivo, notas, plan_calibracion, garantia_meses)
+         OUTPUT INSERTED.id AS id
+         VALUES (@rut, @razon, @fantasia, @activo, @motivo, @notas, @plan, @garantia)`,
+        params
+      );
+      filaId = num(fila.id);
+    } else {
+      await ej.ejecutar(
+        `UPDATE dmc.cliente
+            SET rut = @rut, razon_social = @razon, nombre_fantasia = @fantasia, activo = @activo,
+                motivo_inactivo = @motivo, notas = @notas, plan_calibracion = @plan, garantia_meses = @garantia
+          WHERE id = @id`,
+        [...params, ["id", sql.BigInt, id]]
+      );
+      filaId = id;
+    }
+    await anotarCambioDeEstado(ej, { entidad: "cliente", id: filaId, antes, despues: d.activo, motivo, actor });
+    return filaId;
+  });
   // El nombre del cliente es parte del de sus sucursales en mall.
-  await sincronizarNombresDeSucursales();
-  return id;
+  if (id !== null) await sincronizarNombresDeSucursales();
+  return guardado;
 }
 
 // ── Marcas ──────────────────────────────────────────────────────────────────
 
-interface FilaMarca {
+interface FilaMarca extends ConBaja {
   id: number;
   cliente_id: number;
   nombre: string;
-  activo: boolean;
 }
 
 /** Todas las marcas, o solo las de un cliente. */
 export async function listarMarcas(filtro: { clienteId?: number } = {}): Promise<Marca[]> {
+  const baja = columnasDeBaja("marca", "m");
   const filas = await consultaCon<FilaMarca>(
-    `SELECT id, cliente_id, nombre, activo FROM dmc.marca
+    `SELECT id, cliente_id, nombre, activo, motivo_inactivo, ${baja.columnas}
+       FROM dmc.marca m
+       ${baja.apply}
       ${filtro.clienteId !== undefined ? "WHERE cliente_id = @cliente" : ""}
       ORDER BY nombre`,
     filtro.clienteId !== undefined ? [["cliente", sql.BigInt, filtro.clienteId]] : []
   );
-  return filas.map((f) => ({ id: num(f.id), clienteId: num(f.cliente_id), nombre: f.nombre, activo: Boolean(f.activo) }));
+  return filas.map((f) => ({
+    id: num(f.id),
+    clienteId: num(f.cliente_id),
+    nombre: f.nombre,
+    activo: Boolean(f.activo),
+    motivoInactivo: f.motivo_inactivo,
+    baja: bajaDeFila(f),
+  }));
 }
 
 export interface DatosMarca {
   clienteId: number;
   nombre: string;
   activo: boolean;
+  /** Obligatorio cuando `activo` es false. */
+  motivoInactivo?: string | null;
 }
 
-export async function guardarMarca(id: number | null, d: DatosMarca): Promise<number> {
+export async function guardarMarca(id: number | null, d: DatosMarca, actor: ActorEstado | null = null): Promise<number> {
+  const motivo = motivoParaGuardar(d.activo, d.motivoInactivo);
   const params: Parametros = [
     ["cliente", sql.BigInt, d.clienteId],
     ["nombre", sql.NVarChar(80), d.nombre],
     ["activo", sql.Bit, d.activo],
+    ["motivo", sql.NVarChar(400), motivo],
   ];
-  if (id === null) {
-    const [fila] = await consultaCon<{ id: number }>(
-      `INSERT INTO dmc.marca (cliente_id, nombre, activo) OUTPUT INSERTED.id AS id VALUES (@cliente, @nombre, @activo)`,
-      params
-    );
-    return num(fila.id);
-  }
-  // El cliente de una marca no cambia: sus sucursales ya cuelgan de él (fk_sucursal_marca).
-  await ejecutar(`UPDATE dmc.marca SET nombre = @nombre, activo = @activo WHERE id = @id AND cliente_id = @cliente`, [
-    ...params,
-    ["id", sql.BigInt, id],
-  ]);
+  const guardado = await enTransaccion(async (ej) => {
+    const antes = id === null ? null : await estadoActual(ej, "marca", id);
+    let filaId: number;
+    if (id === null) {
+      const [fila] = await ej.consulta<{ id: number }>(
+        `INSERT INTO dmc.marca (cliente_id, nombre, activo, motivo_inactivo)
+         OUTPUT INSERTED.id AS id VALUES (@cliente, @nombre, @activo, @motivo)`,
+        params
+      );
+      filaId = num(fila.id);
+    } else {
+      // El cliente de una marca no cambia: sus sucursales ya cuelgan de él (fk_sucursal_marca).
+      await ej.ejecutar(
+        `UPDATE dmc.marca SET nombre = @nombre, activo = @activo, motivo_inactivo = @motivo
+          WHERE id = @id AND cliente_id = @cliente`,
+        [...params, ["id", sql.BigInt, id]]
+      );
+      filaId = id;
+    }
+    await anotarCambioDeEstado(ej, { entidad: "marca", id: filaId, antes, despues: d.activo, motivo, actor });
+    return filaId;
+  });
   // El nombre de la marca es parte del de sus sucursales en mall.
-  await sincronizarNombresDeSucursales();
-  return id;
+  if (id !== null) await sincronizarNombresDeSucursales();
+  return guardado;
 }
 
 // ── Malls ───────────────────────────────────────────────────────────────────
 
-interface FilaMall {
+interface FilaMall extends ConBaja {
   id: number;
   nombre: string;
   direccion: string;
   comuna: string | null;
   region: string | null;
-  activo: boolean;
 }
 
 /** Todos los malls, o solo los de `ids`. */
 export async function listarMalls(filtro: { ids?: number[] } = {}): Promise<Mall[]> {
+  const baja = columnasDeBaja("mall", "ml");
   const filas = await consultaCon<FilaMall>(
-    `SELECT id, nombre, direccion, comuna, region, activo FROM dmc.mall
+    `SELECT id, nombre, direccion, comuna, region, activo, motivo_inactivo, ${baja.columnas}
+       FROM dmc.mall ml
+       ${baja.apply}
       ${filtro.ids ? `WHERE id IN ${subIds("ids")}` : ""}
       ORDER BY nombre`,
     filtro.ids ? [paramIds("ids", filtro.ids)] : []
@@ -269,6 +326,8 @@ export async function listarMalls(filtro: { ids?: number[] } = {}): Promise<Mall
     comuna: f.comuna ?? "",
     region: f.region ?? "",
     activo: Boolean(f.activo),
+    motivoInactivo: f.motivo_inactivo,
+    baja: bajaDeFila(f),
   }));
 }
 
@@ -283,34 +342,47 @@ export interface DatosMall {
   comuna: string;
   region: string;
   activo: boolean;
+  /** Obligatorio cuando `activo` es false. */
+  motivoInactivo?: string | null;
 }
 
-export async function guardarMall(id: number | null, d: DatosMall): Promise<number> {
+export async function guardarMall(id: number | null, d: DatosMall, actor: ActorEstado | null = null): Promise<number> {
+  const motivo = motivoParaGuardar(d.activo, d.motivoInactivo);
   const params: Parametros = [
     ["nombre", sql.NVarChar(120), d.nombre],
     ["direccion", sql.NVarChar(180), d.direccion],
     ["comuna", sql.NVarChar(80), d.comuna],
     ["region", sql.NVarChar(80), d.region],
     ["activo", sql.Bit, d.activo],
+    ["motivo", sql.NVarChar(400), motivo],
   ];
-  if (id === null) {
-    const [fila] = await consultaCon<{ id: number }>(
-      `INSERT INTO dmc.mall (nombre, direccion, comuna, region, activo)
-       OUTPUT INSERTED.id AS id
-       VALUES (@nombre, @direccion, @comuna, @region, @activo)`,
-      params
-    );
-    return num(fila.id);
-  }
-  await ejecutar(
-    `UPDATE dmc.mall
-        SET nombre = @nombre, direccion = @direccion, comuna = @comuna, region = @region, activo = @activo
-      WHERE id = @id`,
-    [...params, ["id", sql.BigInt, id]]
-  );
+  const guardado = await enTransaccion(async (ej) => {
+    const antes = id === null ? null : await estadoActual(ej, "mall", id);
+    let filaId: number;
+    if (id === null) {
+      const [fila] = await ej.consulta<{ id: number }>(
+        `INSERT INTO dmc.mall (nombre, direccion, comuna, region, activo, motivo_inactivo)
+         OUTPUT INSERTED.id AS id
+         VALUES (@nombre, @direccion, @comuna, @region, @activo, @motivo)`,
+        params
+      );
+      filaId = num(fila.id);
+    } else {
+      await ej.ejecutar(
+        `UPDATE dmc.mall
+            SET nombre = @nombre, direccion = @direccion, comuna = @comuna, region = @region, activo = @activo,
+                motivo_inactivo = @motivo
+          WHERE id = @id`,
+        [...params, ["id", sql.BigInt, id]]
+      );
+      filaId = id;
+    }
+    await anotarCambioDeEstado(ej, { entidad: "mall", id: filaId, antes, despues: d.activo, motivo, actor });
+    return filaId;
+  });
   // El nombre del mall es parte del de sus tiendas.
-  await sincronizarNombresDeSucursales();
-  return id;
+  if (id !== null) await sincronizarNombresDeSucursales();
+  return guardado;
 }
 
 /** Una sucursal está en un solo mall: no se saca de uno por agregarla a otro. */
@@ -357,7 +429,7 @@ export async function ponerTiendasDeMall(mallId: number, sucursalIds: number[]):
 
 // ── Sucursales ──────────────────────────────────────────────────────────────
 
-interface FilaSucursal {
+interface FilaSucursal extends ConBaja {
   id: number;
   cliente_id: number;
   marca_id: number;
@@ -368,8 +440,6 @@ interface FilaSucursal {
   comuna: string;
   region: string;
   telefono: string | null;
-  activo: boolean;
-  motivo_inactivo: string | null;
   notas: string | null;
   fecha_instalacion: string | null;
   remota: boolean | null;
@@ -395,11 +465,13 @@ export async function listarSucursales(
     donde.push("mall_id = @mall");
     params.push(["mall", sql.BigInt, filtro.mallId]);
   }
+  const baja = columnasDeBaja("sucursal", "s");
   const filas = await consultaCon<FilaSucursal>(
     `SELECT id, cliente_id, marca_id, mall_id, nombre, codigo, direccion, comuna, region, telefono, activo,
             motivo_inactivo, notas, ${F_FECHA("fecha_instalacion")} AS fecha_instalacion, remota, garantia_meses,
-            plan_calibracion
-       FROM dmc.sucursal
+            plan_calibracion, ${baja.columnas}
+       FROM dmc.sucursal s
+       ${baja.apply}
       ${donde.length ? `WHERE ${donde.join(" AND ")}` : ""}
       ORDER BY nombre`,
     params
@@ -417,6 +489,7 @@ export async function listarSucursales(
     telefono: f.telefono,
     activo: Boolean(f.activo),
     motivoInactivo: f.motivo_inactivo,
+    baja: bajaDeFila(f),
     notas: f.notas,
     fechaInstalacion: f.fecha_instalacion,
     remota: bitONull(f.remota),
@@ -459,7 +532,8 @@ export interface DatosSucursal {
   planCalibracion: boolean | null;
 }
 
-export async function guardarSucursal(id: number | null, d: DatosSucursal): Promise<number> {
+export async function guardarSucursal(id: number | null, d: DatosSucursal, actor: ActorEstado | null = null): Promise<number> {
+  const motivo = motivoParaGuardar(d.activo, d.motivoInactivo);
   const params: Parametros = [
     ["cliente", sql.BigInt, d.clienteId],
     ["marca", sql.BigInt, d.marcaId],
@@ -472,37 +546,44 @@ export async function guardarSucursal(id: number | null, d: DatosSucursal): Prom
     ["telefono", sql.VarChar(30), d.telefono],
     ["activo", sql.Bit, d.activo],
     // El motivo es del estado inactivo: al reactivar se borra.
-    ["motivo", sql.NVarChar(400), d.activo ? null : d.motivoInactivo?.trim() || null],
+    ["motivo", sql.NVarChar(400), motivo],
     ["notas", sql.NVarChar(sql.MAX), d.notas?.trim() || null],
     ["instalacion", sql.Date, d.fechaInstalacion || null],
     ["remota", sql.Bit, d.remota],
     ["garantia", sql.SmallInt, d.garantiaMeses],
     ["plan", sql.Bit, d.planCalibracion],
   ];
-  if (id === null) {
-    const [fila] = await consultaCon<{ id: number }>(
-      `INSERT INTO dmc.sucursal (cliente_id, marca_id, mall_id, nombre, codigo, direccion, comuna, region, telefono, activo,
-                                 motivo_inactivo, notas, fecha_instalacion, remota, garantia_meses, plan_calibracion)
-       OUTPUT INSERTED.id AS id
-       VALUES (@cliente, @marca, @mall, @nombre, @codigo, @direccion, @comuna, @region, @telefono, @activo, @motivo, @notas,
-               @instalacion, @remota, @garantia, @plan)`,
-      params
-    );
-    await sincronizarNombresDeSucursales();
-    return num(fila.id);
-  }
-  await ejecutar(
-    `UPDATE dmc.sucursal
-        SET cliente_id = @cliente, marca_id = @marca, mall_id = @mall, nombre = @nombre, codigo = @codigo, direccion = @direccion,
-            comuna = @comuna, region = @region, telefono = @telefono, activo = @activo,
-            motivo_inactivo = @motivo, notas = @notas, fecha_instalacion = @instalacion, remota = @remota,
-            garantia_meses = @garantia, plan_calibracion = @plan
-      WHERE id = @id`,
-    [...params, ["id", sql.BigInt, id]]
-  );
+  const guardado = await enTransaccion(async (ej) => {
+    const antes = id === null ? null : await estadoActual(ej, "sucursal", id);
+    let filaId: number;
+    if (id === null) {
+      const [fila] = await ej.consulta<{ id: number }>(
+        `INSERT INTO dmc.sucursal (cliente_id, marca_id, mall_id, nombre, codigo, direccion, comuna, region, telefono, activo,
+                                   motivo_inactivo, notas, fecha_instalacion, remota, garantia_meses, plan_calibracion)
+         OUTPUT INSERTED.id AS id
+         VALUES (@cliente, @marca, @mall, @nombre, @codigo, @direccion, @comuna, @region, @telefono, @activo, @motivo, @notas,
+                 @instalacion, @remota, @garantia, @plan)`,
+        params
+      );
+      filaId = num(fila.id);
+    } else {
+      await ej.ejecutar(
+        `UPDATE dmc.sucursal
+            SET cliente_id = @cliente, marca_id = @marca, mall_id = @mall, nombre = @nombre, codigo = @codigo, direccion = @direccion,
+                comuna = @comuna, region = @region, telefono = @telefono, activo = @activo,
+                motivo_inactivo = @motivo, notas = @notas, fecha_instalacion = @instalacion, remota = @remota,
+                garantia_meses = @garantia, plan_calibracion = @plan
+          WHERE id = @id`,
+        [...params, ["id", sql.BigInt, id]]
+      );
+      filaId = id;
+    }
+    await anotarCambioDeEstado(ej, { entidad: "sucursal", id: filaId, antes, despues: d.activo, motivo, actor });
+    return filaId;
+  });
   // Otra marca o mall cambia el nombre «Cliente · Marca · Mall».
   await sincronizarNombresDeSucursales();
-  return id;
+  return guardado;
 }
 
 /** Una sucursal nueva dentro de un alta masiva. */
@@ -558,6 +639,10 @@ interface FilaTecnico {
   email: string;
   telefono: string | null;
   activo: boolean;
+  /** Solo los trae listarTecnicos: quien lee un técnico suelto no los necesita. */
+  motivo_inactivo?: string | null;
+  baja_por?: string | null;
+  baja_en?: string | null;
 }
 
 export function mapearTecnico(f: FilaTecnico): Tecnico {
@@ -571,13 +656,24 @@ export function mapearTecnico(f: FilaTecnico): Tecnico {
     email: f.email,
     telefono: f.telefono,
     activo: Boolean(f.activo),
+    motivoInactivo: f.motivo_inactivo ?? null,
+    baja: bajaDeFila({
+      activo: f.activo,
+      motivo_inactivo: f.motivo_inactivo ?? null,
+      baja_por: f.baja_por ?? null,
+      baja_en: f.baja_en ?? null,
+    }),
   };
 }
 
 export async function listarTecnicos(): Promise<Tecnico[]> {
+  const baja = columnasDeBaja("tecnico", "t");
   const filas = await consulta<FilaTecnico>(
-    `SELECT id, rut, nombres, apellido_paterno, apellido_materno, nombre_completo, email, telefono, activo
-       FROM dmc.tecnico ORDER BY nombre_completo`
+    `SELECT id, rut, nombres, apellido_paterno, apellido_materno, nombre_completo, email, telefono, activo,
+            motivo_inactivo, ${baja.columnas}
+       FROM dmc.tecnico t
+       ${baja.apply}
+      ORDER BY nombre_completo`
   );
   return filas.map(mapearTecnico);
 }
@@ -590,12 +686,15 @@ export interface DatosTecnico {
   email: string;
   telefono: string | null;
   activo: boolean;
+  /** Obligatorio cuando `activo` es false. */
+  motivoInactivo?: string | null;
 }
 
-export async function guardarTecnico(id: number | null, d: DatosTecnico): Promise<number> {
+export async function guardarTecnico(id: number | null, d: DatosTecnico, actor: ActorEstado | null = null): Promise<number> {
   const rut = fmtRut(d.rut);
   if (await rutTomado("tecnico", rut, id)) throw new RutRepetido("tecnico", rut);
 
+  const motivo = motivoParaGuardar(d.activo, d.motivoInactivo);
   // nombre_completo es una columna calculada: no se inserta ni se actualiza.
   const params: Parametros = [
     ["rut", sql.VarChar(12), rut],
@@ -605,61 +704,79 @@ export async function guardarTecnico(id: number | null, d: DatosTecnico): Promis
     ["email", sql.NVarChar(160), d.email],
     ["telefono", sql.VarChar(30), d.telefono],
     ["activo", sql.Bit, d.activo],
+    ["motivo", sql.NVarChar(400), motivo],
   ];
-  if (id === null) {
-    const [fila] = await consultaCon<{ id: number }>(
-      `INSERT INTO dmc.tecnico (rut, nombres, apellido_paterno, apellido_materno, email, telefono, activo)
-       OUTPUT INSERTED.id AS id
-       VALUES (@rut, @nombres, @paterno, @materno, @email, @telefono, @activo)`,
-      params
-    );
-    return num(fila.id);
-  }
-  await ejecutar(
-    `UPDATE dmc.tecnico
-        SET rut = @rut, nombres = @nombres, apellido_paterno = @paterno, apellido_materno = @materno,
-            email = @email, telefono = @telefono, activo = @activo
-      WHERE id = @id`,
-    [...params, ["id", sql.BigInt, id]]
-  );
-  return id;
+  return enTransaccion(async (ej) => {
+    const antes = id === null ? null : await estadoActual(ej, "tecnico", id);
+    let filaId: number;
+    if (id === null) {
+      const [fila] = await ej.consulta<{ id: number }>(
+        `INSERT INTO dmc.tecnico (rut, nombres, apellido_paterno, apellido_materno, email, telefono, activo, motivo_inactivo)
+         OUTPUT INSERTED.id AS id
+         VALUES (@rut, @nombres, @paterno, @materno, @email, @telefono, @activo, @motivo)`,
+        params
+      );
+      filaId = num(fila.id);
+    } else {
+      await ej.ejecutar(
+        `UPDATE dmc.tecnico
+            SET rut = @rut, nombres = @nombres, apellido_paterno = @paterno, apellido_materno = @materno,
+                email = @email, telefono = @telefono, activo = @activo, motivo_inactivo = @motivo
+          WHERE id = @id`,
+        [...params, ["id", sql.BigInt, id]]
+      );
+      filaId = id;
+    }
+    await anotarCambioDeEstado(ej, { entidad: "tecnico", id: filaId, antes, despues: d.activo, motivo, actor });
+    return filaId;
+  });
 }
 
 // ── Usuarios ────────────────────────────────────────────────────────────────
 
-interface FilaUsuarioLista {
+interface FilaUsuarioLista extends ConBaja {
   id: number;
   email: string;
-  rol: RolUsuario;
+  roles: string | null;
   rol_id: number | null;
   tecnico_id: number | null;
-  activo: boolean;
   ultimo_acceso_en: string | null;
 }
 
 export async function listarUsuarios(): Promise<Usuario[]> {
+  const baja = columnasDeBaja("usuario", "u");
   const filas = await consulta<FilaUsuarioLista>(
-    `SELECT id, email, rol, rol_id, tecnico_id, activo, ${F_TS("ultimo_acceso_en")} AS ultimo_acceso_en
-       FROM dmc.usuario ORDER BY email`
+    `SELECT id, email, rol_id, tecnico_id, activo, motivo_inactivo, ${F_TS("ultimo_acceso_en")} AS ultimo_acceso_en,
+            (SELECT STRING_AGG(r.rol, ',') FROM dmc.usuario_rol r WHERE r.usuario_id = u.id) AS roles,
+            ${baja.columnas}
+       FROM dmc.usuario u
+       ${baja.apply}
+      ORDER BY email`
   );
   return filas.map((f) => ({
     id: num(f.id),
     email: f.email,
-    rol: f.rol,
+    roles: ordenarRoles((f.roles ?? "").split(",")),
     rolId: numONull(f.rol_id),
     tecnicoId: numONull(f.tecnico_id),
     activo: Boolean(f.activo),
+    motivoInactivo: f.motivo_inactivo,
+    baja: bajaDeFila(f),
     ultimoAccesoEn: f.ultimo_acceso_en,
   }));
 }
 
 export interface DatosUsuario {
   email: string;
-  rol: RolUsuario;
-  /** El rol del panel (dmc.rol). Solo cuenta si `rol` es COORDINADOR. */
+  /** Sus roles (dmc.usuario_rol). Ver lib/roles.problemaDeRoles para las combinaciones. */
+  roles: RolUsuario[];
+  /** El rol del panel (dmc.rol). Solo cuenta si tiene el rol COORDINADOR. */
   rolId?: number | null;
+  /** El técnico vinculado. Solo cuenta si tiene el rol TECNICO, y ahí es obligatorio. */
   tecnicoId: number | null;
   activo: boolean;
+  /** Obligatorio cuando `activo` es false. */
+  motivoInactivo?: string | null;
   /** Vacía al editar = deja la contraseña que ya tenía. */
   password: string;
 }
@@ -672,20 +789,54 @@ export class CuentaNoPermitida extends Error {
   }
 }
 
+/** Cómo quedaría la cuenta: lo que mira `autorizar`. */
+export interface CuentaNueva {
+  roles: RolUsuario[];
+  rolId: number | null;
+  tecnicoId: number | null;
+  permisos: string[];
+}
+
 export interface ControlUsuario {
   /** Quien guarda. Si pone una clave en una cuenta ajena, el dueño tendrá que cambiarla al entrar. */
   actorId: number;
+  /** Su correo, para el historial de cambios de estado. */
+  actorEmail?: string;
   /**
    * El último control, ya con la fila de la cuenta tomada: recibe cómo está
    * (null en un alta) y cómo quedaría. Devuelve el motivo si no se puede.
    */
-  autorizar: (actual: Cuenta | null, nueva: { rol: RolUsuario; rolId: number | null; permisos: string[] }) => string | null;
+  autorizar: (actual: Cuenta | null, nueva: CuentaNueva) => string | null;
+}
+
+type EjecutorTx = Parameters<Parameters<typeof enTransaccion>[0]>[0];
+
+/**
+ * Deja los roles de la cuenta exactamente como vienen, en UNA sola sentencia:
+ * tg_usuario_rol_coherente revisa el resultado final, y borrar e insertar por
+ * separado lo haría pasar por estados inválidos (sin roles, o ADMIN y
+ * COORDINADOR a la vez).
+ */
+async function fijarRoles(ej: EjecutorTx, usuarioId: number, roles: readonly RolUsuario[]): Promise<void> {
+  await ej.ejecutar(
+    `WITH actuales AS (SELECT usuario_id, rol FROM dmc.usuario_rol WHERE usuario_id = @id)
+     MERGE actuales AS d
+     USING (SELECT @id AS usuario_id, CAST(value AS varchar(12)) AS rol FROM STRING_SPLIT(@roles, ',')) AS o
+        ON d.usuario_id = o.usuario_id AND d.rol = o.rol
+      WHEN NOT MATCHED BY TARGET THEN INSERT (usuario_id, rol) VALUES (o.usuario_id, o.rol)
+      WHEN NOT MATCHED BY SOURCE THEN DELETE;`,
+    [
+      ["id", sql.BigInt, usuarioId],
+      ["roles", sql.VarChar(60), roles.join(",")],
+    ]
+  );
 }
 
 /**
- * Alta o edición de un usuario, con rol, datos y contraseña en una sola
+ * Alta o edición de un usuario, con roles, datos y contraseña en una sola
  * transacción. Devuelve el id y su versión de sesión, que sube —y cierra sus
- * sesiones abiertas— si cambia la clave, el rol o se desactiva.
+ * sesiones abiertas— si cambia la clave, los roles, el rol del panel o el
+ * técnico vinculado, o si se desactiva.
  *
  * `d.password` vacía al editar = deja la que tenía. No se recorta nunca.
  */
@@ -695,14 +846,18 @@ export async function guardarUsuario(
   control: ControlUsuario
 ): Promise<{ id: number; sesionVersion: number }> {
   const email = d.email.trim().toLowerCase();
-  // ck_usuario_tecnico: TECNICO exige tecnico_id, el resto lo exige nulo.
-  const tecnicoId = d.rol === "TECNICO" ? d.tecnicoId : null;
-  // ck_usuario_rol_id: solo las cuentas del panel llevan rol.
-  const rolId = d.rol === "COORDINADOR" ? d.rolId ?? null : null;
+  const roles = ordenarRoles(d.roles);
+  const problema = problemaDeRoles(roles, d.tecnicoId);
+  if (problema) throw new CuentaNoPermitida(problema);
+  // El técnico solo con el rol TECNICO; el rol del panel solo con COORDINADOR.
+  const tecnicoId = tieneRolTecnico(roles) ? d.tecnicoId : null;
+  const rolId = roles.includes("COORDINADOR") ? d.rolId ?? null : null;
   // bcrypt tarda: va antes de abrir la transacción, no con las filas tomadas.
   const hash = id === null || d.password !== "" ? await hashearPassword(d.password) : null;
   // La clave que pone otra persona es temporal: el dueño la cambia al entrar.
   const debeCambiar = id === null || id !== control.actorId;
+  const motivoBaja = motivoParaGuardar(d.activo, d.motivoInactivo);
+  const actor: ActorEstado = { id: control.actorId, email: control.actorEmail ?? "" };
 
   return enTransaccion(async (ej) => {
     const actual = id === null ? null : await leerCuenta(id, ej, true);
@@ -711,36 +866,72 @@ export async function guardarUsuario(
     const rol = rolId === null ? null : await leerRol(rolId, ej);
     if (rolId !== null && !rol) throw new CuentaNoPermitida("Ese rol ya no existe. Recarga la página y elige otro.");
     const motivo = control.autorizar(actual, {
-      rol: d.rol,
+      roles,
       rolId,
-      permisos: permisosDelPanel(d.rol, rolId, rol?.permisos ?? []),
+      tecnicoId,
+      permisos: permisosDelPanel(roles, rolId, rol?.permisos ?? []),
     });
     if (motivo) throw new CuentaNoPermitida(motivo);
 
     if (actual === null) {
+      // Sin roles todavía: es el alta de los roles la que dispara las reglas.
       const [fila] = await ej.consulta<{ id: number }>(
-        `INSERT INTO dmc.usuario (email, password_hash, rol, rol_id, tecnico_id, activo, debe_cambiar_password)
-         VALUES (@email, @hash, @rol, @rolId, @tecnico, @activo, @debe);
+        `INSERT INTO dmc.usuario (email, password_hash, rol_id, tecnico_id, activo, motivo_inactivo, debe_cambiar_password)
+         VALUES (@email, @hash, @rolId, @tecnico, @activo, @motivo, @debe);
          SELECT CAST(SCOPE_IDENTITY() AS bigint) AS id;`,
         [
           ["email", sql.NVarChar(160), email],
           ["hash", sql.NVarChar(200), hash],
-          ["rol", sql.VarChar(12), d.rol],
           ["rolId", sql.BigInt, rolId],
           ["tecnico", sql.BigInt, tecnicoId],
           ["activo", sql.Bit, d.activo],
+          ["motivo", sql.NVarChar(400), motivoBaja],
           ["debe", sql.Bit, debeCambiar],
         ]
       );
-      return { id: num(fila.id), sesionVersion: 0 };
+      const nuevoId = num(fila.id);
+      await fijarRoles(ej, nuevoId, roles);
+      await anotarCambioDeEstado(ej, {
+        entidad: "usuario",
+        id: nuevoId,
+        antes: null,
+        despues: d.activo,
+        motivo: motivoBaja,
+        actor,
+      });
+      return { id: nuevoId, sesionVersion: 0 };
     }
 
-    const revoca = hash !== null || actual.rol !== d.rol || actual.rolId !== rolId || (actual.activo && !d.activo);
+    const revoca =
+      hash !== null ||
+      !mismosRoles(actual.roles, roles) ||
+      actual.rolId !== rolId ||
+      actual.tecnicoId !== tecnicoId ||
+      (actual.activo && !d.activo);
+
+    // En tres pasos, para que cada sentencia deje la cuenta válida ante los
+    // triggers de la migración 044:
+    //   1. se suma el técnico nuevo y se suelta el rol del panel que se va;
+    //   2. se fijan los roles;
+    //   3. quedan el técnico y el rol del panel definitivos.
+    await ej.ejecutar(
+      `UPDATE dmc.usuario
+          SET tecnico_id = COALESCE(@tecnico, tecnico_id),
+              rol_id = CASE WHEN @rolId IS NULL THEN NULL ELSE rol_id END
+        WHERE id = @id`,
+      [
+        ["tecnico", sql.BigInt, tecnicoId],
+        ["rolId", sql.BigInt, rolId],
+        ["id", sql.BigInt, actual.id],
+      ]
+    );
+    await fijarRoles(ej, actual.id, roles);
     // Sin OUTPUT: dmc.usuario tiene trigger de actualización. La versión se
     // relee en el mismo lote.
     const [fila] = await ej.consulta<{ sesion_version: number }>(
       `UPDATE dmc.usuario
-          SET email = @email, rol = @rol, rol_id = @rolId, tecnico_id = @tecnico, activo = @activo,
+          SET email = @email, rol_id = @rolId, tecnico_id = @tecnico, activo = @activo,
+              motivo_inactivo = @motivo,
               password_hash = COALESCE(@hash, password_hash),
               debe_cambiar_password = CASE WHEN @hash IS NULL THEN debe_cambiar_password ELSE @debe END,
               sesion_version = sesion_version + @revoca
@@ -748,17 +939,25 @@ export async function guardarUsuario(
        SELECT sesion_version FROM dmc.usuario WHERE id = @id;`,
       [
         ["email", sql.NVarChar(160), email],
-        ["rol", sql.VarChar(12), d.rol],
         ["rolId", sql.BigInt, rolId],
         ["tecnico", sql.BigInt, tecnicoId],
         ["activo", sql.Bit, d.activo],
+        ["motivo", sql.NVarChar(400), motivoBaja],
         ["hash", sql.NVarChar(200), hash],
         ["debe", sql.Bit, debeCambiar],
         ["revoca", sql.Int, revoca ? 1 : 0],
         ["id", sql.BigInt, actual.id],
       ]
     );
-    // Cambia la clave, el rol o se desactiva: sus navegadores dejan de recibir avisos push.
+    await anotarCambioDeEstado(ej, {
+      entidad: "usuario",
+      id: actual.id,
+      antes: actual.activo,
+      despues: d.activo,
+      motivo: motivoBaja,
+      actor,
+    });
+    // Cambia la clave, los roles o se desactiva: sus navegadores dejan de recibir avisos push.
     if (revoca) {
       await ej.ejecutar(`DELETE FROM dmc.push_suscripcion WHERE usuario_id = @id`, [["id", sql.BigInt, actual.id]]);
     }

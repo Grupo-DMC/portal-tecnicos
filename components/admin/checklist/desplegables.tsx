@@ -78,8 +78,11 @@ export function Desplegable({
   onAviso: (texto: string) => void;
   /** Solo en «Todos los trabajos»: los motivos entre los que se elige dónde se ofrece. */
   enMotivos?: { lista: MotivoConTrabajos[]; onAlternar: (motivoKey: string) => void };
-  /** Solo en «Todos los trabajos»: en qué sección está el trabajo y las que hay para elegir. */
-  seccion?: { valor: string | null; opciones: Seccion[]; onCambiar: (key: string | null) => void };
+  /**
+   * Dónde se agrupa: la sección de un trabajo o la categoría de un tipo de
+   * problema. `etiqueta` nombra el selector («Sección» por defecto).
+   */
+  seccion?: { valor: string | null; opciones: Seccion[]; onCambiar: (key: string | null) => void; etiqueta?: string };
   /** Resalta el resumen: algo falta (un trabajo sin motivo). */
   alerta?: boolean;
   quitarLabel?: string;
@@ -324,14 +327,14 @@ export function Desplegable({
           {nota ? <p className="m-0 mb-3.5 text-cap opacity-72 max-w-[72ch]">{nota}</p> : null}
           {seccion && seccion.opciones.some((o) => o.nombre.trim()) ? (
             <div className="mb-4.5">
-              <label className="block text-cap opacity-62 mb-1.5">Sección</label>
+              <label className="block text-cap opacity-62 mb-1.5">{seccion.etiqueta ?? "Sección"}</label>
               <select
                 value={seccion.valor ?? ""}
                 onChange={(e) => seccion.onCambiar(e.target.value || null)}
                 className="input min-h-10 max-w-[320px] bg-[var(--color-bg)]"
-                aria-label="Sección del trabajo"
+                aria-label={seccion.etiqueta ?? "Sección"}
               >
-                <option value="">Sin sección</option>
+                <option value="">Sin {(seccion.etiqueta ?? "Sección").toLowerCase()}</option>
                 {seccion.opciones
                   .filter((o) => o.nombre.trim())
                   .map((o) => (

@@ -1,6 +1,14 @@
 import "server-only";
 import { consultaCon, enTransaccion, num, numONull, paramIds, sql, subIds, type Parametro } from "@/lib/data/sql";
 import type { CargoContacto, Contacto, UbicacionTienda } from "@/lib/ui/contactos";
+import { motivoParaGuardar } from "@/lib/ui/estado-activo";
+import {
+  anotarCambioDeEstado,
+  bajaDeFila,
+  columnasDeBaja,
+  estadoActual,
+  type ActorEstado,
+} from "@/lib/data/estado-activo";
 
 // Contactos y sus cargos (migración 029): dmc.contacto y dmc.contacto_cargo.
 //
@@ -14,6 +22,9 @@ interface FilaContacto {
   email: string | null;
   telefono: string | null;
   activo: boolean;
+  motivo_inactivo: string | null;
+  baja_por: string | null;
+  baja_en: string | null;
 }
 
 interface FilaCargo {
@@ -28,9 +39,12 @@ interface FilaCargo {
 /** Todos los contactos con sus cargos, o solo los de `ids`. */
 export async function listarContactos(filtro: { ids?: number[] } = {}): Promise<Contacto[]> {
   const params: Parametro[] = filtro.ids ? [paramIds("ids", filtro.ids)] : [];
+  const baja = columnasDeBaja("contacto", "ct");
   const [contactos, cargos] = await Promise.all([
     consultaCon<FilaContacto>(
-      `SELECT id, nombre, email, telefono, activo FROM dmc.contacto
+      `SELECT id, nombre, email, telefono, activo, motivo_inactivo, ${baja.columnas}
+         FROM dmc.contacto ct
+         ${baja.apply}
         ${filtro.ids ? `WHERE id IN ${subIds("ids")}` : ""}
         ORDER BY nombre`,
       params
@@ -60,6 +74,8 @@ export async function listarContactos(filtro: { ids?: number[] } = {}): Promise<
     email: c.email,
     telefono: c.telefono,
     activo: Boolean(c.activo),
+    motivoInactivo: c.motivo_inactivo,
+    baja: bajaDeFila(c),
     cargos: porContacto.get(num(c.id)) ?? [],
   }));
 }
@@ -100,14 +116,45 @@ export async function contactosCandidatos(t: UbicacionTienda): Promise<Contacto[
 }
 
 /**
- * Los contactos ligados a un cliente: con algún cargo en el cliente, en una de
- * sus marcas o en una de sus sucursales.
+ * Los contactos propios de una tienda (con algún cargo de alcance SUCURSAL en
+ * ella), activos. Son los que se sugieren al llenar el acta. Usa
+ * ix_contacto_cargo_sucursal (migración 041).
+ */
+export async function contactosPropiosDeSucursal(sucursalId: number): Promise<Contacto[]> {
+  const ids = await idsDeContactos(
+    `cc.alcance_tipo = 'SUCURSAL' AND cc.alcance_id = @sucursal
+      AND EXISTS (SELECT 1 FROM dmc.contacto ct WHERE ct.id = cc.contacto_id AND ct.activo = 1)`,
+    [["sucursal", sql.BigInt, sucursalId]]
+  );
+  return ids.length ? listarContactos({ ids }) : [];
+}
+
+/**
+ * Quita un cargo de un contacto: el contacto deja de figurar en esa ficha,
+ * pero sigue existiendo (con sus otros cargos, o sin ninguno) en Contactos.
+ * Devuelve false si el cargo no era de ese contacto o ya no estaba.
+ */
+export async function quitarCargoDeContacto(contactoId: number, cargoId: number): Promise<boolean> {
+  return enTransaccion(async (ej) => {
+    const borradas = await ej.ejecutar(`DELETE FROM dmc.contacto_cargo WHERE id = @cargo AND contacto_id = @contacto`, [
+      ["cargo", sql.BigInt, cargoId],
+      ["contacto", sql.BigInt, contactoId],
+    ]);
+    if (borradas === 0) return false;
+    // Toca el contacto para que su fecha de actualización diga que cambió.
+    await ej.ejecutar(`UPDATE dmc.contacto SET nombre = nombre WHERE id = @contacto`, [["contacto", sql.BigInt, contactoId]]);
+    return true;
+  });
+}
+
+/**
+ * Los contactos del cliente: con algún cargo en el cliente o en una de sus
+ * marcas. Los propios de cada tienda se ven en la ficha de la sucursal.
  */
 export async function contactosDeCliente(clienteId: number): Promise<Contacto[]> {
   const ids = await idsDeContactos(
     `(cc.alcance_tipo = 'CLIENTE' AND cc.alcance_id = @cliente)
-      OR (cc.alcance_tipo = 'MARCA' AND cc.alcance_id IN (SELECT id FROM dmc.marca WHERE cliente_id = @cliente))
-      OR (cc.alcance_tipo = 'SUCURSAL' AND cc.alcance_id IN (SELECT id FROM dmc.sucursal WHERE cliente_id = @cliente))`,
+      OR (cc.alcance_tipo = 'MARCA' AND cc.alcance_id IN (SELECT id FROM dmc.marca WHERE cliente_id = @cliente))`,
     [["cliente", sql.BigInt, clienteId]]
   );
   return ids.length ? listarContactos({ ids }) : [];
@@ -118,6 +165,8 @@ export interface DatosContacto {
   email: string | null;
   telefono: string | null;
   activo: boolean;
+  /** Obligatorio cuando `activo` es false. */
+  motivoInactivo?: string | null;
   cargos: Omit<CargoContacto, "id">[];
 }
 
@@ -136,7 +185,8 @@ const TABLA_DE_ALCANCE = { CLIENTE: "cliente", MARCA: "marca", SUCURSAL: "sucurs
  * transacción. Devuelve su id. El cargo viaja como JSON, igual que las
  * sucursales de una carga masiva: la lista no tiene largo fijo.
  */
-export async function guardarContacto(id: number | null, d: DatosContacto): Promise<number> {
+export async function guardarContacto(id: number | null, d: DatosContacto, actor: ActorEstado | null = null): Promise<number> {
+  const motivo = motivoParaGuardar(d.activo, d.motivoInactivo);
   return enTransaccion(async (ej) => {
     // Cada alcance que apunta a una fila tiene que existir.
     for (const tipo of ["CLIENTE", "MARCA", "SUCURSAL"] as const) {
@@ -154,15 +204,17 @@ export async function guardarContacto(id: number | null, d: DatosContacto): Prom
       ["email", sql.NVarChar(160), d.email],
       ["telefono", sql.VarChar(30), d.telefono],
       ["activo", sql.Bit, d.activo],
+      ["motivo", sql.NVarChar(400), motivo],
     ];
+    const antes = id === null ? null : await estadoActual(ej, "contacto", id);
     let contactoId: number;
     if (id === null) {
       // Se recoge el id en una tabla de paso: OUTPUT sin INTO falla en tablas con triggers.
       const [fila] = await ej.consulta<{ id: number }>(
         `DECLARE @nuevo TABLE (id bigint);
-         INSERT INTO dmc.contacto (nombre, email, telefono, activo)
+         INSERT INTO dmc.contacto (nombre, email, telefono, activo, motivo_inactivo)
          OUTPUT INSERTED.id INTO @nuevo
-         VALUES (@nombre, @email, @telefono, @activo);
+         VALUES (@nombre, @email, @telefono, @activo, @motivo);
          SELECT id FROM @nuevo;`,
         params
       );
@@ -170,11 +222,14 @@ export async function guardarContacto(id: number | null, d: DatosContacto): Prom
     } else {
       contactoId = id;
       const tocadas = await ej.ejecutar(
-        `UPDATE dmc.contacto SET nombre = @nombre, email = @email, telefono = @telefono, activo = @activo WHERE id = @id`,
+        `UPDATE dmc.contacto
+            SET nombre = @nombre, email = @email, telefono = @telefono, activo = @activo, motivo_inactivo = @motivo
+          WHERE id = @id`,
         [...params, ["id", sql.BigInt, id]]
       );
       if (tocadas === 0) throw new AlcanceInexistente("contacto");
     }
+    await anotarCambioDeEstado(ej, { entidad: "contacto", id: contactoId, antes, despues: d.activo, motivo, actor });
 
     await ej.ejecutar(`DELETE FROM dmc.contacto_cargo WHERE contacto_id = @id`, [["id", sql.BigInt, contactoId]]);
     if (d.cargos.length) {

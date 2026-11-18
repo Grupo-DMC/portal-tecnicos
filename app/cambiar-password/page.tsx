@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { redirect } from "next/navigation";
-import { getSesion, getSesionPorCambiarPassword } from "@/lib/auth";
+import { getSesion, getSesionPorCambiarPassword, inicioDeSesion } from "@/lib/auth";
 import { LARGO_MINIMO_PASSWORD } from "@/lib/password";
 import CambiarPasswordForm from "./CambiarPasswordForm";
 
@@ -15,7 +15,7 @@ export default async function CambiarPasswordPage() {
   const sesion = await getSesionPorCambiarPassword();
   if (!sesion) {
     const normal = await getSesion();
-    redirect(normal ? (normal.usuario.rol === "TECNICO" ? "/tecnico" : "/admin") : "/login");
+    redirect(normal ? inicioDeSesion(normal) : "/login");
   }
 
   return (

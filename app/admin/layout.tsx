@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { getSesion, rutaSinSesion } from "@/lib/auth";
+import { getSesion, inicioDeSesion, rutaSinSesion } from "@/lib/auth";
+import { enPanel } from "@/lib/roles";
 import { cargarReferencias } from "@/lib/data/referencias";
 import { contarMenu } from "@/lib/data/queries";
 import { getPerfil } from "@/lib/data/cuenta";
@@ -15,10 +16,11 @@ export const dynamic = "force-dynamic";
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const sesion = await getSesion();
   if (!sesion) redirect(await rutaSinSesion());
-  if (sesion.usuario.rol === "TECNICO") redirect("/tecnico");
+  // Un técnico puro, o quien está trabajando como técnico, va a su panel.
+  if (!enPanel(sesion)) redirect(inicioDeSesion(sesion));
 
   const [referencias, conteos, perfil] = await Promise.all([
-    cargarReferencias(sesion.usuario.rol, sesion.permisos),
+    cargarReferencias(sesion.permisos),
     contarMenu(),
     getPerfil(sesion.usuario.id),
   ]);
@@ -47,6 +49,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           rol={sesion.rolNombre}
           usuarioId={sesion.usuario.id}
           permisos={sesion.permisos}
+          modos={sesion.modos}
           operacion={[
             { href: "/admin", label: "Panel", n: "" },
             { href: "/admin/visitas", label: "Visitas", n: conteos.visitas },

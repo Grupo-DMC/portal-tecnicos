@@ -163,6 +163,9 @@ function comparar(
   const cargoAntes = txt(ejec.responsableCargo);
   const cambioCargo = e.responsableCargo !== undefined && cargoAntes !== txt(e.responsableCargo);
   if (cambioCargo) anotar(SECCION.responsable, `Cargo: ${cita(cargoAntes)} → ${cita(txt(e.responsableCargo))}`);
+  const emailAntes = txt(ejec.responsableEmail).toLowerCase();
+  const cambioEmail = e.responsableEmail !== undefined && emailAntes !== txt(e.responsableEmail).toLowerCase();
+  if (cambioEmail) anotar(SECCION.responsable, `Correo: ${cita(txt(ejec.responsableEmail))} → ${cita(txt(e.responsableEmail))}`);
 
   // La firma no se toca. Pero si bajo ella iban el nombre o el RUT del
   // responsable y eso es justo lo que se corrige, el texto se corrige también:
@@ -336,7 +339,7 @@ function comparar(
 
   return {
     lineas,
-    ejecucion: cambioNombre || cambioRut || cambioTel || cambioCargo || cambioMotivos || obsAntes !== obsAhora || internoAntes !== internoAhora,
+    ejecucion: cambioNombre || cambioRut || cambioTel || cambioCargo || cambioEmail || cambioMotivos || obsAntes !== obsAhora || internoAntes !== internoAhora,
     motivos: cambioMotivos,
     trabajos: cambioTrabajos,
     internos: marcados.length > 0 || desmarcados.length > 0,
@@ -475,6 +478,7 @@ export async function editarActa(entrada: EdicionActaEntrada, ctx: ContextoEdici
                   responsable_rut      = @rut,
                   responsable_telefono = @telefono,
                   ${cargo !== undefined ? "responsable_cargo = @cargo," : ""}
+                  ${entrada.responsableEmail !== undefined ? "responsable_email = @email," : ""}
                   motivo_real_codigo   = @motivo,
                   observaciones        = @obs,
                   comentario_interno   = @interno
@@ -484,6 +488,9 @@ export async function editarActa(entrada: EdicionActaEntrada, ctx: ContextoEdici
             ["rut", sql.VarChar(12), txt(entrada.responsableRut) || null],
             ["telefono", sql.VarChar(30), txt(entrada.responsableTelefono) || null],
             ...(cargo !== undefined ? [["cargo", sql.NVarChar(80), cargo] as [string, unknown, unknown]] : []),
+            ...(entrada.responsableEmail !== undefined
+              ? [["email", sql.NVarChar(160), txt(entrada.responsableEmail) || null] as [string, unknown, unknown]]
+              : []),
             ["motivo", sql.VarChar(40), motivos[0]],
             ["obs", sql.NVarChar(sql.MAX), txt(entrada.observaciones) || null],
             ["interno", sql.NVarChar(sql.MAX), txt(entrada.comentarioInterno) || null],

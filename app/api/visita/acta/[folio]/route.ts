@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { log } from "@/lib/log";
 import { getSesion } from "@/lib/auth";
 import { sinPermisoDeVer } from "@/lib/evidencia-http";
-import { getFirmaBinaria, getFotoBinaria, getVisitaCompletaPorFolio } from "@/lib/data/visitas";
-import { listarMotivos, listarProblemas, listarTrabajos } from "@/lib/data/catalogos";
-import { generarPdfActa } from "@/lib/pdf/acta";
+import { getVisitaCompletaPorFolio } from "@/lib/data/visitas";
+import { pdfDeVisita } from "@/lib/pdf/acta-de-visita";
 import { participaEnVisita } from "@/lib/ui/estado";
 import { dispositionAdjunto, nombreArchivoActa } from "@/lib/ui/nombre-acta";
+import { enModoTecnico } from "@/lib/roles";
 
 // El acta en PDF para mandarle al cliente. Sin comentario interno: ni el texto,
 // ni su checklist, ni las fotos o clips marcados como internos.
@@ -25,7 +25,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ folio: 
   const folio = decodeURIComponent(folioParam);
   const visita = await getVisitaCompletaPorFolio(folio);
   if (!visita) return new NextResponse("No encontrada", { status: 404 });
-  if (sesion.usuario.rol === "TECNICO" && !(sesion.tecnico && participaEnVisita(visita, sesion.tecnico.id))) {
+  if (enModoTecnico(sesion) && !(sesion.tecnico && participaEnVisita(visita, sesion.tecnico.id))) {
     return new NextResponse("No encontrada", { status: 404 });
   }
   if (visita.estado !== "COMPLETADA") {
@@ -33,29 +33,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ folio: 
   }
 
   try {
-    const firmaTienda = visita.firmas?.find((f) => f.rol === "TIENDA") ?? visita.firmas?.[0];
-    const fotosAbiertas = (visita.fotos ?? []).filter((f) => !f.interno);
-    const [motivos, trabajos, problemas, fotos, firma] = await Promise.all([
-      listarMotivos(),
-      listarTrabajos(),
-      listarProblemas(),
-      Promise.all(
-        fotosAbiertas.map(async (f) => {
-          const bin = await getFotoBinaria(f.id);
-          return bin ? { ...bin, etiqueta: f.etiqueta } : null;
-        })
-      ),
-      firmaTienda ? getFirmaBinaria(firmaTienda.id) : Promise.resolve(null),
-    ]);
-
-    const pdf = await generarPdfActa({
-      visita,
-      motivos,
-      trabajos,
-      problemas,
-      fotos: fotos.filter((f) => f !== null).map((f) => ({ bytes: new Uint8Array(f.bytes), mime: f.mime, etiqueta: f.etiqueta })),
-      firma: firma ? { bytes: new Uint8Array(firma.bytes), mime: firma.mime } : null,
-    });
+    const pdf = await pdfDeVisita(visita);
 
     return new NextResponse(Buffer.from(pdf), {
       headers: {

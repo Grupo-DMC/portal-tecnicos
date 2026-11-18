@@ -15,7 +15,6 @@ import {
   eliminarVisita,
   getVisitaCompletaPorFolio,
   liberarVisita,
-  registrarEnvioActa,
   reprogramarVisita,
 } from "@/lib/data/visitas";
 import type { AvisoProblemas, CambiosVisita, ConflictoAgenda, DatosVisita, ProblemaSinResolver } from "@/lib/contratos/visitas";
@@ -42,6 +41,8 @@ import { tiene } from "@/lib/permisos";
 import { algunoPideHora } from "@/lib/ui/motivos";
 import type { ChecklistPlantilla, EstadoProblema } from "@/lib/types";
 import { validar } from "@/lib/validacion/comun";
+import { enviarActaPorCorreo } from "@/lib/correo/enviar-acta";
+import { MAX_DESTINATARIOS, repartirDestinatarios, type ClaveAdjunto } from "@/lib/ui/correo";
 import {
   datosVisita,
   entradaActualizarProblema,
@@ -60,7 +61,9 @@ import {
   entradaReprogramar,
   entradaVisitasMasivas,
 } from "@/lib/validacion/visitas";
-import { borradorChecklist } from "@/lib/validacion/checklist";
+import { borradorChecklist, seccionesObligatoriasActa } from "@/lib/validacion/checklist";
+import { guardarSeccionesObligatorias } from "@/lib/data/secciones-acta";
+import type { SeccionesObligatorias } from "@/lib/contratos/secciones-acta";
 import { entradaAtenderSolicitud, entradaDescartarSolicitud } from "@/lib/validacion/auth";
 
 export interface ResultadoAdmin {
@@ -765,39 +768,57 @@ export async function enviarActaAction(pedido: {
   folio: string;
   para: string;
   cc: string;
+  cco?: string;
   asunto: string;
   cuerpo?: string;
-  adjuntos: number;
-}): Promise<ResultadoAdmin> {
+  /** "pdf" y/o "zip" (fotos y videos del cliente). */
+  adjuntos: string[];
+}): Promise<ResultadoAdmin & { adjuntos?: number }> {
   const sesion = await sesionCon("visitas.enviar");
   if (!sesion) return { ok: false, error: "No tienes permiso para enviar actas." };
   const entrada = validar(entradaEnviarActa, pedido, "enviarActa");
   if (!entrada.ok) return { ok: false, error: entrada.error };
   const input = entrada.datos;
-  if (!input.para.includes("@")) return { ok: false, error: "Escribe el correo del destinatario." };
-  if (!input.asunto.trim()) return { ok: false, error: "El asunto no puede ir vacío." };
 
+  // Cada correo una sola vez: Para gana a CC y CC a CCO.
+  const d = repartirDestinatarios({ para: input.para, cc: input.cc, cco: input.cco ?? "" });
+  if (d.invalidos.length) {
+    return { ok: false, error: `Revisa ${d.invalidos.length === 1 ? "este correo" : "estos correos"}: ${d.invalidos.slice(0, 3).join(", ")}.` };
+  }
+  const total = d.para.length + d.cc.length + d.cco.length;
+  if (!total) return { ok: false, error: "Escribe al menos un destinatario en Para, CC o CCO." };
+  if (total > MAX_DESTINATARIOS) {
+    return { ok: false, error: `Son demasiados destinatarios (máximo ${MAX_DESTINATARIOS} entre Para, CC y CCO).` };
+  }
+  const asunto = input.asunto.replace(/\s+/g, " ").trim();
+  if (!asunto) return { ok: false, error: "El asunto no puede ir vacío." };
+
+  let res: Awaited<ReturnType<typeof enviarActaPorCorreo>>;
   try {
-    const ok = await registrarEnvioActa({
+    res = await enviarActaPorCorreo({
       folio: input.folio,
-      para: input.para,
-      cc: input.cc,
-      asunto: input.asunto,
+      para: d.para,
+      cc: d.cc,
+      cco: d.cco,
+      asunto,
       cuerpo: input.cuerpo?.trim() || `Acta de la visita ${input.folio}.`,
-      adjuntos: input.adjuntos,
+      adjuntos: input.adjuntos as ClaveAdjunto[],
       usuarioId: sesion.usuario.id,
+      usuarioEmail: sesion.usuario.email,
     });
-    if (!ok) return { ok: false, error: "No encontramos esa visita." };
   } catch (err) {
     return comoError(err, "enviarActa");
   }
+  // Salga bien o mal quedó un registro nuevo: el panel lo muestra.
+  revalidarPanel(input.folio);
+  if (!res.ok) return { ok: false, error: res.error };
+
   await registrarActividad(sesion, {
     tipo: "acta.cambio",
-    texto: `envió el acta de la visita ${input.folio} a ${input.para.slice(0, 120)}`,
+    texto: `envió el acta de la visita ${input.folio} por correo a ${total} destinatario(s)`,
     folio: input.folio,
   });
-  revalidarPanel(input.folio);
-  return { ok: true, folio: input.folio };
+  return { ok: true, folio: input.folio, adjuntos: res.adjuntos };
 }
 
 // ── Checklist ───────────────────────────────────────────────────────────────
@@ -881,6 +902,34 @@ export async function guardarChecklistAction(borradorPedido: BorradorChecklist):
     return { ok: true, resumen };
   } catch (err) {
     return errorChecklist(err, "guardarChecklist");
+  }
+}
+
+/**
+ * Qué secciones del acta del técnico tiene que llenar sí o sí (migración 042).
+ * Vale para las actas que se cierren de acá en adelante; las ya cerradas y su
+ * corrección no se tocan.
+ */
+export async function guardarSeccionesActaAction(
+  pedido: SeccionesObligatorias
+): Promise<{ ok: true; secciones: SeccionesObligatorias } | { ok: false; error: string }> {
+  const sesion = await sesionCon("checklist.editar");
+  if (!sesion) return { ok: false, error: "No tienes permiso para editar el checklist." };
+  const entrada = validar(seccionesObligatoriasActa, pedido, "guardarSeccionesActa");
+  if (!entrada.ok) return { ok: false, error: entrada.error };
+  try {
+    const secciones = await guardarSeccionesObligatorias(entrada.datos, sesion.usuario.id);
+    await auditar(sesion, { accion: "checklist.editar", entidad: "checklist", detalle: { seccionesObligatorias: secciones } });
+    await registrarActividad(sesion, {
+      tipo: "maestro.checklist",
+      texto: "cambió las secciones obligatorias del acta",
+      enlace: "/admin/checklist",
+    });
+    revalidarChecklist();
+    return { ok: true, secciones };
+  } catch (err) {
+    log.error("guardarSeccionesActa", { err });
+    return { ok: false, error: "No se pudo guardar. Inténtalo otra vez." };
   }
 }
 

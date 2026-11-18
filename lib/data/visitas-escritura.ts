@@ -655,7 +655,7 @@ export async function editarVisita(
     await sincronizarMotivos(ej, id, "PLAN", motivosDe(datos));
     const cargoGuardado = await guardarCargoAgendado(ej, id, datos.responsableCargo);
     if (visita.estado === "REAGENDADA") {
-      await marcarEstado(id, "PROGRAMADA", "Corregida desde coordinación.", "WEB", usuarioId, ej);
+      await marcarEstado(id, "PROGRAMADA", "Corregida desde el panel.", "WEB", usuarioId, ej);
     }
     return { cargo: cargoGuardado };
   });
@@ -719,7 +719,7 @@ export async function reprogramarVisita(
         ["horaAnt", sql.VarChar(8), visita.hora],
         ["fechaNue", sql.Date, input.fecha],
         ["horaNue", sql.VarChar(8), input.hora || null],
-        ["motivo", sql.NVarChar(sql.MAX), visita.motivo ?? "Reprogramada desde coordinación."],
+        ["motivo", sql.NVarChar(sql.MAX), visita.motivo ?? "Reprogramada desde el panel."],
         ["usuario", sql.BigInt, input.usuarioId],
       ]
     );
@@ -739,7 +739,7 @@ export async function reprogramarVisita(
       ]
     );
 
-    await marcarEstado(id, "PROGRAMADA", "Reprogramada desde coordinación.", "WEB", input.usuarioId, ej);
+    await marcarEstado(id, "PROGRAMADA", "Reprogramada desde el panel.", "WEB", input.usuarioId, ej);
 
     if (input.exigirAviso) {
       await registrarAvisoEn(ej, {

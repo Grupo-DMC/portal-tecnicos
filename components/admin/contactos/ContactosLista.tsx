@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import AdminHeader from "@/components/admin/AdminHeader";
 import ContactoDialogo from "@/components/admin/contactos/ContactoDialogo";
 import Tag from "@/components/Tag";
+import EstadoActivo from "@/components/ui/EstadoActivo";
 import { describirAlcance, type Contacto } from "@/lib/ui/contactos";
 import { sinTildes } from "@/lib/ui/formato";
 import { puede, useReferencias } from "@/lib/ui/referencias";
@@ -55,7 +56,8 @@ export default function ContactosLista({ contactos }: { contactos: Contacto[] })
               <li key={c.id} className="flex items-start gap-3 py-3 border-b border-black/[.1]">
                 <div className="min-w-0 flex-1">
                   <div className="font-bold text-ui">
-                    {c.nombre} {!c.activo ? <Tag variant="neutral">Inactivo</Tag> : null}
+                    {c.nombre}{" "}
+                    {!c.activo ? <EstadoActivo activo={false} baja={c.baja} motivo={c.motivoInactivo} conMotivo={false} /> : null}
                   </div>
                   <div className="text-cap opacity-72 break-words">
                     {[c.email, c.telefono].filter(Boolean).join(" · ") || "Sin datos de contacto"}

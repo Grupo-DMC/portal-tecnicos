@@ -13,6 +13,7 @@ import {
 } from "@/app/actions/admin";
 import { fechaHoraLegible } from "@/lib/ui/fecha";
 import type { SolicitudPassword } from "@/lib/types";
+import { textoRoles } from "@/lib/roles";
 
 /**
  * "Olvidé mi contraseña" visto desde el panel.
@@ -148,7 +149,7 @@ export default function SolicitudesPasswordView({
                     {s.usuarioId === null ? (
                       <Tag variant="neutral">Sin cuenta</Tag>
                     ) : s.usuarioActivo ? (
-                      <Tag variant="accent">{s.usuarioRol}</Tag>
+                      <Tag variant="accent">{textoRoles(s.usuarioRoles ?? [])}</Tag>
                     ) : (
                       <Tag variant="neutral">Desactivada</Tag>
                     )}

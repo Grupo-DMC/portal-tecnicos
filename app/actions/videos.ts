@@ -19,6 +19,7 @@ import { tiene } from "@/lib/permisos";
 import { validar } from "@/lib/validacion/comun";
 import { datosVideo, entradaVideoId, trozoVideo } from "@/lib/validacion/actas";
 import { entradaFolio } from "@/lib/validacion/visitas";
+import { enModoTecnico } from "@/lib/roles";
 
 /**
  * Subida del video del trabajo, por partes.
@@ -78,7 +79,7 @@ async function visitaAbierta(
   if (!visita) return { ok: false, error: NO_ABIERTA };
 
   // El panel: solo para editar un acta ya cerrada, y solo con el permiso.
-  if (sesion.usuario.rol !== "TECNICO") {
+  if (!enModoTecnico(sesion)) {
     if (visita.estado !== "COMPLETADA" || !tiene(sesion.permisos, "visitas.editarActa")) {
       return { ok: false, error: NO_ABIERTA };
     }

@@ -7,6 +7,7 @@ import {
   TODOS_LOS_PERMISOS,
   TODOS_LOS_PERMISOS_CELULAR,
 } from "@/lib/permisos";
+import { ordenarRoles, rolDelPanel, type Modo } from "@/lib/roles";
 import type { Rol, RolUsuario, Usuario } from "@/lib/types";
 
 // Roles del panel y sus permisos: dmc.rol, dmc.rol_permiso y dmc.usuario.rol_id.
@@ -18,12 +19,17 @@ export interface Acceso {
 }
 
 /**
- * Qué puede hacer un usuario. El administrador puede todo y no depende de
- * ninguna tabla: nadie lo deja afuera quitándole permisos a un rol.
+ * Qué puede hacer un usuario en el modo en que trabaja. En modo técnico, los
+ * permisos del celular, tenga el rol del panel que tenga. En el panel, el
+ * administrador puede todo y no depende de ninguna tabla: nadie lo deja afuera
+ * quitándole permisos a un rol.
  */
-export async function accesoDeUsuario(usuario: Usuario): Promise<Acceso> {
-  if (usuario.rol === "ADMIN") return { permisos: TODOS_LOS_PERMISOS, rolNombre: "Administrador" };
-  if (usuario.rol === "TECNICO") return { permisos: await permisosCelular(), rolNombre: "Técnico" };
+export async function accesoDeUsuario(usuario: Usuario, modo: Modo): Promise<Acceso> {
+  if (modo === "tecnico") return { permisos: await permisosCelular(), rolNombre: "Técnico" };
+  const panel = rolDelPanel(usuario.roles);
+  if (panel === "ADMIN") return { permisos: TODOS_LOS_PERMISOS, rolNombre: "Administrador" };
+  // Sin rol del panel no hay nada que hacer en él (lib/auth no deja llegar aquí).
+  if (panel === null) return { permisos: [], rolNombre: "Técnico" };
 
   const filas = await consultaCon<{ nombre: string | null; permiso: string | null }>(
     `SELECT r.nombre, rp.permiso
@@ -92,7 +98,10 @@ export async function guardarPermisosCelular(permisos: string[]): Promise<void> 
         ).map((p) => p.permiso);
     // Quitarles algo a los técnicos cierra sus sesiones abiertas.
     if (previos.some((p) => !limpios.includes(p))) {
-      await ej.ejecutar(`UPDATE dmc.usuario SET sesion_version = sesion_version + 1 WHERE rol = 'TECNICO'`);
+      await ej.ejecutar(
+        `UPDATE dmc.usuario SET sesion_version = sesion_version + 1
+          WHERE id IN (SELECT usuario_id FROM dmc.usuario_rol WHERE rol = 'TECNICO')`
+      );
     }
     await ej.ejecutar(`DELETE FROM dmc.rol_permiso WHERE rol_id = @id`, [["id", sql.BigInt, rolId]]);
     for (const permiso of limpios) {
@@ -211,17 +220,20 @@ export async function eliminarRol(id: number): Promise<string | null> {
 export interface Cuenta {
   id: number;
   email: string;
-  rol: RolUsuario;
+  roles: RolUsuario[];
   rolId: number | null;
+  /** El técnico vinculado (solo si tiene el rol TECNICO). */
+  tecnicoId: number | null;
   activo: boolean;
-  /** Permisos del panel: todos para ADMIN, ninguno para TECNICO. */
+  /** Permisos del panel: todos para ADMIN, ninguno si solo es técnico. */
   permisos: string[];
 }
 
-/** Lo que puede en el panel una cuenta de ese tipo y con ese rol. */
-export function permisosDelPanel(rol: RolUsuario, rolId: number | null, permisosRol: readonly string[]): string[] {
-  if (rol === "ADMIN") return TODOS_LOS_PERMISOS;
-  if (rol === "TECNICO") return [];
+/** Lo que puede en el panel una cuenta con esos roles y ese rol del panel. */
+export function permisosDelPanel(roles: readonly RolUsuario[], rolId: number | null, permisosRol: readonly string[]): string[] {
+  const panel = rolDelPanel(roles);
+  if (panel === "ADMIN") return TODOS_LOS_PERMISOS;
+  if (panel === null) return [];
   // Un coordinador sin rol asignado conserva lo que podía hacer siempre.
   if (rolId === null) return PERMISOS_COORDINADOR;
   return normalizarPermisos(permisosRol);
@@ -242,12 +254,14 @@ export async function leerCuentas(
   const filas = await ej.consulta<{
     id: number;
     email: string;
-    rol: RolUsuario;
+    roles: string | null;
     rol_id: number | null;
+    tecnico_id: number | null;
     activo: boolean;
     permiso: string | null;
   }>(
-    `SELECT u.id, u.email, u.rol, u.rol_id, u.activo, rp.permiso
+    `SELECT u.id, u.email, u.rol_id, u.tecnico_id, u.activo, rp.permiso,
+            (SELECT STRING_AGG(r.rol, ',') FROM dmc.usuario_rol r WHERE r.usuario_id = u.id) AS roles
        FROM dmc.usuario u ${bloquear ? "WITH (UPDLOCK, HOLDLOCK)" : ""}
        LEFT JOIN dmc.rol_permiso rp ON rp.rol_id = u.rol_id
       WHERE u.id IN (SELECT CAST(value AS bigint) FROM OPENJSON(@ids))`,
@@ -263,13 +277,15 @@ export async function leerCuentas(
     const id = num(f.id);
     if (cuentas.has(id)) continue;
     const rolId = numONull(f.rol_id);
+    const roles = ordenarRoles((f.roles ?? "").split(","));
     cuentas.set(id, {
       id,
       email: f.email,
-      rol: f.rol,
+      roles,
       rolId,
+      tecnicoId: numONull(f.tecnico_id),
       activo: Boolean(f.activo),
-      permisos: permisosDelPanel(f.rol, rolId, permisosRol.get(id) ?? []),
+      permisos: permisosDelPanel(roles, rolId, permisosRol.get(id) ?? []),
     });
   }
   return cuentas;

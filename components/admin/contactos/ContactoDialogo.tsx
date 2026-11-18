@@ -6,7 +6,8 @@ import Dialogo, { type FormValores } from "@/components/admin/Dialogo";
 import SelectBuscable from "@/components/ui/SelectBuscable";
 import { guardarContactoAction } from "@/app/actions/contactos";
 import { ALCANCES, ETIQUETA_ALCANCE, problemaDeCargos, type AlcanceTipo, type CargoContacto, type Contacto } from "@/lib/ui/contactos";
-import { mensajeTel } from "@/lib/ui/formato";
+import { mensajeCorreo, mensajeTel } from "@/lib/ui/formato";
+import { problemaDeBaja } from "@/lib/ui/estado-activo";
 import { useReferencias } from "@/lib/ui/referencias";
 import { REGIONES } from "@/lib/ui/regiones";
 
@@ -50,6 +51,7 @@ export default function ContactoDialogo({
     email: contacto?.email ?? "",
     telefono: contacto?.telefono ?? "",
     activo: contacto?.activo ?? true,
+    motivoInactivo: contacto?.motivoInactivo ?? "",
   }));
   const [cargos, setCargos] = useState<CargoEnEdicion[]>(() =>
     contacto?.cargos.length
@@ -84,6 +86,7 @@ export default function ContactoDialogo({
       email: String(form.email).trim() || null,
       telefono: String(form.telefono).trim() || null,
       activo: form.activo !== false,
+      motivoInactivo: form.activo !== false ? null : String(form.motivoInactivo ?? "").trim() || null,
       cargos: cargos.map((c) => ({
         cargo: c.cargo.trim(),
         alcanceTipo: c.tipo,
@@ -94,8 +97,12 @@ export default function ContactoDialogo({
     if (!datos.nombre) return setError("El nombre del contacto es obligatorio.");
     const errorTel = mensajeTel(datos.telefono);
     if (errorTel) return setError(errorTel);
+    const errorEmail = mensajeCorreo(datos.email);
+    if (errorEmail) return setError(errorEmail);
     const fallo = problemaDeCargos(datos.cargos);
     if (fallo) return setError(fallo);
+    const sinMotivo = problemaDeBaja(datos.activo, datos.motivoInactivo, "el contacto");
+    if (sinMotivo) return setError(sinMotivo);
     setGuardando(true);
     const res = await guardarContactoAction(contacto?.id ?? null, datos);
     setGuardando(false);
@@ -113,7 +120,8 @@ export default function ContactoDialogo({
         { k: "nombre", label: "Nombre", span: 2 },
         { k: "email", label: "Correo (opcional)", tipo: "email" },
         { k: "telefono", label: "Teléfono (opcional)", tipo: "tel" },
-        { k: "activo", label: "Estado", tipo: "toggle" },
+        // Pasar a «Inactivo» pide el motivo en un diálogo (migración 039).
+        { k: "activo", label: "Estado", tipo: "toggle", desactiva: "el contacto" },
       ]}
       form={form}
       onCampo={(k, v) => {

@@ -97,6 +97,7 @@ export function Encabezado({ fv }: { fv: FormularioVisitaApi }) {
                   respNombre: visita.responsableNombre ?? "",
                   respRut: fmtRut(visita.responsableRut ?? ""),
                   respTel: normalizarTel(visita.responsableTelefono),
+                  respEmail: "",
                   motivosCodigos: visita.motivosCodigos ?? [visita.motivoCodigo],
                   obs: "",
                   interno: "",
@@ -132,12 +133,16 @@ export function SeccionResponsable({ fv }: { fv: FormularioVisitaApi }) {
     setRespRut,
     respTel,
     setRespTel,
+    respEmail,
+    setRespEmail,
+    errorEmail,
     respCargo,
     setRespCargo,
     personasLocal,
     cargos,
     guardarSeccion,
     toggleSeccion,
+    esObligatoria,
     errorRut,
     sucursalCompleta,
   } = fv;
@@ -149,6 +154,7 @@ export function SeccionResponsable({ fv }: { fv: FormularioVisitaApi }) {
         titulo="Sucursal y responsable"
         ok={!!guardadas.sucursal}
         chip={guardadas.sucursal ? { variante: "accent", texto: "Guardada" } : { variante: "neutral", texto: "Pendiente" }}
+        obligatoria={esObligatoria("sucursal")}
         onToggle={() => toggleSeccion("sucursal")}
       />
       {abierta === "sucursal" ? (
@@ -165,10 +171,11 @@ export function SeccionResponsable({ fv }: { fv: FormularioVisitaApi }) {
                   setRespNombre(p.nombre);
                   setRespRut(fmtRut(p.rut ?? ""));
                   setRespTel(normalizarTel(p.telefono));
+                  setRespEmail(p.email ?? "");
                   setRespCargo(cargoVigente(cargos, p.cargo));
                 }}
                 ariaLabel="Personas del local"
-                placeholder="Elige a quien recibe, o escribe sus datos abajo…"
+                placeholder="Elige a quien recibe (contactos de la tienda o quienes ya firmaron), o escribe sus datos abajo…"
                 claseCampo={entrada}
               />
             </Campo>
@@ -200,10 +207,26 @@ export function SeccionResponsable({ fv }: { fv: FormularioVisitaApi }) {
               />
               {errorRut ? <div className="mt-1 text-cap text-[var(--color-danger-800)]">{errorRut}</div> : null}
             </Campo>
-            <Campo label="Teléfono" htmlFor="f-tel" className="flex-1 min-w-0">
+            <Campo label="Teléfono (opcional)" htmlFor="f-tel" className="flex-1 min-w-0">
               <CampoTelefono id="f-tel" value={respTel} onChange={setRespTel} variante="movil" className={entrada} />
             </Campo>
           </div>
+          <Campo label="Correo (opcional)" htmlFor="f-email">
+            <input
+              id="f-email"
+              type="email"
+              inputMode="email"
+              value={respEmail}
+              onChange={(e) => setRespEmail(e.target.value)}
+              placeholder="nombre@empresa.cl"
+              autoComplete="off"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              className={entrada}
+            />
+            {errorEmail ? <div className="mt-1 text-cap text-[var(--color-danger-800)]">{errorEmail}</div> : null}
+          </Campo>
           {cargos.length > 0 ? (
             <Campo label="Cargo (opcional)" htmlFor="f-cargo">
               <SelectBuscable
@@ -218,7 +241,8 @@ export function SeccionResponsable({ fv }: { fv: FormularioVisitaApi }) {
           ) : null}
           {!sucursalCompleta ? (
             <p className="m-0 text-cap text-[var(--color-accent-800)]">
-              Completa nombre, RUT y teléfono del responsable para poder guardar esta sección.
+              Completa nombre y RUT del responsable para poder guardar esta sección. Teléfono y correo son
+              opcionales, pero si los escribes tienen que estar completos.
             </p>
           ) : null}
           <BotonGuardar
@@ -253,6 +277,7 @@ export function SeccionTrabajo({ fv }: { fv: FormularioVisitaApi }) {
     trabajosVigentes,
     guardarSeccion,
     toggleSeccion,
+    esObligatoria,
     nombreTrabajo,
     abrirHojaTrabajo,
     desmarcarMotivo,
@@ -272,6 +297,7 @@ export function SeccionTrabajo({ fv }: { fv: FormularioVisitaApi }) {
               }
             : { variante: "neutral", texto: "Pendiente" }
         }
+        obligatoria={esObligatoria("motivo")}
         onToggle={() => toggleSeccion("motivo")}
       />
       {abierta === "motivo" ? (
@@ -457,6 +483,7 @@ export function SeccionProblemas({ fv }: { fv: FormularioVisitaApi }) {
     setNp,
     guardarSeccion,
     toggleSeccion,
+    esObligatoria,
     nombreProblema,
     porResolver,
     resoluciones,
@@ -479,6 +506,7 @@ export function SeccionProblemas({ fv }: { fv: FormularioVisitaApi }) {
                 ? { variante: "outline", texto: `${problemas.length} sin guardar` }
                 : { variante: "neutral", texto: porResolver.length ? "Respondido" : "Opcional" }
         }
+        obligatoria={esObligatoria("problemas")}
         onToggle={() => toggleSeccion("problemas")}
       />
       {abierta === "problemas" ? (

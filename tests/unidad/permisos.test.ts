@@ -58,35 +58,41 @@ describe("normalizarPermisosCelular", () => {
 });
 
 describe("puedeAdministrarCuenta", () => {
-  const admin = { usuario: { rol: "ADMIN" }, permisos: [] as string[] };
-  const coord = (permisos: string[]) => ({ usuario: { rol: "COORDINADOR" }, permisos });
+  const admin = { modo: "panel" as const, usuario: { roles: ["ADMIN" as const] }, permisos: [] as string[] };
+  const coord = (permisos: string[]) => ({ modo: "panel" as const, usuario: { roles: ["COORDINADOR" as const] }, permisos });
 
   it("el administrador puede con cualquiera", () => {
-    expect(puedeAdministrarCuenta(admin, { rol: "ADMIN", permisos: TODOS_LOS_PERMISOS })).toBe(true);
+    expect(puedeAdministrarCuenta(admin, { roles: ["ADMIN"], permisos: TODOS_LOS_PERMISOS })).toBe(true);
   });
 
-  it("un coordinador nunca toca a un administrador", () => {
-    expect(puedeAdministrarCuenta(coord(TODOS_LOS_PERMISOS), { rol: "ADMIN", permisos: [] })).toBe(false);
+  it("un coordinador nunca toca a un administrador, tampoco si además es técnico", () => {
+    expect(puedeAdministrarCuenta(coord(TODOS_LOS_PERMISOS), { roles: ["ADMIN"], permisos: [] })).toBe(false);
+    expect(puedeAdministrarCuenta(coord(TODOS_LOS_PERMISOS), { roles: ["ADMIN", "TECNICO"], permisos: [] })).toBe(false);
   });
 
   it("un técnico no administra nada", () => {
-    const tecnico = { usuario: { rol: "TECNICO" }, permisos: TODOS_LOS_PERMISOS };
-    expect(puedeAdministrarCuenta(tecnico, { rol: "TECNICO", permisos: [] })).toBe(false);
+    const tecnico = { modo: "tecnico" as const, usuario: { roles: ["TECNICO" as const] }, permisos: TODOS_LOS_PERMISOS };
+    expect(puedeAdministrarCuenta(tecnico, { roles: ["TECNICO"], permisos: [] })).toBe(false);
+  });
+
+  it("un administrador en modo técnico no administra nada", () => {
+    const enTerreno = { modo: "tecnico" as const, usuario: { roles: ["ADMIN" as const, "TECNICO" as const] }, permisos: TODOS_LOS_PERMISOS };
+    expect(puedeAdministrarCuenta(enTerreno, { roles: ["TECNICO"], permisos: [] })).toBe(false);
   });
 
   it("un coordinador solo toca cuentas que no pueden más que él", () => {
     const actor = coord(["visitas.ver", "visitas.crear"]);
-    expect(puedeAdministrarCuenta(actor, { rol: "COORDINADOR", permisos: ["visitas.ver"] })).toBe(true);
-    expect(puedeAdministrarCuenta(actor, { rol: "COORDINADOR", permisos: ["visitas.ver", "visitas.eliminar"] })).toBe(
+    expect(puedeAdministrarCuenta(actor, { roles: ["COORDINADOR"], permisos: ["visitas.ver"] })).toBe(true);
+    expect(puedeAdministrarCuenta(actor, { roles: ["COORDINADOR"], permisos: ["visitas.ver", "visitas.eliminar"] })).toBe(
       false
     );
   });
 
   it("una cuenta sin permisos (técnico) queda al alcance de un coordinador", () => {
-    expect(puedeAdministrarCuenta(coord([]), { rol: "TECNICO", permisos: [] })).toBe(true);
+    expect(puedeAdministrarCuenta(coord([]), { roles: ["TECNICO"], permisos: [] })).toBe(true);
   });
 
-  it("sirve también para un rol sin `rol` propio", () => {
+  it("sirve también para un rol sin `roles` propios", () => {
     expect(puedeAdministrarCuenta(coord(["panel.ver"]), { permisos: ["panel.ver"] })).toBe(true);
     expect(puedeAdministrarCuenta(coord(["panel.ver"]), { permisos: ["usuarios.roles"] })).toBe(false);
   });
@@ -94,7 +100,8 @@ describe("puedeAdministrarCuenta", () => {
 
 describe("motivoCuentaAjena", () => {
   it("distingue administrador de permisos de más", () => {
-    expect(motivoCuentaAjena({ rol: "ADMIN" })).toMatch(/administrador/);
-    expect(motivoCuentaAjena({ rol: "COORDINADOR" })).toMatch(/permisos/);
+    expect(motivoCuentaAjena({ roles: ["ADMIN"] })).toMatch(/administrador/);
+    expect(motivoCuentaAjena({ roles: ["ADMIN", "TECNICO"] })).toMatch(/administrador/);
+    expect(motivoCuentaAjena({ roles: ["COORDINADOR"] })).toMatch(/permisos/);
   });
 });

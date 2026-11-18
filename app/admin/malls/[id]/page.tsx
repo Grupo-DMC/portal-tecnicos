@@ -1,3 +1,4 @@
+import { autoriaDeBaja } from "@/lib/ui/estado-activo";
 import { notFound } from "next/navigation";
 import SinAcceso from "@/components/admin/SinAcceso";
 import FichaVisitas from "@/components/admin/maestros/FichaVisitas";
@@ -34,6 +35,8 @@ export default async function MallFichaPage({ params }: { params: Promise<{ id: 
     { label: "Comuna · región", valor: [m.comuna, m.region].filter(Boolean).join(" · ") },
     { label: "Tiendas activas", valor: `${activas.length} · de ${nClientes} ${nClientes === 1 ? "cliente" : "clientes"}` },
     { label: "Tiendas inactivas", valor: tiendas.length - activas.length ? String(tiendas.length - activas.length) : "" },
+    { label: "Por qué está inactivo", valor: m.activo ? "" : (m.motivoInactivo ?? "") },
+    { label: "Quién lo desactivó", valor: m.baja ? autoriaDeBaja(m.baja) : "" },
   ].filter((d) => d.valor);
 
   return (

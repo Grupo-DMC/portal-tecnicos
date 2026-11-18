@@ -7,6 +7,7 @@ import SeccionPlegable from "@/components/ui/SeccionPlegable";
 import { agruparPorSeccion, hayAlgunaSeccion } from "@/lib/ui/secciones";
 import { fmtRut, mensajeRut, sinTildes } from "@/lib/ui/formato";
 import CampoTelefono from "@/components/ui/CampoTelefono";
+import MotivoDesactivacion from "@/components/ui/MotivoDesactivacion";
 
 export type CampoTipo =
   | "text"
@@ -88,7 +89,18 @@ export interface CampoDef {
    * `form[k]`: sirve para que otro campo aparezca solo cuando se marca.
    */
   casilla?: { k: string; label: string };
+  /**
+   * Solo «toggle»: lo que se desactiva, con su artículo («la marca»). Pasar a
+   * «Inactivo» siempre pide el motivo por escrito (migración 039); esto solo
+   * pone el nombre en la pregunta.
+   */
+  desactiva?: string;
+  /** Solo «toggle»: el campo del formulario donde queda el motivo. Por defecto «motivoInactivo». */
+  motivoK?: string;
 }
+
+/** El campo del motivo de un «toggle». */
+const claveMotivo = (c: CampoDef) => c.motivoK ?? "motivoInactivo";
 
 export interface Adjunto {
   label: string;
@@ -131,6 +143,8 @@ export default function Dialogo({
   children?: React.ReactNode;
 }) {
   const [verPass, setVerPass] = useState(false);
+  /** El «toggle» que está pidiendo el motivo para quedar inactivo. */
+  const [motivoDe, setMotivoDe] = useState<CampoDef | null>(null);
   // Los plegables que ya traen algo escrito nacen abiertos.
   const [desplegados, setDesplegados] = useState<string[]>(() =>
     campos.filter((c) => c.plegable && String(form[c.k] ?? "")).map((c) => c.k)
@@ -329,22 +343,49 @@ export default function Dialogo({
                       </button>
                     </div>
                   ) : c.tipo === "toggle" ? (
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => onCampo(c.k, true)}
-                        className={`tag ${valor === false ? "tag-neutral" : "tag-accent"} min-h-[42px] flex-1 border border-[var(--color-divider)] cursor-pointer font-extrabold text-meta justify-center`}
-                      >
-                        Activo
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onCampo(c.k, false)}
-                        className={`tag ${valor === false ? "tag-accent" : "tag-neutral"} min-h-[42px] flex-1 border border-[var(--color-divider)] cursor-pointer font-extrabold text-meta justify-center`}
-                      >
-                        Inactivo
-                      </button>
-                    </div>
+                    <>
+                      <div className="flex gap-2" role="radiogroup" aria-label={c.label}>
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={valor !== false}
+                          onClick={() => {
+                            if (valor !== false) return;
+                            // Al reactivar el motivo se borra: es del estado inactivo.
+                            onCampo(claveMotivo(c), "");
+                            onCampo(c.k, true);
+                          }}
+                          className={`tag ${valor === false ? "tag-neutral" : "tag-accent"} min-h-[42px] flex-1 border border-[var(--color-divider)] cursor-pointer font-extrabold text-meta justify-center`}
+                        >
+                          Activo
+                        </button>
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={valor === false}
+                          // Quedar inactivo pasa siempre por el motivo escrito.
+                          onClick={() => (valor === false ? undefined : setMotivoDe(c))}
+                          className={`tag ${valor === false ? "tag-accent" : "tag-neutral"} min-h-[42px] flex-1 border border-[var(--color-divider)] cursor-pointer font-extrabold text-meta justify-center`}
+                        >
+                          Inactivo
+                        </button>
+                      </div>
+                      {valor === false ? (
+                        <div className="mt-2 px-3 py-2.5 border border-[var(--color-divider)] bg-[var(--color-surface-3)] flex items-start gap-2.5">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-cap opacity-62">Por qué está inactivo</div>
+                            <div className="text-meta leading-[1.45] mt-0.5 break-words">
+                              {String(form[claveMotivo(c)] ?? "").trim() || (
+                                <span className="font-extrabold text-[var(--color-danger-800)]">Falta el motivo</span>
+                              )}
+                            </div>
+                          </div>
+                          <button type="button" className="btn btn-ghost flex-none" onClick={() => setMotivoDe(c)}>
+                            {String(form[claveMotivo(c)] ?? "").trim() ? "Cambiar" : "Escribir motivo"}
+                          </button>
+                        </div>
+                      ) : null}
+                    </>
                   ) : c.tipo === "area" ? (
                     <textarea
                       id={`dlg-${c.k}`}
@@ -430,6 +471,21 @@ export default function Dialogo({
                 ))}
               </div>
             </div>
+          ) : null}
+
+          {motivoDe ? (
+            <MotivoDesactivacion
+              que={motivoDe.desactiva ?? "este registro"}
+              inicial={String(form[claveMotivo(motivoDe)] ?? "")}
+              onConfirmar={(motivo) => {
+                // Primero el motivo y después el estado: quien escucha recibe
+                // el formulario completo en el segundo cambio.
+                onCampo(claveMotivo(motivoDe), motivo);
+                onCampo(motivoDe.k, false);
+                setMotivoDe(null);
+              }}
+              onCancelar={() => setMotivoDe(null)}
+            />
           ) : null}
 
           {nota ? <p className="mt-4.5 mb-0 text-cap opacity-66">{nota}</p> : null}

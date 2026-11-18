@@ -30,6 +30,8 @@ export function SeccionInterno({ fv }: { fv: FormularioVisitaApi }) {
     clipsRef,
     guardarSeccion,
     toggleSeccion,
+    esObligatoria,
+    faltaEnSeccion,
     fotosInternas,
     videosInternos,
     onArchivos,
@@ -52,6 +54,7 @@ export function SeccionInterno({ fv }: { fv: FormularioVisitaApi }) {
             ? { variante: guardadas.interno ? "accent" : "outline", texto: guardadas.interno ? "Guardado" : "Sin guardar" }
             : { variante: guardadas.interno ? "accent" : "neutral", texto: guardadas.interno ? "Sin comentario" : "Opcional" }
         }
+        obligatoria={esObligatoria("interno")}
         onToggle={() => toggleSeccion("interno")}
       />
       {abierta === "interno" ? (
@@ -140,7 +143,14 @@ export function SeccionInterno({ fv }: { fv: FormularioVisitaApi }) {
           ) : null}
 
           <div className="mt-3.5">
-            <BotonGuardar texto="Guardar y seguir" habilitado onClick={() => guardarSeccion("interno")} />
+            {esObligatoria("interno") && faltaEnSeccion("interno") ? (
+              <p className="m-0 mb-2 text-meta font-extrabold">Obligatorio: {faltaEnSeccion("interno")?.toLowerCase()}.</p>
+            ) : null}
+            <BotonGuardar
+              texto="Guardar y seguir"
+              habilitado={!faltaEnSeccion("interno")}
+              onClick={() => guardarSeccion("interno")}
+            />
           </div>
         </Cuerpo>
       ) : null}
@@ -157,6 +167,8 @@ export function SeccionFotos({ fv }: { fv: FormularioVisitaApi }) {
     clipsRef,
     guardarSeccion,
     toggleSeccion,
+    esObligatoria,
+    faltaEnSeccion,
     fotosTrabajo,
     videosTrabajo,
     onArchivos,
@@ -184,6 +196,7 @@ export function SeccionFotos({ fv }: { fv: FormularioVisitaApi }) {
               }
             : { variante: "neutral", texto: "Al final" }
         }
+        obligatoria={esObligatoria("fotos")}
         onToggle={() => toggleSeccion("fotos")}
       />
       {abierta === "fotos" ? (
@@ -230,6 +243,11 @@ export function SeccionFotos({ fv }: { fv: FormularioVisitaApi }) {
           </div>
           ) : null}
 
+          {esObligatoria("fotos") && faltaEnSeccion("fotos") ? (
+            <p className="m-0 mt-3.5 text-meta font-extrabold">
+              Obligatorio: {faltaEnSeccion("fotos")?.charAt(0).toLowerCase()}{faltaEnSeccion("fotos")?.slice(1)}.
+            </p>
+          ) : null}
           <div className="mt-3.5">
             <BotonGuardar
               texto={
@@ -237,7 +255,7 @@ export function SeccionFotos({ fv }: { fv: FormularioVisitaApi }) {
                   ? `Guardar ${fotosTrabajo.length} foto${fotosTrabajo.length === 1 ? "" : "s"}${videosTrabajo.length ? ` y ${videosTrabajo.length} video${videosTrabajo.length > 1 ? "s" : ""}` : ""}`
                   : "Seguir sin fotos"
               }
-              habilitado
+              habilitado={!faltaEnSeccion("fotos")}
               onClick={() => guardarSeccion("fotos")}
             />
           </div>
@@ -249,7 +267,7 @@ export function SeccionFotos({ fv }: { fv: FormularioVisitaApi }) {
 
 /** 6 · Firma de la tienda. */
 export function SeccionFirma({ fv }: { fv: FormularioVisitaApi }) {
-  const { visita, edicion, abierta, respNombre, firma, setSheet, guardarSeccion, toggleSeccion } = fv;
+  const { visita, edicion, abierta, respNombre, firma, setSheet, guardarSeccion, toggleSeccion, esObligatoria } = fv;
   return (
     <>
       {/* ── 6 · Firma de la tienda ── */}
@@ -262,6 +280,7 @@ export function SeccionFirma({ fv }: { fv: FormularioVisitaApi }) {
             ? { variante: "accent", texto: edicion ? "Se conserva" : "Firmada" }
             : { variante: "neutral", texto: edicion ? "Sin firma" : "Pendiente" }
         }
+        obligatoria={esObligatoria("firmas")}
         onToggle={() => toggleSeccion("firmas")}
       />
       {abierta === "firmas" ? (
@@ -328,6 +347,7 @@ export function BotonRevisar({ fv }: { fv: FormularioVisitaApi }) {
     setHoraTermino,
     puedeRevisar,
     faltaEnSeccion,
+    faltaObligatoria,
   } = fv;
   return (
     <>
@@ -349,6 +369,12 @@ export function BotonRevisar({ fv }: { fv: FormularioVisitaApi }) {
               setAbierta("problemas");
               return aviso(faltaProblemas);
             }
+            // Una sección que el panel exige y sigue incompleta: se abre la primera.
+            const pendiente = faltaObligatoria(listas);
+            if (pendiente) {
+              setAbierta(pendiente.seccion);
+              return aviso(pendiente.mensaje);
+            }
             setAbierta(null);
             setHoraTermino(ahora());
             setPaso("preview");
@@ -367,7 +393,7 @@ export function BotonRevisar({ fv }: { fv: FormularioVisitaApi }) {
         <p className="mt-2.5 mb-0 text-cap opacity-66">
           {puedeRevisar
             ? "Vas a ver el acta completa antes de guardar nada."
-            : "Guarda las secciones 1 y 2, y responde los problemas que venías a resolver, para poder revisar el acta."}
+            : "Completa las secciones marcadas como obligatorias, y responde los problemas que venías a resolver, para poder revisar el acta."}
         </p>
       </div>
     </>

@@ -28,19 +28,24 @@ import {
 const CLAVE = "Clave-Segura-123";
 let hash = "";
 
-function registro(rol: "ADMIN" | "COORDINADOR" | "TECNICO", extra: { usuario?: object; tecnico?: unknown; debeCambiarPassword?: boolean } = {}) {
+type R = "ADMIN" | "COORDINADOR" | "TECNICO";
+
+/** La cuenta leída de la base. `roles` puede ser uno ("ADMIN") o varios ("ADMIN+TECNICO"). */
+function registro(roles: R | `${R}+TECNICO`, extra: { usuario?: object; tecnico?: unknown; debeCambiarPassword?: boolean } = {}) {
+  const lista = roles.split("+") as R[];
+  const esTecnico = lista.includes("TECNICO");
   return {
     usuario: {
       id: 7,
       email: "alguien@example.com",
-      rol,
+      roles: lista,
       rolId: null,
-      tecnicoId: rol === "TECNICO" ? TECNICO_PRUEBA.id : null,
+      tecnicoId: esTecnico ? TECNICO_PRUEBA.id : null,
       activo: true,
       ultimoAccesoEn: null,
       ...extra.usuario,
     },
-    tecnico: "tecnico" in extra ? extra.tecnico : rol === "TECNICO" ? TECNICO_PRUEBA : null,
+    tecnico: "tecnico" in extra ? extra.tecnico : esTecnico ? TECNICO_PRUEBA : null,
     passwordHash: hash,
     sesionVersion: 3,
     debeCambiarPassword: extra.debeCambiarPassword ?? false,
@@ -105,6 +110,19 @@ describe("loginAction", () => {
     expect(r.error).toBe("Correo o contraseña incorrectos.");
   });
 
+  it("quien tiene panel y técnico entra al panel aunque su técnico esté inactivo", async () => {
+    vi.mocked(getUsuarioPorEmail).mockResolvedValue(
+      registro("ADMIN+TECNICO", { tecnico: { ...TECNICO_PRUEBA, activo: false } }) as never
+    );
+    expect(await destinoDeRedirect(() => loginAction(VACIO, entrar("alguien@example.com", CLAVE)))).toBe("/admin");
+  });
+
+  it("el token del login no lleva modo: el servidor elige el de por defecto", async () => {
+    vi.mocked(getUsuarioPorEmail).mockResolvedValue(registro("ADMIN+TECNICO") as never);
+    await destinoDeRedirect(() => loginAction(VACIO, entrar("alguien@example.com", CLAVE)));
+    expect(cookiesEscritas.find((c) => c.nombre === "dmc_session")?.valor).toBe("token-firmado-falso");
+  });
+
   it("con demasiados intentos avisa de la espera y ni siquiera mira el correo", async () => {
     vi.mocked(intentoBloqueado).mockResolvedValue(true);
     const r = await loginAction(VACIO, entrar("alguien@example.com", CLAVE));
@@ -123,6 +141,9 @@ describe("loginAction", () => {
     ["ADMIN", "/admin"],
     ["COORDINADOR", "/admin"],
     ["TECNICO", "/tecnico"],
+    // Con panel y técnico, entra al panel: el de técnico se abre con el botón.
+    ["ADMIN+TECNICO", "/admin"],
+    ["COORDINADOR+TECNICO", "/admin"],
   ] as const)("%s con clave buena abre sesión y va a %s", async (rol, destino) => {
     vi.mocked(getUsuarioPorEmail).mockResolvedValue(registro(rol) as never);
     expect(await destinoDeRedirect(() => loginAction(VACIO, entrar("alguien@example.com", CLAVE)))).toBe(destino);
@@ -230,6 +251,12 @@ describe("logoutAction", () => {
     entrarComo("admin");
     await destinoDeRedirect(logoutAction);
     expect(liberarReservasDelUsuario).not.toHaveBeenCalled();
+  });
+
+  it("quien también es técnico suelta sus reservas aunque salga desde el panel", async () => {
+    entrarComo("admin+tecnico");
+    await destinoDeRedirect(logoutAction);
+    expect(liberarReservasDelUsuario).toHaveBeenCalledWith(4);
   });
 
   it("sin sesión igual cierra y redirige", async () => {

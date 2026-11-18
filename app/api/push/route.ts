@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getSesion } from "@/lib/auth";
 import { EndpointNoPermitido, borrarSuscripcion, clavePublicaPush, guardarSuscripcion } from "@/lib/data/push";
 import { log } from "@/lib/log";
+import { enPanel } from "@/lib/roles";
 
 // Suscripciones a los avisos push de la campanita. GET devuelve la clave
 // pública (null si el servidor no tiene VAPID); POST suscribe este navegador;
@@ -18,7 +19,7 @@ const Suscripcion = z.object({
 async function panel() {
   const sesion = await getSesion();
   if (!sesion) return { error: new NextResponse("No autorizado", { status: 401 }) } as const;
-  if (sesion.usuario.rol === "TECNICO") return { error: new NextResponse("No encontrada", { status: 404 }) } as const;
+  if (!enPanel(sesion)) return { error: new NextResponse("No encontrada", { status: 404 }) } as const;
   return { sesion } as const;
 }
 

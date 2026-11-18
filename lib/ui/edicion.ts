@@ -27,6 +27,7 @@ export interface ActaEnFormulario {
   respNombre: string;
   respRut: string;
   respTel: string;
+  respEmail: string;
   motivosCodigos: string[];
   obs: string;
   interno: string;
@@ -50,6 +51,7 @@ export function formularioDesdeActa(visita: Visita): ActaEnFormulario {
     respNombre: ejec?.responsableNombre ?? visita.responsableNombre ?? "",
     respRut: fmtRut(ejec?.responsableRut ?? ""),
     respTel: normalizarTel(ejec?.responsableTelefono),
+    respEmail: ejec?.responsableEmail ?? "",
     // Los que confirmó el técnico mandan: puede haber quitado alguno agendado.
     motivosCodigos: ejec?.motivosRealesCodigos?.filter(Boolean).length
       ? [...new Set(ejec.motivosRealesCodigos.filter(Boolean))]

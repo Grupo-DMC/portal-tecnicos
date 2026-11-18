@@ -116,7 +116,11 @@ interface FilaVisita {
   cerrada_por: number | null;
   problema_origen_id: number | null;
   creada_en_terreno: boolean;
+  creada_por: number | null;
   creado_en: string;
+
+  uc_nombre: string | null;
+  uc_email: string | null;
 
   c_rut: string;
   c_razon_social: string;
@@ -204,8 +208,10 @@ const SELECT_VISITA = `
          ${MOTIVO_PENDIENTE} AS motivo_pendiente,
          ${TOMADA_POR} AS tomada_por,
          ${CERRADA_POR} AS cerrada_por,
-         v.problema_origen_id, v.creada_en_terreno,
+         v.problema_origen_id, v.creada_en_terreno, v.creada_por,
          ${F_TS("v.creado_en")} AS creado_en,
+
+         uc.nombre AS uc_nombre, uc.email AS uc_email,
 
          c.rut AS c_rut, c.razon_social AS c_razon_social,
          c.nombre_fantasia AS c_nombre_fantasia, c.activo AS c_activo,
@@ -231,6 +237,7 @@ const SELECT_VISITA = `
     LEFT JOIN dmc.mall ml ON ml.id = s.mall_id
     JOIN dmc.tecnico  t ON t.id = v.tecnico_id
     LEFT JOIN dmc.tecnico ta ON ta.id = v.tecnico_ayudante_id
+    LEFT JOIN dmc.usuario uc ON uc.id = v.creada_por
     LEFT JOIN dmc.catalogo_motivo cm ON cm.codigo = v.motivo_codigo`;
 
 interface FilaEjecucion {
@@ -241,6 +248,7 @@ interface FilaEjecucion {
   responsable_rut: string | null;
   responsable_telefono: string | null;
   responsable_cargo: string | null;
+  responsable_email: string | null;
   motivo_real_codigo: string | null;
   observaciones: string | null;
   comentario_interno: string | null;
@@ -421,7 +429,7 @@ async function cargar(filtro: Filtro): Promise<Visita[]> {
       ),
       consultaCon<FilaEjecucion>(
         `SELECT visita_id, ${F_TS("hora_inicio")} AS hora_inicio, ${F_TS("hora_termino")} AS hora_termino,
-                responsable_nombre, responsable_rut, responsable_telefono, responsable_cargo,
+                responsable_nombre, responsable_rut, responsable_telefono, responsable_cargo, responsable_email,
                 motivo_real_codigo, observaciones, comentario_interno, dispositivo, app_version, registrado_offline,
                 ${F_TS("sincronizado_en")} AS sincronizado_en,
                 ${F_TS(EDITABLE_HASTA)} AS editable_hasta,
@@ -561,6 +569,10 @@ async function cargar(filtro: Filtro): Promise<Visita[]> {
       motivoPendiente: v.motivo_pendiente,
       problemaOrigenId: numONull(v.problema_origen_id),
       creadaEnTerreno: Boolean(v.creada_en_terreno),
+      // Quién agendó o registró la visita (dmc.visita.creada_por). Null en las
+      // anteriores a que se guardara.
+      creadaPor:
+        v.creada_por === null ? null : { id: num(v.creada_por), nombre: v.uc_nombre?.trim() || v.uc_email || null },
       creadoEn: v.creado_en,
 
       cliente: {
@@ -635,6 +647,7 @@ async function cargar(filtro: Filtro): Promise<Visita[]> {
             responsableRut: ejec.responsable_rut,
             responsableTelefono: ejec.responsable_telefono,
             responsableCargo: ejec.responsable_cargo,
+            responsableEmail: ejec.responsable_email,
             motivoRealCodigo: ejec.motivo_real_codigo,
             motivosRealesCodigos: codigosDe("REAL", ejec.motivo_real_codigo),
             observaciones: ejec.observaciones,

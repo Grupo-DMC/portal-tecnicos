@@ -26,9 +26,10 @@ import { auditar, diferencia } from "@/lib/data/auditoria";
 import { registrarActividad, type ActorActividad } from "@/lib/data/actividad";
 import { log } from "@/lib/log";
 import { eliminarRol, guardarPermisosCelular, guardarRol, leerRol, type Cuenta, type DatosRol } from "@/lib/data/roles";
-import { motivoCuentaAjena, normalizarPermisos, puedeAdministrarCuenta, tiene } from "@/lib/permisos";
+import { motivoParaNoGuardarCuenta, normalizarPermisos, puedeAdministrarCuenta, tiene } from "@/lib/permisos";
 import { validarPasswordNueva } from "@/lib/password";
 import { mensajeRut, rutCompleto } from "@/lib/ui/formato";
+import { problemaDeBaja } from "@/lib/ui/estado-activo";
 import { idPositivo, validar } from "@/lib/validacion/comun";
 import {
   entradaCliente,
@@ -42,7 +43,7 @@ import {
   entradaTiendasMall,
   entradaUsuario,
 } from "@/lib/validacion/maestros";
-import type { RolUsuario } from "@/lib/types";
+import { esAdmin, mismosRoles, ordenarRoles, problemaDeRoles, tieneRolTecnico } from "@/lib/roles";
 
 // Altas y ediciones de los maestros del panel. Todo escribe en SQL Server.
 
@@ -83,9 +84,12 @@ function mensajeDeError(err: unknown, contexto: string): string {
   if (/uq_marca_cliente_nombre/i.test(texto)) return "Ese cliente ya tiene una marca con ese nombre.";
   if (/fk_sucursal_marca/i.test(texto)) return "La marca elegida no es de ese cliente. Elígela de nuevo.";
   if (/uq_usuario_tecnico/i.test(texto)) return "Ese técnico ya está vinculado a otro usuario.";
-  if (/ck_usuario_tecnico/i.test(texto)) return "Un usuario TÉCNICO necesita un técnico vinculado, y los demás roles no pueden tenerlo.";
+  if (/ck_usuario_roles_tecnico/i.test(texto)) return "Para el rol de técnico hay que vincular un técnico.";
+  if (/ck_usuario_roles_panel/i.test(texto)) return "Una cuenta no puede ser administradora y coordinadora a la vez.";
+  if (/ck_usuario_roles_alguno/i.test(texto)) return "Marca al menos un rol para la cuenta.";
+  if (/ck_usuario_roles_rol_id/i.test(texto)) return "Solo una cuenta coordinadora lleva un rol del panel.";
   if (/uq_rol_nombre/i.test(texto)) return "Ya existe un rol con ese nombre.";
-  if (/fk_usuario_rol/i.test(texto)) return "Ese rol ya no existe. Recarga la página y elige otro.";
+  if (/fk_usuario_rol\b/i.test(texto)) return "Ese rol ya no existe. Recarga la página y elige otro.";
   if (/duplicate|unique/i.test(texto)) return "Ya existe un registro con esos datos.";
   log.error(contexto, { err });
   return "No se pudo guardar. Revisa los datos e inténtalo otra vez.";
@@ -93,6 +97,11 @@ function mensajeDeError(err: unknown, contexto: string): string {
 
 function revalidar() {
   revalidatePath("/admin", "layout");
+}
+
+/** Quien guarda, para el historial de cambios de estado (dmc.cambio_estado). */
+function actorDe(sesion: { usuario: { id: number; email: string } }) {
+  return { id: sesion.usuario.id, email: sesion.usuario.email };
 }
 
 /** «creó el cliente» / «editó el cliente», con el nombre del registro de detalle. */
@@ -110,13 +119,12 @@ export async function guardarClienteAction(idPedido: number | null, datosPedidos
     return { ok: false, error: "Razón social y RUT son obligatorios." };
   }
   if (!rutCompleto(datos.rut)) return { ok: false, error: mensajeRut(datos.rut) ?? "El RUT está incompleto." };
-  // Un cliente no queda inactivo sin que conste por qué.
-  if (!datos.activo && !datos.motivoInactivo?.trim()) {
-    return { ok: false, error: "Explica por qué se desactiva el cliente." };
-  }
+  // Un cliente no queda inactivo sin que conste por qué (la base lo exige igual).
+  const sinMotivo = problemaDeBaja(datos.activo, datos.motivoInactivo, "el cliente");
+  if (sinMotivo) return { ok: false, error: sinMotivo };
   let guardadoId: number;
   try {
-    guardadoId = await guardarCliente(id, datos);
+    guardadoId = await guardarCliente(id, datos, actorDe(sesion));
   } catch (err) {
     return { ok: false, error: mensajeDeError(err, "guardarCliente") };
   }
@@ -132,9 +140,11 @@ export async function guardarMarcaAction(idPedido: number | null, datosPedidos: 
   if (!entrada.ok) return { ok: false, error: entrada.error };
   const { id, datos } = entrada.datos;
   if (!datos.nombre.trim()) return { ok: false, error: "El nombre de la marca es obligatorio." };
+  const sinMotivo = problemaDeBaja(datos.activo, datos.motivoInactivo, "la marca");
+  if (sinMotivo) return { ok: false, error: sinMotivo };
   let guardadoId: number;
   try {
-    guardadoId = await guardarMarca(id, datos);
+    guardadoId = await guardarMarca(id, datos, actorDe(sesion));
   } catch (err) {
     return { ok: false, error: mensajeDeError(err, "guardarMarca") };
   }
@@ -152,9 +162,11 @@ export async function guardarMallAction(idPedido: number | null, datosPedidos: D
   if (!datos.nombre.trim() || !datos.direccion.trim() || !datos.comuna?.trim() || !datos.region?.trim()) {
     return { ok: false, error: "Nombre, dirección, comuna y región son obligatorios." };
   }
+  const sinMotivo = problemaDeBaja(datos.activo, datos.motivoInactivo, "el mall");
+  if (sinMotivo) return { ok: false, error: sinMotivo };
   let guardadoId: number;
   try {
-    guardadoId = await guardarMall(id, datos);
+    guardadoId = await guardarMall(id, datos, actorDe(sesion));
   } catch (err) {
     return { ok: false, error: mensajeDeError(err, "guardarMall") };
   }
@@ -203,16 +215,15 @@ export async function guardarSucursalAction(idPedido: number | null, datosPedido
   if (!datos.mallId && !datos.direccion.trim()) {
     return { ok: false, error: "Una sucursal sin mall necesita su dirección de calle." };
   }
-  // Una sucursal no queda inactiva sin que conste por qué.
-  if (!datos.activo && !datos.motivoInactivo?.trim()) {
-    return { ok: false, error: "Explica por qué se desactiva la sucursal." };
-  }
+  // Una sucursal no queda inactiva sin que conste por qué (la base lo exige igual).
+  const sinMotivo = problemaDeBaja(datos.activo, datos.motivoInactivo, "la sucursal");
+  if (sinMotivo) return { ok: false, error: sinMotivo };
   if (datos.fechaInstalacion && !/^\d{4}-\d{2}-\d{2}$/.test(datos.fechaInstalacion)) {
     return { ok: false, error: "La fecha de instalación no es válida." };
   }
   let guardadoId: number;
   try {
-    guardadoId = await guardarSucursal(id, datos);
+    guardadoId = await guardarSucursal(id, datos, actorDe(sesion));
   } catch (err) {
     return { ok: false, error: mensajeDeError(err, "guardarSucursal") };
   }
@@ -259,8 +270,10 @@ export async function guardarTecnicoAction(idPedido: number | null, datosPedidos
     return { ok: false, error: "Nombre, RUT y correo son obligatorios." };
   }
   if (!rutCompleto(datos.rut)) return { ok: false, error: mensajeRut(datos.rut) ?? "El RUT está incompleto." };
+  const sinMotivo = problemaDeBaja(datos.activo, datos.motivoInactivo, "el técnico");
+  if (sinMotivo) return { ok: false, error: sinMotivo };
   try {
-    await guardarTecnico(id, datos);
+    await guardarTecnico(id, datos, actorDe(sesion));
   } catch (err) {
     return { ok: false, error: mensajeDeError(err, "guardarTecnico") };
   }
@@ -278,17 +291,24 @@ export async function guardarTecnicoAction(idPedido: number | null, datosPedidos
 
 export async function guardarUsuarioAction(
   idPedido: number | null,
-  datosPedidos: DatosUsuario & { rol: RolUsuario }
+  datosPedidos: DatosUsuario
 ): Promise<ResultadoMaestro> {
   const sesion = await sesionMaestro("usuarios", idPedido);
   if (!sesion) return { ok: false, error: "No tienes permiso para editar usuarios." };
   const entrada = validar(entradaUsuario, { id: idPedido, datos: datosPedidos }, "guardarUsuario");
   if (!entrada.ok) return { ok: false, error: entrada.error };
-  const { id, datos } = entrada.datos;
+  const { id } = entrada.datos;
+  // Un select vacío manda 0: es «sin técnico».
+  const datos: DatosUsuario = {
+    ...entrada.datos.datos,
+    roles: ordenarRoles(entrada.datos.datos.roles),
+    tecnicoId: entrada.datos.datos.tecnicoId || null,
+  };
   if (!datos.email.includes("@")) return { ok: false, error: "Escribe un correo válido." };
-  if (datos.rol === "TECNICO" && !datos.tecnicoId) {
-    return { ok: false, error: "Un usuario TÉCNICO necesita técnico vinculado." };
-  }
+  const combinacion = problemaDeRoles(datos.roles, datos.tecnicoId);
+  if (combinacion) return { ok: false, error: combinacion };
+  const sinMotivo = problemaDeBaja(datos.activo, datos.motivoInactivo, "la cuenta");
+  if (sinMotivo) return { ok: false, error: sinMotivo };
   // Al crear, la contraseña es obligatoria: dmc.usuario.password_hash es NOT
   // NULL y un usuario sin clave no podría entrar nunca. Al editar, vacía = no
   // se cambia. No se recorta: se guarda tal como se escribió.
@@ -301,27 +321,16 @@ export async function guardarUsuarioAction(
   try {
     const guardado = await guardarUsuario(id, datos, {
       actorId: sesion.usuario.id,
-      // Quien no es administrador no puede fabricarse más acceso del que
-      // tiene: ni tocar cuentas que pueden más que él, ni cambiarse el rol, ni
-      // dar un rol que pueda más que él.
+      actorEmail: sesion.usuario.email,
       autorizar: (actual, nueva) => {
         previa = actual;
-        if (actual && !puedeAdministrarCuenta(sesion, actual)) return motivoCuentaAjena(actual);
-        if (!puedeAdministrarCuenta(sesion, nueva)) {
-          return nueva.rol === "ADMIN"
-            ? "Solo un administrador puede crear o editar cuentas de administrador."
-            : "El rol elegido tiene permisos que tú no tienes: no lo puedes asignar.";
-        }
-        const cambiaRol = !actual || actual.rol !== nueva.rol || actual.rolId !== nueva.rolId;
-        if (sesion.usuario.rol !== "ADMIN" && id === sesion.usuario.id && cambiaRol) {
-          return "No puedes cambiar tu propio rol.";
-        }
-        return null;
+        return motivoParaNoGuardarCuenta(sesion, id, actual, nueva);
       },
     });
-    // Si se cambió la clave propia, la versión de sesión subió: esta sesión
-    // sigue con un token nuevo y las demás quedan cerradas.
-    if (guardado.id === sesion.usuario.id) await crearSesion(guardado.id, guardado.sesionVersion);
+    // Si se cambió la clave o los roles propios, la versión de sesión subió:
+    // esta sesión sigue con un token nuevo, en el mismo modo si todavía lo
+    // tiene, y las demás quedan cerradas.
+    if (guardado.id === sesion.usuario.id) await crearSesion(guardado.id, guardado.sesionVersion, sesion.modo);
     await auditarUsuario(sesion, guardado.id, previa as Cuenta | null, datos);
     await anotar(sesion, "cuenta.cambio", id === null, "la cuenta", datos.email, "/admin/usuarios");
   } catch (err) {
@@ -331,27 +340,34 @@ export async function guardarUsuarioAction(
   return { ok: true };
 }
 
-/** Anota lo sensible de haber guardado una cuenta: alta, baja, rol y clave. */
+/** Anota lo sensible de haber guardado una cuenta: alta, baja, roles, técnico y clave. */
 async function auditarUsuario(
   sesion: { usuario: { id: number; email: string } },
   id: number,
   previa: Cuenta | null,
-  datos: DatosUsuario & { rol: RolUsuario }
+  datos: DatosUsuario
 ) {
   const base = { entidad: "usuario", entidadId: id } as const;
+  const roles = ordenarRoles(datos.roles);
+  const rolId = roles.includes("COORDINADOR") ? datos.rolId ?? null : null;
+  const tecnicoId = tieneRolTecnico(roles) ? datos.tecnicoId : null;
   if (!previa) {
-    await auditar(sesion, { ...base, accion: "usuario.alta", detalle: { rol: datos.rol, rolId: datos.rolId ?? null } });
+    await auditar(sesion, { ...base, accion: "usuario.alta", detalle: { roles, rolId, tecnicoId } });
     return;
   }
-  if (previa.activo && !datos.activo) await auditar(sesion, { ...base, accion: "usuario.desactivar" });
+  if (previa.activo && !datos.activo) {
+    await auditar(sesion, { ...base, accion: "usuario.desactivar", detalle: { motivo: datos.motivoInactivo?.trim() } });
+  }
   if (!previa.activo && datos.activo) await auditar(sesion, { ...base, accion: "usuario.reactivar" });
-  const rolId = datos.rol === "COORDINADOR" ? datos.rolId ?? null : null;
-  if (previa.rol !== datos.rol || previa.rolId !== rolId) {
+  if (!mismosRoles(previa.roles, roles) || previa.rolId !== rolId) {
     await auditar(sesion, {
       ...base,
       accion: "usuario.rol",
-      detalle: { de: { rol: previa.rol, rolId: previa.rolId }, a: { rol: datos.rol, rolId } },
+      detalle: { de: { roles: previa.roles, rolId: previa.rolId }, a: { roles, rolId } },
     });
+  }
+  if (previa.tecnicoId !== tecnicoId) {
+    await auditar(sesion, { ...base, accion: "usuario.tecnico", detalle: { de: previa.tecnicoId, a: tecnicoId } });
   }
   if (datos.password !== "") {
     await auditar(sesion, { ...base, accion: id === sesion.usuario.id ? "password.cambio" : "password.reseteo" });
@@ -378,7 +394,7 @@ export async function guardarRolAction(idPedido: number | null, datosPedidos: Da
   try {
     // Quien no es administrador no toca roles que pueden más que él, y solo da
     // o quita los permisos que él tiene.
-    if (sesion.usuario.rol !== "ADMIN") {
+    if (!esAdmin(sesion)) {
       const previo = id === null ? null : await leerRol(id);
       if (id !== null && !previo) return { ok: false, error: "Ese rol ya no existe. Recarga la página." };
       const previos = previo?.permisos ?? [];

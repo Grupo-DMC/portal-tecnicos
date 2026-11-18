@@ -807,8 +807,8 @@ export async function generarPdfActa(d: DatosPdfActa): Promise<Uint8Array> {
           valor: [ejec?.responsableNombre ?? visita.responsableNombre ?? "—", cargo].filter(Boolean).join("  ·  "),
         },
         {
-          etiqueta: "RUT · Teléfono",
-          valor: [ejec?.responsableRut, ejec?.responsableTelefono].filter(Boolean).join("  ·  ") || "—",
+          etiqueta: ejec?.responsableEmail ? "RUT · Teléfono · Correo" : "RUT · Teléfono",
+          valor: [ejec?.responsableRut, ejec?.responsableTelefono, ejec?.responsableEmail].filter(Boolean).join("  ·  ") || "—",
         },
       ],
     ];

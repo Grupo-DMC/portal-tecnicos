@@ -10,6 +10,8 @@ import { useUsuarioLocal } from "@/lib/ui/usuario-local";
 import { Toast, useToast } from "@/components/ui/Toast";
 import { iniciales } from "@/lib/ui/cuenta";
 import Campanita from "@/components/admin/Campanita";
+import CambiarPanel from "@/components/ui/CambiarPanel";
+import { ETIQUETA_MODO, type Modo } from "@/lib/roles";
 
 interface NavItem {
   href: string;
@@ -27,6 +29,7 @@ export default function AdminSidebar({
   rol,
   usuarioId,
   permisos,
+  modos = ["panel"],
 }: {
   operacion: NavItem[];
   maestros: NavItem[];
@@ -37,7 +40,10 @@ export default function AdminSidebar({
   usuarioId: number;
   /** Para la campanita: qué notificaciones puede recibir. */
   permisos: string[];
+  /** Los paneles que puede usar. Con el de técnico, aparece el botón para pasar a él. */
+  modos?: Modo[];
 }) {
+  const puedeTecnico = modos.includes("tecnico");
   const pathname = usePathname();
   const { toast, aviso } = useToast();
   const [saliendo, setSaliendo] = useState(false);
@@ -120,7 +126,8 @@ export default function AdminSidebar({
           ) : null}
         </button>
         <Image src="/DMC-logo.png" alt="Grupo dMC" width={75} height={32} />
-        <div className="ml-auto text-cap opacity-62 truncate">{rol}</div>
+        <div className="ml-auto text-cap opacity-62 truncate min-w-0">{rol}</div>
+        {puedeTecnico ? <CambiarPanel desde="panel" destino="tecnico" variante="barra" /> : null}
         {!escritorio ? <Campanita usuarioId={usuarioId} permisos={permisos} variante="barra" /> : null}
       </div>
 
@@ -153,6 +160,15 @@ export default function AdminSidebar({
         <div className="text-cap opacity-62 mt-3">
           Sistema de técnicos · Coordinación
         </div>
+        {puedeTecnico ? (
+          <div className="mt-3.5 flex flex-col gap-2">
+            <div className="inline-flex items-center gap-1.5 self-start px-2 py-1 bg-[var(--color-accent-200)] text-[var(--color-accent-800)] text-cap font-extrabold">
+              <span className="w-1.5 h-1.5 bg-[var(--color-accent)]" aria-hidden="true" />
+              Estás en el {ETIQUETA_MODO.panel.toLowerCase()}
+            </div>
+            <CambiarPanel desde="panel" destino="tecnico" variante="menu" />
+          </div>
+        ) : null}
       </div>
 
       <div className="pt-[18px] flex-1 overflow-y-auto">

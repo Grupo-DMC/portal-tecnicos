@@ -6,7 +6,9 @@
 // constante en el mismo commit.
 
 /** La versión que este código necesita. */
-export const VERSION_ESQUEMA = 38;
+// 44 y no 45: la app nueva ya no lee dmc.usuario.rol, así que funciona antes y
+// después de que la 045 borre esa columna.
+export const VERSION_ESQUEMA = 44;
 
 /** La versión aplicada en la base: la mayor registrada. Para una consulta. */
 export const SQL_VERSION_ESQUEMA = `(SELECT MAX(version) FROM dmc.schema_version)`;

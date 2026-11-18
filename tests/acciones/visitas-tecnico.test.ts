@@ -6,6 +6,7 @@ vi.mock("@/lib/data/maestros");
 vi.mock("@/lib/data/catalogos");
 vi.mock("@/lib/data/borradores");
 vi.mock("@/lib/data/reservas");
+vi.mock("@/lib/data/secciones-acta");
 
 import { revalidatePath } from "next/cache";
 import {
@@ -27,6 +28,7 @@ import { getSucursal } from "@/lib/data/maestros";
 import { cargoDelChecklist, listarMotivos } from "@/lib/data/catalogos";
 import { borrarBorrador } from "@/lib/data/borradores";
 import { estadoDeReserva, liberarReserva } from "@/lib/data/reservas";
+import { leerSeccionesObligatorias } from "@/lib/data/secciones-acta";
 import { TECNICO_PRUEBA, entrarComo, salir } from "../helpers/sesion";
 
 const MIO = TECNICO_PRUEBA.id;
@@ -66,6 +68,8 @@ beforeEach(() => {
   vi.mocked(borrarBorrador).mockResolvedValue(undefined as never);
   vi.mocked(liberarReserva).mockResolvedValue(undefined as never);
   vi.mocked(cargoDelChecklist).mockResolvedValue("Jefa de tienda" as never);
+  // Sin secciones obligatorias salvo que el test las pida.
+  vi.mocked(leerSeccionesObligatorias).mockResolvedValue({ problemas: false, interno: false, fotos: false });
 });
 
 describe("iniciarVisitaAction", () => {
@@ -160,6 +164,80 @@ describe("guardarActaAction (cerrar el acta)", () => {
     expect(r.ok).toBe(false);
     expect(r.error).toMatch(mensaje);
     expect(guardarActa).not.toHaveBeenCalled();
+  });
+
+  describe("secciones obligatorias del acta (las marca el panel)", () => {
+    const foto = { dataUrl: "data:image/jpeg;base64,AAAA", etiqueta: null };
+    const exige = (extra: Partial<Record<"problemas" | "interno" | "fotos", boolean>>) =>
+      vi.mocked(leerSeccionesObligatorias).mockResolvedValue({ problemas: false, interno: false, fotos: false, ...extra });
+    const cierraBien = () => vi.mocked(guardarActa).mockResolvedValue({ ok: true, horaTermino: "15:42" } as never);
+
+    it("con fotos obligatorias, un acta sin foto ni video no se cierra y no toca la base", async () => {
+      exige({ fotos: true });
+      const r = await guardarActaAction(acta() as never);
+      expect(r.ok).toBe(false);
+      expect(r.error).toMatch(/una foto y un video del trabajo/);
+      expect(guardarActa).not.toHaveBeenCalled();
+    });
+
+    it("con fotos obligatorias, una foto sola no alcanza: falta el video", async () => {
+      exige({ fotos: true });
+      const r = await guardarActaAction(acta({ fotos: [foto] }) as never);
+      expect(r.error).toMatch(/un video del trabajo/);
+      expect(guardarActa).not.toHaveBeenCalled();
+    });
+
+    it("las fotos internas no cuentan como fotos del trabajo", async () => {
+      exige({ fotos: true });
+      const r = await guardarActaAction(acta({ fotos: [{ ...foto, interno: true }], videosIds: [7] }) as never);
+      expect(r.error).toMatch(/una foto del trabajo/);
+    });
+
+    it("los videos internos tampoco cuentan como video del trabajo", async () => {
+      exige({ fotos: true });
+      const r = await guardarActaAction(acta({ fotos: [foto], videosInternosIds: [7] }) as never);
+      expect(r.error).toMatch(/un video del trabajo/);
+    });
+
+    it("con foto y video se cierra", async () => {
+      exige({ fotos: true });
+      cierraBien();
+      expect((await guardarActaAction(acta({ fotos: [foto], videosIds: [7] }) as never)).ok).toBe(true);
+      expect(guardarActa).toHaveBeenCalled();
+    });
+
+    it("un rol sin permiso de video no queda atrapado: con una foto basta", async () => {
+      exige({ fotos: true });
+      entrarComo("tecnico", { permisos: ["celular.estado"] });
+      cierraBien();
+      expect((await guardarActaAction(acta({ fotos: [foto] }) as never)).ok).toBe(true);
+    });
+
+    it("con el comentario interno obligatorio, sin texto ni ítems no se cierra; con cualquiera de los dos sí", async () => {
+      exige({ interno: true });
+      expect((await guardarActaAction(acta() as never)).error).toMatch(/comentario interno/);
+      expect((await guardarActaAction(acta({ comentarioInterno: "   " }) as never)).ok).toBe(false);
+      cierraBien();
+      expect((await guardarActaAction(acta({ comentarioInterno: "Puerta trasera" }) as never)).ok).toBe(true);
+      expect((await guardarActaAction(acta({ internosCodigos: ["ACCESO"] }) as never)).ok).toBe(true);
+    });
+
+    it("«Problemas detectados» obligatorio no exige problemas: un acta sin ninguno es válida", async () => {
+      exige({ problemas: true });
+      cierraBien();
+      expect((await guardarActaAction(acta() as never)).ok).toBe(true);
+    });
+
+    it("un acta que esperó señal (registradoOffline) no se rechaza por una regla que pudo cambiar mientras tanto", async () => {
+      exige({ fotos: true });
+      cierraBien();
+      expect((await guardarActaAction(acta({ registradoOffline: true }) as never)).ok).toBe(true);
+    });
+
+    it("sin ninguna sección obligatoria, el acta sin fotos de siempre se cierra", async () => {
+      cierraBien();
+      expect((await guardarActaAction(acta() as never)).ok).toBe(true);
+    });
   });
 
   it("rechaza una firma que no es una imagen", async () => {

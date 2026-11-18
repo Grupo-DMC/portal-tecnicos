@@ -57,8 +57,14 @@ describe("registrarProblemasVisitaAction", () => {
       expect(r).toEqual({ ok: true, resumen: "agregó 2 problemas, corrigió 1 problema" });
       expect(guardarProblemasDeVisita).toHaveBeenCalledWith("V-2026-00001", expect.any(Array));
       expect(auditar).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ accion: "visita.problemas", entidadId: "V-2026-00001" }));
-      expect(registrarActividad).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ tipo: "visita.cambio", folio: "V-2026-00001" }));
+      expect(registrarActividad).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ tipo: "problema.alta", folio: "V-2026-00001" }));
       expect(revalidatePath).toHaveBeenCalledWith("/admin/visitas/V-2026-00001");
+    });
+
+    it("sin problemas nuevos queda como un cambio de la visita", async () => {
+      vi.mocked(guardarProblemasDeVisita).mockResolvedValue({ ok: true, agregados: 0, modificados: 1, quitados: 1 });
+      await registrarProblemasVisitaAction(pedido() as never);
+      expect(registrarActividad).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ tipo: "visita.cambio" }));
     });
 
     it("un problema «Otro» sin descripción se rechaza antes de guardar", async () => {

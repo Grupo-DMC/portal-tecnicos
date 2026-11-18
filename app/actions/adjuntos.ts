@@ -16,6 +16,7 @@ import {
 import { tiene } from "@/lib/permisos";
 import { validar } from "@/lib/validacion/comun";
 import { entradaAbrirAdjunto, entradaAdjuntoId, trozoAdjunto } from "@/lib/validacion/actas";
+import { enModoTecnico } from "@/lib/roles";
 
 /**
  * Fotos y videos que explican el trabajo a realizar.
@@ -44,7 +45,7 @@ async function puedeAdjuntar(folio: string) {
   const visita = await getVisitaParaAdjunto(folio);
   if (!visita) return null;
 
-  if (sesion.usuario.rol !== "TECNICO") {
+  if (!enModoTecnico(sesion)) {
     if (!tiene(sesion.permisos, "visitas.crear") && !tiene(sesion.permisos, "visitas.editar")) return null;
     return ABIERTAS.includes(visita.estado) ? { visita, sesion } : null;
   }

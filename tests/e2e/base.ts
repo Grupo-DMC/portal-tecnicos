@@ -16,6 +16,8 @@ export const CUENTAS = {
   admin: { email: "admin.e2e@example.com", rol: "ADMIN" },
   coordinador: { email: "coordinadora.e2e@example.com", rol: "COORDINADOR" },
   tecnico: { email: "tecnico.e2e@example.com", rol: "TECNICO" },
+  /** Administradora que además sale a terreno: un solo correo, los dos paneles. */
+  doble: { email: "doble.e2e@example.com", rol: "ADMIN" },
 } as const;
 export const TOKEN_SALUD = "token-salud-e2e-" + "0".repeat(16);
 export const PUERTO = 3100;
@@ -79,17 +81,33 @@ export async function crearBaseE2E() {
       INSERT INTO dmc.catalogo_trabajo (codigo, nombre, orden) VALUES ('REVISION_ANTENAS', N'Revisión de antenas', 1);
       INSERT INTO dmc.catalogo_motivo_trabajo (motivo_id, trabajo_id, orden)
         SELECT m.id, t.id, 1 FROM dmc.catalogo_motivo m CROSS JOIN dmc.catalogo_trabajo t WHERE m.codigo = 'VISITA';
+      -- Chromium sin cabeza no graba video: el flujo cierra el acta sin fotos ni video del trabajo.
+      -- La regla de fotos y video obligatorios se prueba en los tests de acciones y de componentes.
+      UPDATE dmc.acta_seccion_config SET obligatoria = 0;
       INSERT INTO dmc.cliente (rut, razon_social, nombre_fantasia) VALUES ('76.000.001-0', N'Cliente E2E SpA', N'Cliente E2E');
       INSERT INTO dmc.marca (cliente_id, nombre) SELECT id, N'Marca E2E' FROM dmc.cliente;
       INSERT INTO dmc.sucursal (cliente_id, marca_id, nombre, direccion, comuna, region)
         SELECT c.id, m.id, N'Tienda E2E Centro', N'Av. Ficticia 100', N'Santiago', N'Metropolitana'
           FROM dmc.cliente c JOIN dmc.marca m ON m.cliente_id = c.id;
-      INSERT INTO dmc.tecnico (rut, nombres, apellido_paterno, email) VALUES ('11.111.111-1', N'Tecnica', N'Ficticia', '${CUENTAS.tecnico.email}');
-      INSERT INTO dmc.usuario (email, password_hash, rol) VALUES ('${CUENTAS.admin.email}', N'${hash}', 'ADMIN');
-      INSERT INTO dmc.usuario (email, password_hash, rol, tecnico_id)
-        SELECT '${CUENTAS.tecnico.email}', N'${hash}', 'TECNICO', id FROM dmc.tecnico;
-      INSERT INTO dmc.usuario (email, password_hash, rol, rol_id)
-        SELECT '${CUENTAS.coordinador.email}', N'${hash}', 'COORDINADOR', id FROM dmc.rol WHERE nombre = N'Coordinador';
+      INSERT INTO dmc.tecnico (rut, nombres, apellido_paterno, email) VALUES
+        ('11.111.111-1', N'Tecnica', N'Ficticia', '${CUENTAS.tecnico.email}'),
+        -- «Zoe» para que quede después de la técnica del flujo completo en las listas.
+        ('22.222.222-2', N'Zoe', N'Doble', '${CUENTAS.doble.email}');
+      INSERT INTO dmc.usuario (email, password_hash) VALUES ('${CUENTAS.admin.email}', N'${hash}');
+      INSERT INTO dmc.usuario (email, password_hash, tecnico_id)
+        SELECT '${CUENTAS.tecnico.email}', N'${hash}', id FROM dmc.tecnico WHERE email = '${CUENTAS.tecnico.email}';
+      INSERT INTO dmc.usuario (email, password_hash, rol_id)
+        SELECT '${CUENTAS.coordinador.email}', N'${hash}', id FROM dmc.rol WHERE nombre = N'Coordinador';
+      INSERT INTO dmc.usuario (email, password_hash, tecnico_id)
+        SELECT '${CUENTAS.doble.email}', N'${hash}', id FROM dmc.tecnico WHERE email = '${CUENTAS.doble.email}';
+      INSERT INTO dmc.usuario_rol (usuario_id, rol)
+        SELECT u.id, x.rol
+          FROM dmc.usuario u
+          JOIN (VALUES ('${CUENTAS.admin.email}', 'ADMIN'),
+                       ('${CUENTAS.tecnico.email}', 'TECNICO'),
+                       ('${CUENTAS.coordinador.email}', 'COORDINADOR'),
+                       ('${CUENTAS.doble.email}', 'ADMIN'),
+                       ('${CUENTAS.doble.email}', 'TECNICO')) AS x (email, rol) ON x.email = u.email;
     `);
   } finally {
     await pool.close();

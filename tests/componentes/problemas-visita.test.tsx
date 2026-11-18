@@ -44,6 +44,32 @@ beforeEach(() => {
   vi.mocked(registrarProblemasVisitaAction).mockResolvedValue({ ok: true });
 });
 
+describe("con categorías de problema (migración 040)", () => {
+  // «Otros» va primero: el tipo que se ofrece al agregar sale de la primera categoría.
+  const conCategorias: CatalogoProblema[] = [
+    { ...catalogo[0], seccion: "Antenas", seccionOrden: 2 },
+    { ...catalogo[1], seccion: "Otros", seccionOrden: 1 },
+  ];
+
+  it("se elige primero la categoría y después el tipo dentro de ella", async () => {
+    const u = userEvent.setup();
+    pintar(<ProblemasVisitaDialogo visita={visitaFalsa()} onCerrar={vi.fn()} onHecho={vi.fn()} />, { problemas: conCategorias });
+    await u.click(screen.getByRole("button", { name: "Agregar un problema" }));
+
+    const categoria = screen.getByRole("combobox", { name: "Categoría del problema" });
+    const tipo = screen.getByRole("combobox", { name: "Tipo de problema" });
+    expect(categoria).toHaveAttribute("placeholder", "Otros");
+    expect(tipo).toHaveAttribute("placeholder", "Otro");
+
+    // Otra categoría: queda elegido su primer tipo, y el tipo solo ofrece los de ella.
+    await u.click(categoria);
+    await u.click(screen.getByRole("option", { name: /Antenas/ }));
+    expect(screen.getByRole("combobox", { name: "Tipo de problema" })).toHaveAttribute("placeholder", "Antena no detecta");
+    await u.click(screen.getByRole("combobox", { name: "Tipo de problema" }));
+    expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual(["Antena no detecta"]);
+  });
+});
+
 describe("registrar problemas en una visita sin cerrar", () => {
   it("agrega un problema, marca el equipo, le pone la cantidad y lo guarda", async () => {
     const u = userEvent.setup();

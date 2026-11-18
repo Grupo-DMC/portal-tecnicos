@@ -12,6 +12,7 @@ import {
   listarTrabajos,
   PLANTILLA_PROPIA,
 } from "@/lib/data/catalogos";
+import { leerSeccionesObligatorias } from "@/lib/data/secciones-acta";
 import SinAcceso from "@/components/admin/SinAcceso";
 import { sesionCon } from "@/lib/auth";
 
@@ -30,7 +31,9 @@ export default async function ChecklistPage() {
     estadosProblema,
     seccionesMotivo,
     seccionesTrabajo,
+    seccionesProblema,
     plantilla,
+    seccionesActa,
   ] = await Promise.all([
     listarMotivos(),
     listarProblemas(),
@@ -42,7 +45,9 @@ export default async function ChecklistPage() {
     listarEstadosProblema(),
     listarSecciones("MOTIVO"),
     listarSecciones("TRABAJO"),
+    listarSecciones("PROBLEMA"),
     getPlantilla(PLANTILLA_PROPIA),
+    leerSeccionesObligatorias(),
   ]);
 
   return (
@@ -57,7 +62,9 @@ export default async function ChecklistPage() {
       estadosProblemaIniciales={estadosProblema.filter((e) => e.activo)}
       seccionesMotivoIniciales={seccionesMotivo}
       seccionesTrabajoIniciales={seccionesTrabajo}
+      seccionesProblemaIniciales={seccionesProblema}
       plantillaInicial={plantilla}
+      seccionesActaIniciales={seccionesActa}
     />
   );
 }

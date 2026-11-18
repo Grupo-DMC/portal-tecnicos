@@ -30,8 +30,18 @@ import {
 export const PLANTILLA_PROPIA = "Mi plantilla";
 
 export async function guardarPlantilla(nombre: string, usuarioId: number | null): Promise<ChecklistPlantilla> {
-  const [motivos, problemas, trabajos, internos, pendientes, cargos, gestionProblemas, seccionesMotivo, seccionesTrabajo] =
-    await Promise.all([
+  const [
+    motivos,
+    problemas,
+    trabajos,
+    internos,
+    pendientes,
+    cargos,
+    gestionProblemas,
+    seccionesMotivo,
+    seccionesTrabajo,
+    seccionesProblema,
+  ] = await Promise.all([
       listarMotivos(),
       listarProblemas(),
       listarTrabajos(),
@@ -41,10 +51,12 @@ export async function guardarPlantilla(nombre: string, usuarioId: number | null)
       listarGestionProblemas(),
       listarSecciones("MOTIVO"),
       listarSecciones("TRABAJO"),
+      listarSecciones("PROBLEMA"),
     ]);
   const payload: BorradorChecklist = {
     seccionesMotivo: seccionesMotivo.map((s) => s.nombre),
     seccionesTrabajo: seccionesTrabajo.map((s) => s.nombre),
+    seccionesProblema: seccionesProblema.map((s) => s.nombre),
     motivos: motivos.map((m) => ({
       id: null,
       nombre: m.nombre,
@@ -55,6 +67,7 @@ export async function guardarPlantilla(nombre: string, usuarioId: number | null)
       id: null,
       nombre: p.nombre,
       grupoLabel: p.grupoLabel,
+      seccion: p.seccion ?? null,
       opciones: p.opciones.map((o) => ({
         id: null,
         etiqueta: o.etiqueta,
@@ -125,6 +138,8 @@ async function leerPlantilla(nombre: string): Promise<{ fila: FilaPlantilla; dat
         // Plantillas guardadas antes de que existieran las secciones: sin ellas.
         seccionesMotivo: datos.seccionesMotivo,
         seccionesTrabajo: datos.seccionesTrabajo,
+        // Y antes de las categorías de problema (migración 040): sin ellas.
+        seccionesProblema: datos.seccionesProblema,
         // Plantillas guardadas antes de que existieran: sin estas listas.
         internos: datos.internos,
         pendientes: datos.pendientes,
@@ -194,6 +209,7 @@ export async function aplicarPlantilla(nombre: string): Promise<ResumenChecklist
     // Una plantilla sin secciones (anterior a ellas) las deja como están.
     seccionesMotivo: leida.datos.seccionesMotivo,
     seccionesTrabajo: leida.datos.seccionesTrabajo,
+    seccionesProblema: leida.datos.seccionesProblema,
     motivos: leida.datos.motivos.map((m) => ({
       id: idPorNombre(motivos, m.nombre),
       nombre: m.nombre,
@@ -204,6 +220,7 @@ export async function aplicarPlantilla(nombre: string): Promise<ResumenChecklist
       id: idPorNombre(problemas, p.nombre),
       nombre: p.nombre,
       grupoLabel: p.grupoLabel,
+      seccion: p.seccion ?? null,
       // Los hijos van siempre con id null: guardarHijos reactiva por etiqueta.
       opciones: p.opciones.map((o) => ({ id: null, etiqueta: o.etiqueta, permiteCantidad: o.permiteCantidad })),
     })),

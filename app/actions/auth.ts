@@ -8,8 +8,12 @@ import {
   crearSesion,
   getSesion,
   getSesionPorCambiarPassword,
+  cambiarModoDeSesion,
+  inicioDeSesion,
   ipDeLaPeticion,
+  rutaSinSesion,
 } from "@/lib/auth";
+import { esModo, inicioDelModo, modosDisponibles, resolverModo, tieneRolTecnico } from "@/lib/roles";
 import { crearSolicitudPassword } from "@/lib/data/solicitudes-password";
 import { auditar } from "@/lib/data/auditoria";
 import { registrarActividad } from "@/lib/data/actividad";
@@ -47,11 +51,13 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
   try {
     const resultado = await autenticar(email, password, await ipDeLaPeticion());
     if (!resultado.ok) return { error: resultado.bloqueado ? DEMASIADOS_INTENTOS : CREDENCIALES_INVALIDAS };
-    const { usuario, sesionVersion, debeCambiarPassword } = resultado.registro;
+    const { usuario, tecnico, sesionVersion, debeCambiarPassword } = resultado.registro;
     // Firmar la cookie también puede fallar (SESSION_SECRET sin definir), así
-    // que entra en el mismo try.
+    // que entra en el mismo try. Sin modo en el token: entra al que le toca por
+    // defecto, que es el panel para quien tiene panel y técnico.
     await crearSesion(usuario.id, sesionVersion);
-    destino = debeCambiarPassword ? "/cambiar-password" : usuario.rol === "TECNICO" ? "/tecnico" : "/admin";
+    const modo = resolverModo(undefined, modosDisponibles(usuario.roles, !!tecnico?.activo));
+    destino = debeCambiarPassword ? "/cambiar-password" : inicioDelModo(modo ?? "panel");
   } catch (err) {
     // Entorno mal configurado o base de datos inalcanzable. El detalle va al
     // log del servidor; al usuario solo se le dice que avise, sin filtrar
@@ -141,18 +147,58 @@ export async function cambiarPasswordAction(
     return { error: "No se pudo guardar la contraseña. Inténtalo otra vez en un momento." };
   }
 
-  redirect(sesion.usuario.rol === "TECNICO" ? "/tecnico" : "/admin");
+  redirect(inicioDeSesion(sesion));
 }
 
 export async function logoutAction() {
   // Las actas que este técnico tenía reservadas se sueltan al salir: el otro
-  // no tiene que esperar el plazo. Si falla, vencen solas.
+  // no tiene que esperar el plazo. Si falla, vencen solas. Se mira el rol y
+  // no el modo: quien sale desde el panel pudo dejar alguna tomada antes.
   const sesion = (await getSesion().catch(() => null)) ?? (await getSesionPorCambiarPassword().catch(() => null));
-  if (sesion?.tecnico) await liberarReservasDelUsuario(sesion.usuario.id);
+  if (sesion && tieneRolTecnico(sesion.usuario.roles)) await liberarReservasDelUsuario(sesion.usuario.id);
   // El navegador deja de recibir avisos push de esta cuenta.
   if (sesion) await borrarSuscripcionesDeUsuario(sesion.usuario.id);
   // Y el token deja de valer en el servidor, no solo se borra la cookie de este navegador.
   if (sesion) await revocarSesiones(sesion.usuario.id).catch((err) => log.error("logout.revocar", { err }));
   await cerrarSesion();
   redirect("/login");
+}
+
+/**
+ * "Ir al panel de técnico" / "Volver al panel de admin". No pide la clave: la
+ * sesión ya está abierta. Lo que vale no es lo que mande el formulario sino lo
+ * que la cuenta tiene en la base: cambiarModoDeSesion vuelve a mirarlo, y un
+ * técnico puro que pida el panel se queda donde está.
+ */
+export async function cambiarModoAction(formData: FormData): Promise<void> {
+  const pedido = formData?.get?.("modo");
+  const sesion = await getSesion();
+  if (!sesion) redirect(await rutaSinSesion());
+  if (!esModo(pedido) || pedido === sesion.modo || !sesion.modos.includes(pedido)) {
+    redirect(inicioDeSesion(sesion));
+  }
+
+  // Al dejar el celular se sueltan sus actas tomadas, como al cerrar sesión.
+  if (sesion.modo === "tecnico") {
+    try {
+      await liberarReservasDelUsuario(sesion.usuario.id);
+    } catch (err) {
+      // Si falla, vencen solas a su hora.
+      log.error("cambiarModo.reservas", { err });
+    }
+  }
+  let cambio = false;
+  try {
+    cambio = await cambiarModoDeSesion(pedido);
+  } catch (err) {
+    log.error("cambiarModo", { err, usuarioId: sesion.usuario.id });
+  }
+  if (!cambio) redirect(inicioDeSesion(sesion));
+  await auditar(sesion, {
+    accion: "sesion.modo",
+    entidad: "usuario",
+    entidadId: sesion.usuario.id,
+    detalle: { de: sesion.modo, a: pedido },
+  });
+  redirect(inicioDelModo(pedido));
 }

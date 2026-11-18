@@ -14,6 +14,7 @@ import {
   texto,
   textoLibre,
 } from "./comun";
+import { esClaveAdjunto } from "@/lib/ui/correo";
 
 // Visitas: agendar y gestionar (panel), el celular del técnico y las
 // «acciones para múltiples visitas».
@@ -146,9 +147,11 @@ export const entradaEnviarActa = z.object({
   folio,
   para: texto(600),
   cc: texto(600),
+  cco: texto(600).optional(),
   asunto: texto(240),
-  cuerpo: textoLibre.optional(),
-  adjuntos: z.number().int().min(0).max(1000),
+  cuerpo: texto(10_000).optional(),
+  /** "pdf" y/o "zip". */
+  adjuntos: arreglo(z.string().max(10).refine(esClaveAdjunto, "Adjunto desconocido."), 2),
 });
 
 // ── Celular del técnico ────────────────────────────────────────────────────

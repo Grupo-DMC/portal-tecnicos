@@ -6,13 +6,14 @@ import "server-only";
 
 import type { Sesion } from "@/lib/auth";
 import { tiene } from "@/lib/permisos";
+import { enModoTecnico } from "@/lib/roles";
 
 /**
  * El panel solo sirve evidencia a quien puede ver visitas, igual que las páginas
  * del módulo. El técnico entra por su propia regla (las visitas en que participa).
  */
 export function sinPermisoDeVer(sesion: Sesion): boolean {
-  return sesion.usuario.rol !== "TECNICO" && !tiene(sesion.permisos, "visitas.ver");
+  return !enModoTecnico(sesion) && !tiene(sesion.permisos, "visitas.ver");
 }
 
 const MIMES_IMAGEN = ["image/jpeg", "image/png", "image/webp"];

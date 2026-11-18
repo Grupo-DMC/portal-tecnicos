@@ -11,6 +11,7 @@ vi.mock("@/lib/data/problemas");
 vi.mock("@/lib/data/catalogos");
 vi.mock("@/lib/data/solicitudes-password");
 vi.mock("@/lib/data/auditoria");
+vi.mock("@/lib/correo/enviar-acta");
 
 import { revalidatePath } from "next/cache";
 import * as admin from "@/app/actions/admin";
@@ -22,7 +23,6 @@ import {
   eliminarVisita,
   getVisitaCompletaPorFolio,
   liberarVisita,
-  registrarEnvioActa,
   reprogramarVisita,
 } from "@/lib/data/visitas";
 import { modificarVisita } from "@/lib/data/visitas-lote";
@@ -32,6 +32,7 @@ import { marcarGestionProblema } from "@/lib/data/problemas";
 import { esEstadoProblemaVigente, guardarChecklist, listarMotivos } from "@/lib/data/catalogos";
 import { atenderSolicitudPassword, descartarSolicitudPassword } from "@/lib/data/solicitudes-password";
 import { auditar } from "@/lib/data/auditoria";
+import { enviarActaPorCorreo } from "@/lib/correo/enviar-acta";
 import { entrarComo, salir } from "../helpers/sesion";
 
 const datos = (extra: Record<string, unknown> = {}) => ({
@@ -449,23 +450,72 @@ describe("problemas, pendientes y envío del acta", () => {
   });
 
   describe("enviarActaAction", () => {
-    const pedido = (extra: Record<string, unknown> = {}) => ({ folio: "V-1", para: "cliente@example.com", cc: "", asunto: "Acta V-1", adjuntos: 2, ...extra });
-
-    it("registra el envío con un cuerpo por defecto", async () => {
-      vi.mocked(registrarEnvioActa).mockResolvedValue(true as never);
-      expect((await admin.enviarActaAction(pedido())).ok).toBe(true);
-      expect(registrarEnvioActa).toHaveBeenCalledWith(expect.objectContaining({ cuerpo: "Acta de la visita V-1.", adjuntos: 2, usuarioId: 1 }));
+    const pedido = (extra: Record<string, unknown> = {}) => ({
+      folio: "V-1",
+      para: "cliente@example.com",
+      cc: "",
+      asunto: "Acta V-1",
+      adjuntos: ["pdf", "zip"],
+      ...extra,
     });
 
-    it("exige un destinatario con @ y un asunto", async () => {
-      expect((await admin.enviarActaAction(pedido({ para: "sin-arroba" }))).error).toBe("Escribe el correo del destinatario.");
+    it("manda el correo desde el servidor, con la cuenta de la sesión y un mensaje por defecto", async () => {
+      vi.mocked(enviarActaPorCorreo).mockResolvedValue({ ok: true, adjuntos: 2, para: ["cliente@example.com"] });
+      expect(await admin.enviarActaAction(pedido())).toEqual({ ok: true, folio: "V-1", adjuntos: 2 });
+      expect(enviarActaPorCorreo).toHaveBeenCalledWith({
+        folio: "V-1",
+        para: ["cliente@example.com"],
+        cc: [],
+        cco: [],
+        asunto: "Acta V-1",
+        cuerpo: "Acta de la visita V-1.",
+        adjuntos: ["pdf", "zip"],
+        usuarioId: 1,
+        usuarioEmail: "admin@example.com",
+      });
+      expect(revalidatePath).toHaveBeenCalledWith("/admin/visitas/V-1");
+    });
+
+    it("separa varios correos, quita repetidos y no repite un correo entre Para, CC y CCO", async () => {
+      vi.mocked(enviarActaPorCorreo).mockResolvedValue({ ok: true, adjuntos: 1, para: [] });
+      await admin.enviarActaAction(pedido({ para: "a@x.cl; b@x.cl, A@x.cl", cc: "b@x.cl, c@x.cl", cco: "c@x.cl, d@x.cl" }));
+      expect(enviarActaPorCorreo).toHaveBeenCalledWith(
+        expect.objectContaining({ para: ["a@x.cl", "b@x.cl"], cc: ["c@x.cl"], cco: ["d@x.cl"] })
+      );
+    });
+
+    it("Para puede ir vacío si hay alguien en CC o CCO", async () => {
+      vi.mocked(enviarActaPorCorreo).mockResolvedValue({ ok: true, adjuntos: 1, para: ["admin@example.com"] });
+      expect((await admin.enviarActaAction(pedido({ para: "", cco: "oculto@x.cl" }))).ok).toBe(true);
+      expect(enviarActaPorCorreo).toHaveBeenCalledWith(expect.objectContaining({ para: [], cco: ["oculto@x.cl"] }));
+    });
+
+    it("exige destinatarios válidos y un asunto", async () => {
+      expect((await admin.enviarActaAction(pedido({ para: "" }))).error).toBe("Escribe al menos un destinatario en Para, CC o CCO.");
+      expect((await admin.enviarActaAction(pedido({ para: "sin-arroba" }))).error).toBe("Revisa este correo: sin-arroba.");
+      expect((await admin.enviarActaAction(pedido({ cc: "ok@x.cl, malo@" }))).error).toBe("Revisa este correo: malo@.");
       expect((await admin.enviarActaAction(pedido({ asunto: "  " }))).error).toBe("El asunto no puede ir vacío.");
-      expect(registrarEnvioActa).not.toHaveBeenCalled();
+      const muchos = Array.from({ length: 21 }, (_, i) => `p${i}@x.cl`).join(",");
+      expect((await admin.enviarActaAction(pedido({ para: muchos }))).error).toMatch(/demasiados destinatarios/);
+      expect(enviarActaPorCorreo).not.toHaveBeenCalled();
     });
 
-    it("visita inexistente", async () => {
-      vi.mocked(registrarEnvioActa).mockResolvedValue(false as never);
-      expect((await admin.enviarActaAction(pedido())).error).toBe("No encontramos esa visita.");
+    it("rechaza adjuntos que no son del acta", async () => {
+      expect((await admin.enviarActaAction(pedido({ adjuntos: ["foto:3"] }))).ok).toBe(false);
+      expect(enviarActaPorCorreo).not.toHaveBeenCalled();
+    });
+
+    it("pasa el error del envío y no lo anota como hecho", async () => {
+      vi.mocked(enviarActaPorCorreo).mockResolvedValue({ ok: false, error: "El proveedor de correo respondió 500." });
+      expect(await admin.enviarActaAction(pedido())).toEqual({ ok: false, error: "El proveedor de correo respondió 500." });
+      // El intento fallido igual quedó registrado: el panel se refresca.
+      expect(revalidatePath).toHaveBeenCalledWith("/admin/visitas/V-1");
+    });
+
+    it("sin el permiso no manda nada", async () => {
+      entrarComo("tecnico");
+      expect((await admin.enviarActaAction(pedido())).error).toBe("No tienes permiso para enviar actas.");
+      expect(enviarActaPorCorreo).not.toHaveBeenCalled();
     });
   });
 });

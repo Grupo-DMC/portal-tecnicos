@@ -129,6 +129,18 @@ export function mensajeTel(v: string | null | undefined): string | null {
 }
 
 /**
+ * Por qué un correo no sirve, o null si está bien. Vacío es válido, como en
+ * `mensajeTel`. Basta con la forma algo@algo.algo: quien lo confirma es el
+ * dueño del correo, no la app.
+ */
+export function mensajeCorreo(v: string | null | undefined): string | null {
+  const t = String(v ?? "").trim();
+  if (!t) return null;
+  if (t.length > 160) return "El correo es demasiado largo.";
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t) ? null : "Escribe un correo válido, como nombre@empresa.cl.";
+}
+
+/**
  * URL de Google Maps para el botón "Ruta" del detalle de la visita.
  *
  * Va SOLO la dirección que se cargó en la sucursal —calle, comuna y región—,
@@ -169,4 +181,10 @@ export function mensajeRut(v: string): string | null {
 /** Para buscar sin tildes ni mayúsculas: «egana» también encuentra «Egaña». */
 export function sinTildes(texto: string): string {
   return String(texto ?? "").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+}
+
+/** «12 Ana Pérez»: quien agendó o registró la visita (id y nombre del usuario), o null si no se guardó. */
+export function autorDeVisita(visita: { creadaPor?: { id: number; nombre: string | null } | null }): string | null {
+  const a = visita.creadaPor;
+  return a ? [a.id, a.nombre].filter(Boolean).join(" ") : null;
 }

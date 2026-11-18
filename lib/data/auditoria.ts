@@ -23,6 +23,8 @@ export type AccionAuditoria =
   | "usuario.desactivar"
   | "usuario.reactivar"
   | "usuario.rol"
+  | "usuario.tecnico"
+  | "sesion.modo"
   | "rol.alta"
   | "rol.editar"
   | "rol.eliminar"

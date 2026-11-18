@@ -2,6 +2,8 @@
 // Es la forma que devuelve la capa de consultas de lib/data/*, ya con los
 // nombres en camelCase y las fechas como texto ISO.
 
+import type { Baja } from "@/lib/ui/estado-activo";
+
 export type RolUsuario = "ADMIN" | "COORDINADOR" | "TECNICO";
 
 export type EstadoVisita =
@@ -47,6 +49,8 @@ export interface Cliente {
   activo: boolean;
   /** Por qué se desactivó. Solo lo llevan los inactivos. */
   motivoInactivo?: string | null;
+  /** La última baja: por qué, quién y cuándo (migración 039). Null = activo. */
+  baja?: Baja | null;
   /** Texto libre del panel. */
   notas?: string | null;
   /** En plan de calibración. null = no se sabe. */
@@ -61,6 +65,10 @@ export interface Marca {
   clienteId: number;
   nombre: string;
   activo: boolean;
+  /** Por qué se desactivó. Solo lo llevan los inactivos (migración 039). */
+  motivoInactivo?: string | null;
+  /** La última baja: por qué, quién y cuándo (migración 039). Null = activo. */
+  baja?: Baja | null;
 }
 
 /** Un centro comercial. Sus tiendas son las sucursales con ese `mallId`. */
@@ -72,6 +80,10 @@ export interface Mall {
   comuna: string;
   region: string;
   activo: boolean;
+  /** Por qué se desactivó. Solo lo llevan los inactivos (migración 039). */
+  motivoInactivo?: string | null;
+  /** La última baja: por qué, quién y cuándo (migración 039). Null = activo. */
+  baja?: Baja | null;
 }
 
 export interface Sucursal {
@@ -91,6 +103,8 @@ export interface Sucursal {
   activo: boolean;
   /** Por qué se desactivó. Solo lo llevan las inactivas. */
   motivoInactivo?: string | null;
+  /** La última baja: por qué, quién y cuándo (migración 039). Null = activo. */
+  baja?: Baja | null;
   /** Texto libre del panel. */
   notas?: string | null;
   /** Detalle opcional (migración 017). La fecha va como YYYY-MM-DD; null = no se sabe. */
@@ -115,16 +129,28 @@ export interface Tecnico {
   email: string;
   telefono: string | null;
   activo: boolean;
+  /** Por qué se desactivó. Solo lo llevan los inactivos (migración 039). */
+  motivoInactivo?: string | null;
+  /** La última baja: por qué, quién y cuándo (migración 039). Null = activo. */
+  baja?: Baja | null;
 }
 
 export interface Usuario {
   id: number;
   email: string;
-  rol: RolUsuario;
+  /**
+   * Sus roles (dmc.usuario_rol, migración 044), en el orden de lib/roles.ROLES.
+   * Nunca vacío. Para decidir según el modo en que trabaja, ver lib/roles.
+   */
+  roles: RolUsuario[];
   /** El rol del panel (dmc.rol). Solo lo llevan las cuentas COORDINADOR. */
   rolId?: number | null;
   tecnicoId: number | null;
   activo: boolean;
+  /** Por qué se desactivó. Solo lo llevan los inactivos (migración 039). */
+  motivoInactivo?: string | null;
+  /** La última baja: por qué, quién y cuándo (migración 039). Null = activo. */
+  baja?: Baja | null;
   ultimoAccesoEn: string | null;
 }
 
@@ -141,8 +167,10 @@ export interface Rol {
 }
 
 /**
- * Una sección agrupa motivos o agrupa trabajos para ordenar y plegar la lista.
- * Es solo una capa de presentación: no cambia qué trabajos van con cada motivo.
+ * Una sección agrupa motivos, trabajos o tipos de problema para ordenar y
+ * plegar la lista. En los tipos de problema se llama «categoría» (migración
+ * 040). Es solo una capa de presentación: no cambia qué trabajos van con cada
+ * motivo ni con qué código se guarda un problema.
  */
 export interface CatalogoSeccion {
   id: number;
@@ -182,6 +210,10 @@ export interface CatalogoProblema {
   orden: number;
   activo: boolean;
   opciones: CatalogoProblemaOpcion[];
+  /** Nombre de su categoría (migración 040). Null = sin categoría. */
+  seccion?: string | null;
+  /** El orden de esa categoría entre las demás. */
+  seccionOrden?: number;
 }
 
 export interface CatalogoTrabajoSubtrabajo {
@@ -298,7 +330,15 @@ export interface PersonaLocal {
   telefono: string | null;
   /** "Jefe de tienda", "Encargado de seguridad"… Opcional. */
   cargo: string | null;
+  /** Opcional (migración 041). */
+  email: string | null;
   ultimaVez: string;
+  /**
+   * De dónde sale la sugerencia: alguien que ya firmó en la tienda (HISTORIAL)
+   * o un contacto propio de la sucursal cargado en el panel (CONTACTO). Los
+   * contactos llevan el id en negativo para no chocar con los del historial.
+   */
+  origen?: "HISTORIAL" | "CONTACTO";
 }
 
 export interface VisitaEjecucion {
@@ -308,6 +348,8 @@ export interface VisitaEjecucion {
   responsableNombre: string;
   responsableRut: string | null;
   responsableTelefono: string | null;
+  /** Opcional (migración 041). */
+  responsableEmail?: string | null;
   /** El cargo de quien firmó. Opcional; viene del checklist de cargos. */
   responsableCargo?: string | null;
   motivoRealCodigo: string | null;
@@ -465,6 +507,8 @@ export interface Visita {
   motivoPendiente: string | null;
   problemaOrigenId: number | null;
   creadaEnTerreno: boolean;
+  /** El usuario que agendó o registró la visita; null en las que no lo guardaron. */
+  creadaPor?: { id: number; nombre: string | null } | null;
   creadoEn: string;
   // Relaciones ya resueltas para la UI: la consulta trae los maestros con la
   // visita y agrupa las tablas hijas en memoria (ver lib/data/visitas).
@@ -510,7 +554,7 @@ export interface SolicitudPassword {
   atendidoEn: string | null;
   creadoEn: string;
   /** Sale del join con dmc.usuario; null si el correo no está dado de alta. */
-  usuarioRol: RolUsuario | null;
+  usuarioRoles: RolUsuario[] | null;
   usuarioActivo: boolean | null;
   /**
    * Si quien mira puede asignarle una clave: no a su propia cuenta, ni a una de

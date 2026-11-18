@@ -11,6 +11,7 @@ import { log } from "@/lib/log";
 import { validarPasswordNueva, verificarPassword } from "@/lib/password";
 import { validar } from "@/lib/validacion/comun";
 import { entradaDatosCuenta, entradaFotoCuenta, entradaPasswordCuenta } from "@/lib/validacion/cuenta";
+import { enPanel } from "@/lib/roles";
 
 // «Mi cuenta» del panel. Cada acción toca solo la cuenta de la sesión: no
 // recibe ningún id. El técnico no pasa por acá (su ficha la lleva coordinación).
@@ -25,7 +26,7 @@ const FOTO_MAX_BYTES = 1024 * 1024;
 
 async function sesionDelPanel(): Promise<Sesion | null> {
   const sesion = await getSesion();
-  return sesion && sesion.usuario.rol !== "TECNICO" ? sesion : null;
+  return sesion && enPanel(sesion) ? sesion : null;
 }
 
 /**

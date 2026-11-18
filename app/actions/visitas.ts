@@ -26,6 +26,8 @@ import type { EstadoVisita } from "@/lib/types";
 import { validar } from "@/lib/validacion/comun";
 import { actaEntrada } from "@/lib/validacion/actas";
 import { errorDeActa, motivoParaNoCerrar } from "@/lib/validacion/reglas-acta";
+import { errorDeSeccionesObligatorias } from "@/lib/contratos/secciones-acta";
+import { leerSeccionesObligatorias } from "@/lib/data/secciones-acta";
 import { entradaCambiarEstado, entradaCrearVisitaTecnico, entradaFolio } from "@/lib/validacion/visitas";
 
 export interface ResultadoAccion {
@@ -108,6 +110,18 @@ export async function guardarActaAction(entradaPedida: ActaEntrada): Promise<Res
   const entrada: ActaEntrada = valida.datos;
   const falta = errorDeActa(entrada);
   if (falta) return { ok: false, error: falta };
+  // Las secciones que el panel marcó como obligatorias. Un acta que esperó
+  // señal (registradoOffline) ya se juzgó en el celular al capturarla: no se
+  // rechaza ahora por una regla que pudo cambiar mientras tanto, ni por un
+  // video que sin señal no se pudo subir.
+  if (!entrada.registradoOffline) {
+    const faltaSeccion = errorDeSeccionesObligatorias(
+      entrada,
+      await leerSeccionesObligatorias(),
+      tiene(sesion.permisos, "celular.video")
+    );
+    if (faltaSeccion) return { ok: false, error: faltaSeccion };
+  }
   const equipo = await getEquipoDeVisita(entrada.folio);
   if (!equipo) return { ok: false, error: "No encontramos esa visita." };
   // Quién puede escribir lo decide la reserva, que guardarActa comprueba con la
@@ -143,6 +157,7 @@ export async function guardarActaAction(entradaPedida: ActaEntrada): Promise<Res
           nombre: entrada.responsableNombre,
           rut: entrada.responsableRut,
           telefono: entrada.responsableTelefono,
+          email: entrada.responsableEmail,
           cargo: await cargoDelChecklist(entrada.responsableCargo),
         });
       }

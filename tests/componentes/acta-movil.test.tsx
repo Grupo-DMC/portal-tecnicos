@@ -267,3 +267,84 @@ describe("problemas que la visita venía a resolver", () => {
     expect(screen.queryByRole("button", { name: "Guardar visita" })).toBeNull();
   });
 });
+
+describe("secciones obligatorias que marca el panel", () => {
+  const ninguna = { problemas: false, interno: false, fotos: false };
+  const unaFoto = [{ id: 5, src: "data:image/jpeg;base64,AAAA", interno: false }];
+
+  /** Deja el borrador y abre el formulario con la configuración dada; toca «Revisar y guardar». */
+  async function revisar(
+    seccionesObligatorias: typeof ninguna,
+    borrador: Partial<BorradorActa> = {},
+    permisos?: string[]
+  ) {
+    escribirBorrador(UID, borradorCompleto(borrador));
+    const ctx = pintarActa({ seccionesObligatorias }, permisos);
+    await screen.findByText(/quedó a medias/);
+    await ctx.u.click(screen.getByRole("button", { name: /Revisar y guardar/ }));
+    return ctx;
+  }
+
+  it("marca «Obligatorio» en las tres de siempre y en las que el panel exige", () => {
+    pintarActa({ seccionesObligatorias: { ...ninguna, fotos: true } });
+    // Responsable, motivo y trabajo, firma + fotos y video.
+    expect(screen.getAllByText("Obligatorio")).toHaveLength(4);
+  });
+
+  it("sin configuración marca solo las tres de siempre", () => {
+    pintarActa();
+    expect(screen.getAllByText("Obligatorio")).toHaveLength(3);
+  });
+
+  it("con fotos obligatorias y ninguna foto, no deja revisar: abre la sección y dice qué falta", async () => {
+    await revisar({ ...ninguna, fotos: true });
+    expect(await screen.findByText("Falta al menos una foto y un video del trabajo")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Guardar visita" })).toBeNull();
+    // La sección quedó abierta: se ve el video del trabajo y el aviso de que es obligatoria.
+    expect(screen.getByText("Video del trabajo")).toBeInTheDocument();
+    expect(screen.getByText(/Obligatorio: falta al menos una foto y un video del trabajo/)).toBeInTheDocument();
+  });
+
+  it("con una foto pero sin video sigue sin dejar revisar", async () => {
+    await revisar({ ...ninguna, fotos: true }, { fotos: unaFoto });
+    expect(await screen.findByText("Falta al menos un video del trabajo")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Guardar visita" })).toBeNull();
+  });
+
+  it("un rol sin permiso de video no queda atrapado: con la foto llega a la revisión", async () => {
+    await revisar({ ...ninguna, fotos: true }, { fotos: unaFoto }, ["celular.estado"]);
+    expect(await screen.findByRole("button", { name: "Guardar visita" })).toBeInTheDocument();
+  });
+
+  it("una foto interna no cuenta como foto del trabajo", async () => {
+    await revisar({ ...ninguna, fotos: true }, { fotos: [{ ...unaFoto[0], interno: true }] }, ["celular.estado"]);
+    expect(await screen.findByText("Falta al menos una foto del trabajo")).toBeInTheDocument();
+  });
+
+  it("con el comentario interno obligatorio y vacío, lo pide", async () => {
+    await revisar({ ...ninguna, interno: true });
+    expect(await screen.findByText("Escribe un comentario interno o marca al menos un ítem")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Guardar visita" })).toBeNull();
+  });
+
+  it("con el comentario interno obligatorio y escrito, llega a la revisión", async () => {
+    await revisar({ ...ninguna, interno: true }, { interno: "Puerta trasera con candado" });
+    expect(await screen.findByRole("button", { name: "Guardar visita" })).toBeInTheDocument();
+  });
+
+  it("con «Problemas detectados» obligatorio, hay que revisar la sección aunque no haya problemas", async () => {
+    await revisar({ ...ninguna, problemas: true });
+    expect(await screen.findByText("Revisa los problemas detectados: esa sección es obligatoria")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Guardar visita" })).toBeNull();
+  });
+
+  it("con «Problemas detectados» ya revisada, llega a la revisión", async () => {
+    await revisar({ ...ninguna, problemas: true }, { guardadas: { sucursal: true, motivo: true, problemas: true } });
+    expect(await screen.findByRole("button", { name: "Guardar visita" })).toBeInTheDocument();
+  });
+
+  it("sin nada obligatorio, el acta sin fotos de siempre llega a la revisión", async () => {
+    await revisar(ninguna);
+    expect(await screen.findByRole("button", { name: "Guardar visita" })).toBeInTheDocument();
+  });
+});

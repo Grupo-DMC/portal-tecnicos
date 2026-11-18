@@ -54,8 +54,11 @@ if (email) {
   const seguro = email.replace(/'/g, "''");
   console.log("SQL para aplicarlo:\n");
   if (crearAdmin) {
+    // Los roles viven en dmc.usuario_rol (migración 044): la cuenta y su rol
+    // van en el mismo lote.
     console.log(
-      `INSERT INTO dmc.usuario (email, password_hash, rol, activo) VALUES (N'${seguro}', N'${hash}', 'ADMIN', 1);`
+      `INSERT INTO dmc.usuario (email, password_hash, activo) VALUES (N'${seguro}', N'${hash}', 1);\n` +
+        `INSERT INTO dmc.usuario_rol (usuario_id, rol) SELECT id, 'ADMIN' FROM dmc.usuario WHERE email = N'${seguro}';`
     );
   } else {
     console.log(`UPDATE dmc.usuario SET password_hash = N'${hash}' WHERE email = N'${seguro}';`);

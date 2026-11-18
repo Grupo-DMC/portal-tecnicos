@@ -21,15 +21,38 @@ import { permitirEditarTecnicoAction } from "@/app/actions/ediciones";
 import EstadoProblemaTag from "@/components/EstadoProblemaTag";
 import { ESTADO_VISITA_LABEL, ESTADO_VISITA_TAG, nombreDeQuienLaTomo, textoMotivos, textoMotivosReales } from "@/lib/ui/estado";
 import { textoFechaVisita, fechaCL } from "@/lib/ui/fecha";
+import { autorDeVisita } from "@/lib/ui/formato";
 import { nombreProblema, nombreTrabajo, puede, useReferencias } from "@/lib/ui/referencias";
 import { reloj } from "@/lib/ui/video";
-import { descargarZip, extensionDe, type ArchivoADescargar } from "@/lib/ui/descarga";
+import { archivosMultimedia, descargarZip } from "@/lib/ui/descarga";
 import { SECCION_EDICION, quienModifico, resumenEdicion } from "@/lib/ui/edicion";
 import { esInformePapel } from "@/lib/ui/papel";
 import { nombreArchivoActa, nombreZipMultimedia } from "@/lib/ui/nombre-acta";
 import { textoDireccion } from "@/lib/ui/ubicacion";
 import { urlVisitasRecordada } from "@/lib/ui/filtro-recordado";
 import type { Visita, VisitaEdicion } from "@/lib/types";
+import {
+  agregarCorreo,
+  MAX_DESTINATARIOS,
+  repartirDestinatarios,
+  yaIncluido,
+  type ActaEnviada,
+  type CampoDestinatario,
+  type ClaveAdjunto,
+  type DestinatarioSugerido,
+} from "@/lib/ui/correo";
+
+/** Lo que el diálogo de correo necesita saber del servidor. */
+export interface DatosCorreo {
+  /** Si el servidor tiene con qué mandar correo. */
+  listo: boolean;
+  /** Con qué correo sale: el de la sesión, o el de respaldo si su dominio no está verificado. */
+  de: string;
+  conSuCorreo: boolean;
+  /** A quién le llegan las respuestas: siempre quien lo envía. */
+  responderA: string;
+  sugeridos: DestinatarioSugerido[];
+}
 import { AdjuntosVista } from "@/components/ui/AdjuntosTrabajo";
 
 const AVISO_ESTADO: Record<string, string> = {
@@ -72,9 +95,12 @@ const ICONO_CELULAR = (
 export default function ActaView({
   visita,
   enviada,
+  correo,
 }: {
   visita: Visita;
-  enviada: { para: string; cc: string; adjuntos: number } | null;
+  enviada: ActaEnviada | null;
+  /** Solo llega para quien puede enviar el acta. */
+  correo?: DatosCorreo;
 }) {
   const router = useRouter();
   const ref = useReferencias();
@@ -153,15 +179,7 @@ export default function ActaView({
   // El visor recorre primero las fotos del trabajo y después las internas.
   const fotosVisor = [...fotosCliente, ...fotosInternas];
   async function bajarTodo(tipo: "fotos" | "videos" | "multimedia") {
-    const fotosZip: ArchivoADescargar[] = fotosCliente.map((f, i) => ({
-      url: f.archivoUrl,
-      nombre: `${visita.folio} - foto ${i + 1}.jpeg`,
-    }));
-    const videosZip: ArchivoADescargar[] = videosCliente.map((v, i) => ({
-      url: v.archivoUrl,
-      nombre: `${visita.folio} - video ${i + 1}.${extensionDe(v.mime, "mp4")}`,
-    }));
-    const archivos = tipo === "fotos" ? fotosZip : tipo === "videos" ? videosZip : [...fotosZip, ...videosZip];
+    const archivos = archivosMultimedia(visita, tipo);
     setBajando(tipo);
     const n = await descargarZip(archivos, nombreZipMultimedia(visita));
     setBajando(null);
@@ -193,6 +211,7 @@ export default function ActaView({
       chip: (ejec ? ejec.responsableCargo : visita.responsableCargo) || undefined,
     },
     { k: "Teléfono", v: visita.responsableTelefono ?? "Sin teléfono" },
+    ...(ejec?.responsableEmail ? [{ k: "Correo", v: ejec.responsableEmail }] : []),
     papel
       ? { k: "Registro", v: "Informe en papel · cargado desde el panel" }
       : ejecutada && ejec
@@ -303,7 +322,7 @@ export default function ActaView({
               <span>Liberar</span>
             </button>
           ) : null}
-          {cerrada && permite("visitas.enviar") ? (
+          {cerrada && correo && permite("visitas.enviar") ? (
             <button onClick={() => setDialogo("correo")} className="btn btn-primary min-h-10 px-3.5">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
                 <rect x="3" y="5" width="18" height="14" />
@@ -405,14 +424,7 @@ export default function ActaView({
         </p>
         <p className="m-0 mt-1 mb-6 text-meta text-[var(--color-muted)] tabular-nums">
           {sello}
-          {enviada ? (
-            <span className="ml-2 inline-flex items-center gap-1.5 text-[var(--color-text)] font-semibold">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true">
-                <path d="M4 12l5 5L20 6" />
-              </svg>
-              Enviada a {enviada.para} · {enviada.adjuntos} adjuntos
-            </span>
-          ) : null}
+          {enviada ? <EstadoEnvio enviada={enviada} /> : null}
         </p>
 
         <div className="border border-[var(--color-divider)] bg-[var(--color-surface-3)]">
@@ -537,7 +549,7 @@ export default function ActaView({
           {visita.trabajoSolicitado ? (
             <div className="px-5 py-5 border-b border-black/[.2] bg-[var(--color-surface)]">
               <div className="text-cap opacity-62 mb-2">
-                Trabajo solicitado por coordinación
+                {autorDeVisita(visita) ? `Trabajo solicitado por ${autorDeVisita(visita)}` : "Trabajo solicitado"}
               </div>
               <div className="text-body leading-[1.5] max-w-[74ch]">{visita.trabajoSolicitado}</div>
               {visita.adjuntos?.length ? (
@@ -1015,7 +1027,7 @@ export default function ActaView({
 
           <div className="text-cap opacity-66 mt-5 mb-2.5">Línea de tiempo</div>
           {[
-            { estado: "Programada", hora: `${fechaCL(visita.fechaProgramada)} · creada`, quien: "Coordinación", color: "var(--color-neutral-300)" },
+            { estado: "Programada", hora: `${fechaCL(visita.fechaProgramada)} · creada`, quien: autorDeVisita(visita) ?? "—", color: "var(--color-neutral-300)" },
             ...(ejecutada && ejec
               ? [
                   {
@@ -1084,8 +1096,8 @@ export default function ActaView({
         </div>
       </div>
 
-      {dialogo === "correo" ? (
-        <CorreoDialogo visita={visita} onCerrar={() => setDialogo(null)} onHecho={aviso} />
+      {dialogo === "correo" && correo ? (
+        <CorreoDialogo visita={visita} correo={correo} onCerrar={() => setDialogo(null)} onHecho={aviso} />
       ) : null}
       {dialogo === "editar" ? (
         <VisitaDialogo
@@ -1176,88 +1188,159 @@ export default function ActaView({
   );
 }
 
-/** "Enviar por correo" — destinatarios, cuerpo editable y qué se adjunta. */
+/** Cómo quedó el último envío del acta, junto al sello de la visita. */
+function EstadoEnvio({ enviada }: { enviada: ActaEnviada }) {
+  const cuando = `${fechaCL(enviada.en)} ${hhmm(enviada.en)}`;
+  const por = enviada.enviadoPor ? ` · por ${enviada.enviadoPor}` : "";
+  if (enviada.estado === "ERROR") {
+    return (
+      <span className="ml-2 inline-flex items-center gap-1.5 flex-wrap text-[var(--color-accent-800)] font-semibold">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7.5v5.5M12 16.5v.5" />
+        </svg>
+        No se pudo enviar a {enviada.para} · {cuando}
+        {por}
+        {enviada.error ? <span className="font-normal">· {enviada.error}</span> : null}
+      </span>
+    );
+  }
+  if (enviada.estado === "ENCOLADO") {
+    return (
+      <span className="ml-2 inline-flex items-center gap-1.5 text-[var(--color-muted)] font-semibold">
+        Envío sin confirmar a {enviada.para} · {cuando}
+        {por}
+      </span>
+    );
+  }
+  const copias = [enviada.cc && `CC ${enviada.cc}`, enviada.cco && `CCO ${enviada.cco}`].filter(Boolean).join(" · ");
+  return (
+    <span className="ml-2 inline-flex items-center gap-1.5 flex-wrap text-[var(--color-text)] font-semibold">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true">
+        <path d="M4 12l5 5L20 6" />
+      </svg>
+      Enviada a {enviada.para}
+      {copias ? ` (${copias})` : ""} · {cuando}
+      {por} · {enviada.adjuntos} {enviada.adjuntos === 1 ? "archivo" : "archivos"}
+    </span>
+  );
+}
+
+const CAMPOS_DESTINO: { k: CampoDestinatario; t: string }[] = [
+  { k: "para", t: "Para" },
+  { k: "cc", t: "CC" },
+  { k: "cco", t: "CCO" },
+];
+
+/** "Enviar por correo" — remitente fijo, destinatarios, mensaje editable y qué se adjunta. */
 function CorreoDialogo({
   visita,
+  correo,
   onCerrar,
   onHecho,
 }: {
   visita: Visita;
+  correo: DatosCorreo;
   onCerrar: () => void;
   onHecho: (mensaje: string) => void;
 }) {
   const router = useRouter();
   const ejec = visita.ejecucion;
-  const papel = esInformePapel(ejec);
-  const duracion = ejec ? minutosEntre(ejec.horaInicio, ejec.horaTermino) : null;
+  const firmante = visita.firmas?.[0]?.nombre ?? "la tienda";
+  const fotos = (visita.fotos ?? []).filter((f) => !f.interno).length;
+  const videos = (visita.videos ?? []).filter((v) => !v.interno).length;
 
-  const [form, setForm] = useState<Record<string, string | boolean>>({
+  // Para, CC y CCO los escribe quien envía: nada viene marcado. Folio, tienda,
+  // fecha, horario, motivo y técnicos ya van arriba del correo, en la tabla de
+  // datos clave: el mensaje no los repite.
+  const [form, setForm] = useState<Record<string, string | boolean>>(() => ({
     para: "",
     cc: "",
-    asunto: `${visita.sucursal?.nombre} · ${textoMotivos(visita)} · ${fechaCL(visita.fechaProgramada)}`,
+    cco: "",
+    asunto: `${visita.sucursal?.nombre} · ${textoMotivosReales(visita)} · ${fechaCL(visita.fechaProgramada)}`,
     cuerpo:
       `Estimados,\n\n` +
       `Informamos que la visita técnica en ${visita.sucursal?.nombre} (${visita.cliente?.nombreFantasia}) fue realizada el ${fechaCL(visita.fechaProgramada)}.\n\n` +
-      `Motivo: ${textoMotivosReales(visita)}\n` +
-      `Técnico: ${visita.tecnico?.nombreCompleto}\n` +
-      (visita.tecnicoAyudante ? `Técnico ayudante: ${visita.tecnicoAyudante.nombreCompleto}\n` : "") +
-      (ejec && !papel
-        ? `Horario en tienda: ${hhmm(ejec.horaInicio)} a ${hhmm(ejec.horaTermino)}${duracion ? ` (${duracion} min)` : ""}\n\n`
-        : "\n") +
-      `Trabajo realizado:\n${ejec?.observaciones ?? ""}\n\n` +
+      (ejec?.observaciones ? `Trabajo realizado:\n${ejec.observaciones}\n\n` : "") +
       ((visita.problemas ?? []).length
         ? `Quedaron ${visita.problemas!.length} puntos por resolver; van detallados en el acta adjunta.\n\n`
         : "La visita se cerró sin problemas pendientes en la tienda.\n\n") +
-      `Se adjuntan las fotografías del trabajo y la firma de ${visita.firmas?.[0]?.nombre ?? "la tienda"}, responsable de la tienda.\n\n` +
+      `Adjuntamos el acta en PDF, con la firma de ${firmante}, responsable de la tienda` +
+      (fotos + videos > 0 ? `, y las fotos y videos del trabajo en un archivo .zip.\n\n` : ".\n\n") +
       `Saludos cordiales,\nCoordinación\nGrupo dMC`,
-  });
+  }));
+  // A qué campo van las sugerencias que se tocan.
+  const [destino, setDestino] = useState<CampoDestinatario>("para");
 
-  // Solo lo que es del cliente: fotos y clips del comentario interno no salen.
-  const [adjuntos, setAdjuntos] = useState<Adjunto[]>(() => [
-    ...(visita.fotos ?? []).filter((f) => !f.interno).map((f) => ({
-      label: `Foto ${(f.etiqueta ?? "").toLowerCase()} · ${hhmm(f.tomadaEn)}.jpg`,
-      incluido: true,
-    })),
-    ...(visita.videos ?? []).filter((v) => !v.interno).map((v) => ({
-      label: `Video · ${reloj(v.duracionSeg ?? 0)}.${v.mime.split("/")[1] ?? "mp4"}`,
-      incluido: true,
-    })),
-    ...(visita.firmas ?? []).map((f) => ({ label: `Firma · ${f.nombre}.png`, incluido: true })),
-    { label: nombreArchivoActa(visita), incluido: true },
+  // El PDF del acta y el mismo .zip que se baja en «Descargar»: fotos y videos
+  // del cliente, nunca los internos.
+  const [opciones] = useState(() => [
+    { clave: "pdf" as ClaveAdjunto, label: nombreArchivoActa(visita) },
+    ...(fotos + videos > 0
+      ? [
+          {
+            clave: "zip" as ClaveAdjunto,
+            label: `${nombreZipMultimedia(visita)} · ${[
+              fotos ? `${fotos} ${fotos === 1 ? "foto" : "fotos"}` : "",
+              videos ? `${videos} ${videos === 1 ? "video" : "videos"}` : "",
+            ]
+              .filter(Boolean)
+              .join(" y ")}`,
+          },
+        ]
+      : []),
   ]);
+  const [adjuntos, setAdjuntos] = useState<Adjunto[]>(() => opciones.map(({ label }) => ({ label, incluido: true })));
 
   const [guardando, setGuardando] = useState(false);
 
   async function enviar() {
+    const d = repartirDestinatarios({ para: String(form.para), cc: String(form.cc), cco: String(form.cco) });
+    if (d.invalidos.length) {
+      onHecho(`Revisa ${d.invalidos.length === 1 ? "este correo" : "estos correos"}: ${d.invalidos.slice(0, 3).join(", ")}`);
+      return;
+    }
+    if (!d.para.length && !d.cc.length && !d.cco.length) {
+      onHecho("Escribe al menos un destinatario en Para, CC o CCO.");
+      return;
+    }
     setGuardando(true);
-    const n = adjuntos.filter((a) => a.incluido).length;
     const res = await enviarActaAction({
       folio: visita.folio,
       para: String(form.para),
       cc: String(form.cc),
+      cco: String(form.cco),
       asunto: String(form.asunto),
-      adjuntos: n,
+      cuerpo: String(form.cuerpo),
+      adjuntos: opciones.filter((_, i) => adjuntos[i]?.incluido).map((o) => o.clave),
     });
     setGuardando(false);
+    // Salga bien o mal queda un registro nuevo: el sello de la visita lo muestra.
+    router.refresh();
     if (!res.ok) {
       onHecho(res.error ?? "No se pudo enviar.");
       return;
     }
-    onHecho(`Acta enviada a ${form.para} · ${n} ${n === 1 ? "adjunto" : "adjuntos"}`);
-    router.refresh();
+    const n = d.para.length + d.cc.length + d.cco.length;
+    onHecho(`Acta enviada a ${n} ${n === 1 ? "destinatario" : "destinatarios"}`);
     onCerrar();
   }
+
+  const disponibles = correo.sugeridos.filter(
+    (s) => !yaIncluido(s.email, String(form.para), String(form.cc), String(form.cco))
+  );
 
   return (
     <Dialogo
       titulo={`Enviar acta ${visita.folio}`}
       cta="Enviar correo"
-      nota="Puedes editar destinatarios, asunto, cuerpo y qué se adjunta antes de enviar."
+      nota={`Sale desde el servidor y queda registrado quién lo envió, a quién y cuándo. Separa varios correos con coma (máximo ${MAX_DESTINATARIOS} en total). Si dejas Para vacío, el correo va a tu cuenta y los demás en copia.`}
       campos={[
-        { k: "para", label: "Para", tipo: "email", ph: "encargado@tienda.cl" },
+        { k: "para", label: "Para", ph: "encargado@tienda.cl" },
         { k: "cc", label: "CC", ph: "separa varios correos con coma" },
+        { k: "cco", label: "CCO (copia oculta)", span: 2, ph: "no se ven entre ellos ni los ve el resto" },
         { k: "asunto", label: "Asunto", span: 2 },
-        { k: "cuerpo", label: "Cuerpo del correo", span: 2, tipo: "cuerpo" },
+        { k: "cuerpo", label: "Mensaje", span: 2, tipo: "cuerpo" },
       ]}
       form={form}
       onCampo={(k, v) => setForm((prev) => ({ ...prev, [k]: v }))}
@@ -1268,7 +1351,68 @@ function CorreoDialogo({
       onToggleAdjunto={(i) =>
         setAdjuntos((prev) => prev.map((a, j) => (j === i ? { ...a, incluido: !a.incluido } : a)))
       }
-    />
+    >
+      <div className="mt-4 text-meta">
+        <span className="text-[var(--color-muted)]">De: </span>
+        <span className="font-semibold">{correo.de}</span>
+        {!correo.conSuCorreo ? (
+          <span className="text-[var(--color-muted)]">
+            {" "}
+            · tu dominio no está verificado en el proveedor de correo; las respuestas te llegan a {correo.responderA}
+          </span>
+        ) : null}
+      </div>
+      {!correo.listo ? (
+        <div className="mt-4 px-3.5 py-3 bg-[var(--color-accent-200)] border border-[var(--color-accent-300)] text-meta text-[var(--color-accent-800)]">
+          El envío de correo todavía no está configurado en el servidor. Hasta que se definan RESEND_API_KEY y
+          CORREO_REMITENTE el correo no sale.
+        </div>
+      ) : null}
+      {disponibles.length > 0 ? (
+        <div className="mt-4">
+          <div className="flex items-center gap-2 flex-wrap mb-2">
+            <span className="text-cap text-[var(--color-muted)]">Correos ya usados con esta tienda y su cliente · agregar a</span>
+            <div role="radiogroup" aria-label="Agregar sugerencias a" className="inline-flex border border-[var(--color-divider)]">
+              {CAMPOS_DESTINO.map((c) => (
+                <button
+                  key={c.k}
+                  type="button"
+                  role="radio"
+                  aria-checked={destino === c.k}
+                  onClick={() => setDestino(c.k)}
+                  className={`px-2.5 min-h-[30px] text-meta font-semibold ${
+                    destino === c.k
+                      ? "bg-[var(--color-text)] text-[var(--color-bg)]"
+                      : "bg-transparent text-[var(--color-text)] hover:bg-[var(--color-surface-2)]"
+                  }`}
+                >
+                  {c.t}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {disponibles.map((s) => (
+              <button
+                key={s.email}
+                type="button"
+                onClick={() => setForm((prev) => ({ ...prev, [destino]: agregarCorreo(String(prev[destino]), s.email) }))}
+                className="btn btn-secondary min-h-[34px] px-3 gap-1.5 text-meta"
+                title={s.email}
+              >
+                <span className="font-semibold">+ {s.nombre ?? s.email}</span>
+                <span className="text-[var(--color-muted)]">{s.nombre ? `${s.email} · ${s.detalle}` : s.detalle}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : correo.sugeridos.length === 0 ? (
+        <p className="mt-4 mb-0 text-meta text-[var(--color-muted)]">
+          Todavía no hay correos conocidos para esta tienda ni su cliente. Los que escribas aquí aparecerán como
+          sugerencia la próxima vez.
+        </p>
+      ) : null}
+    </Dialogo>
   );
 }
 

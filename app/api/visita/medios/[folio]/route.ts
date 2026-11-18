@@ -5,6 +5,7 @@ import { getVisitaCompletaPorFolio } from "@/lib/data/visitas";
 import { participaEnVisita } from "@/lib/ui/estado";
 import { mediosDelActa } from "@/lib/ui/medios-acta";
 import { nombreMultimedia } from "@/lib/ui/nombre-acta";
+import { enModoTecnico } from "@/lib/roles";
 
 // La lista de fotos y videos de un acta (con el nombre que llevan en el .zip de
 // actas) y el nombre de su carpeta de multimedia, sin bajar un solo byte: cada archivo se pide después a su ruta.
@@ -22,7 +23,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ folio: 
   const { folio: folioParam } = await params;
   const visita = await getVisitaCompletaPorFolio(decodeURIComponent(folioParam));
   if (!visita) return new NextResponse("No encontrada", { status: 404 });
-  if (sesion.usuario.rol === "TECNICO" && !(sesion.tecnico && participaEnVisita(visita, sesion.tecnico.id))) {
+  if (enModoTecnico(sesion) && !(sesion.tecnico && participaEnVisita(visita, sesion.tecnico.id))) {
     return new NextResponse("No encontrada", { status: 404 });
   }
 

@@ -7,6 +7,9 @@
 //
 // Este archivo lo importan el servidor y los componentes de cliente.
 
+import { enPanel, esAdmin, mismosRoles, rolDelPanel, tieneRolTecnico, type ConModo } from "@/lib/roles";
+import type { RolUsuario } from "@/lib/types";
+
 export interface AccionPermiso {
   clave: string;
   label: string;
@@ -209,17 +212,56 @@ export function normalizarPermisos(permisos: readonly string[]): string[] {
  * cualquier cosa con permisos.
  */
 export function puedeAdministrarCuenta(
-  actor: { usuario: { rol: string }; permisos: readonly string[] },
-  destino: { rol?: string; permisos: readonly string[] }
+  actor: ConModo & { permisos: readonly string[] },
+  destino: { roles?: readonly RolUsuario[]; permisos: readonly string[] }
 ): boolean {
-  if (actor.usuario.rol === "ADMIN") return true;
-  if (actor.usuario.rol === "TECNICO" || destino.rol === "ADMIN") return false;
+  if (esAdmin(actor)) return true;
+  // En modo técnico no se administra nada, aunque la cuenta sea del panel.
+  if (!enPanel(actor) || destino.roles?.includes("ADMIN")) return false;
   return destino.permisos.every((p) => tiene(actor.permisos, p));
 }
 
 /** Por qué no: el texto que acompaña a un `puedeAdministrarCuenta` negativo. */
-export function motivoCuentaAjena(destino: { rol?: string }): string {
-  return destino.rol === "ADMIN"
+export function motivoCuentaAjena(destino: { roles?: readonly RolUsuario[] }): string {
+  return destino.roles?.includes("ADMIN")
     ? "Solo un administrador puede modificar cuentas de administrador."
     : "Esa cuenta tiene permisos que tú no tienes: solo la puede modificar un administrador o alguien con al menos esos permisos.";
+}
+
+/** Una cuenta tal como la miran las reglas de abajo: cómo está o cómo quedaría. */
+export interface CuentaAdministrada {
+  roles: readonly RolUsuario[];
+  rolId: number | null;
+  tecnicoId: number | null;
+  permisos: readonly string[];
+}
+
+/**
+ * Quien no es administrador no puede fabricarse más acceso del que tiene: ni
+ * tocar cuentas que pueden más que él, ni cambiarse los roles, ni dar un rol
+ * que pueda más que él. Y vincular un técnico a una cuenta del panel es cosa
+ * del administrador: con ese vínculo se llenan y firman actas a nombre de ese
+ * técnico. Devuelve el motivo, o null si se puede.
+ */
+export function motivoParaNoGuardarCuenta(
+  sesion: ConModo & { usuario: { id: number }; permisos: readonly string[] },
+  id: number | null,
+  actual: CuentaAdministrada | null,
+  nueva: CuentaAdministrada
+): string | null {
+  if (actual && !puedeAdministrarCuenta(sesion, actual)) return motivoCuentaAjena(actual);
+  if (!puedeAdministrarCuenta(sesion, nueva)) {
+    return nueva.roles.includes("ADMIN")
+      ? "Solo un administrador puede crear o editar cuentas de administrador."
+      : "El rol elegido tiene permisos que tú no tienes: no lo puedes asignar.";
+  }
+  if (esAdmin(sesion)) return null;
+  const cambiaRoles = !actual || !mismosRoles(actual.roles, nueva.roles) || actual.rolId !== nueva.rolId;
+  if (id === sesion.usuario.id && cambiaRoles) return "No puedes cambiar tu propio rol.";
+  const combinada = rolDelPanel(nueva.roles) !== null && tieneRolTecnico(nueva.roles);
+  const tocaTecnico = !actual || !tieneRolTecnico(actual.roles) || actual.tecnicoId !== nueva.tecnicoId;
+  if (combinada && tocaTecnico) {
+    return "Solo un administrador puede dar el rol de técnico a una cuenta del panel o cambiarle el técnico.";
+  }
+  return null;
 }

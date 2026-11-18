@@ -284,11 +284,11 @@ export default function MaestroTable<T extends { id: number }>({
           nota={nota}
           campos={camposVisibles}
           form={dialogo.form}
+          // Funcional: dos cambios seguidos (el motivo y el estado) no se pisan.
           onCampo={(k, v) =>
-            setDialogo({
-              ...dialogo,
-              form: { ...dialogo.form, [k]: v, ...alCambiar?.(k, v, dialogo.form, dialogo.id) },
-            })
+            setDialogo((d) =>
+              d ? { ...d, form: { ...d.form, [k]: v, ...alCambiar?.(k, v, d.form, d.id) } } : d
+            )
           }
           onCerrar={() => setDialogo(null)}
           onGuardar={() => guardar()}

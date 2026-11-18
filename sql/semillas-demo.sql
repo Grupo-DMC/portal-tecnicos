@@ -57,6 +57,30 @@ FROM (VALUES
 WHERE NOT EXISTS (SELECT 1 FROM dmc.catalogo_problema t WHERE t.codigo = v.codigo);
 GO
 
+/* Las categorías de los tipos de problema (migración 040). */
+INSERT INTO dmc.catalogo_seccion (tipo, nombre, orden)
+SELECT 'PROBLEMA', v.nombre, v.orden
+FROM (VALUES (N'Antenas', 1), (N'Equipos y cableado', 2), (N'Otros', 3)) AS v(nombre, orden)
+WHERE NOT EXISTS (SELECT 1 FROM dmc.catalogo_seccion s WHERE s.tipo = 'PROBLEMA' AND s.nombre = v.nombre);
+GO
+
+UPDATE p SET seccion_id = s.id
+FROM dmc.catalogo_problema p
+JOIN (VALUES
+ ('ANTENA_NO_DETECTA',   N'Antenas'),
+ ('FALSA_ALARMA',        N'Antenas'),
+ ('DESCALIBRACION',      N'Antenas'),
+ ('SIN_ENERGIA',         N'Equipos y cableado'),
+ ('CABLE_DANADO',        N'Equipos y cableado'),
+ ('PLACAS_DANADAS',      N'Equipos y cableado'),
+ ('CONTADOR_FALLA',      N'Equipos y cableado'),
+ ('ETIQUETA_DEFECTUOSA', N'Otros'),
+ ('OTRO',                N'Otros')
+) AS x(codigo, seccion) ON x.codigo = p.codigo
+JOIN dmc.catalogo_seccion s ON s.tipo = 'PROBLEMA' AND s.nombre = x.seccion
+WHERE p.seccion_id IS NULL;
+GO
+
 INSERT INTO dmc.catalogo_problema_opcion (problema_id, etiqueta, orden)
 SELECT cp.id, x.etiqueta, x.orden
 FROM (VALUES
@@ -115,8 +139,9 @@ GO
 /* =====================================================================
    2. CLIENTES, TIENDAS Y TÉCNICOS (ficticios)
    ===================================================================== */
-INSERT INTO dmc.cliente (rut, razon_social, nombre_fantasia, activo)
-SELECT v.rut, v.razon_social, v.nombre_fantasia, v.activo
+INSERT INTO dmc.cliente (rut, razon_social, nombre_fantasia, activo, motivo_inactivo)
+SELECT v.rut, v.razon_social, v.nombre_fantasia, v.activo,
+       CASE WHEN v.activo = 0 THEN N'Dato de demostración: dejó de operar.' END
 FROM (VALUES
  ('99.000.001-8', N'Comercial Sol y Mar SpA',  N'Sol y Mar', 1),
  ('99.000.002-6', N'Deportes Andes Ltda.',           N'Deportes Andes',  1),
@@ -135,8 +160,9 @@ WHERE c.rut LIKE '99.000.00_-_'
   AND NOT EXISTS (SELECT 1 FROM dmc.marca m WHERE m.cliente_id = c.id AND m.nombre = c.nombre_fantasia);
 GO
 
-INSERT INTO dmc.sucursal (cliente_id, marca_id, nombre, codigo, direccion, comuna, region, telefono, activo)
-SELECT c.id, m.id, x.nombre, x.codigo, x.direccion, x.comuna, x.region, x.telefono, x.activo
+INSERT INTO dmc.sucursal (cliente_id, marca_id, nombre, codigo, direccion, comuna, region, telefono, activo, motivo_inactivo)
+SELECT c.id, m.id, x.nombre, x.codigo, x.direccion, x.comuna, x.region, x.telefono, x.activo,
+       CASE WHEN x.activo = 0 THEN N'Dato de demostración: dejó de operar.' END
 FROM (VALUES
  (N'Deportes del Sur',       N'Parque Arauco',        'SP-241', N'Av. Kennedy 5413',                       N'Las Condes',       N'Metropolitana', '+56 2 2000 0001', 1),
  (N'Sol y Mar',N'Mall Plaza Tobalaba',  'MS-118', N'Av. Camilo Henríquez 3296',              N'Puente Alto',      N'Metropolitana', '+56 2 2000 0002', 1),
@@ -158,8 +184,9 @@ JOIN dmc.marca m   ON m.cliente_id = c.id AND m.nombre = c.nombre_fantasia
 WHERE NOT EXISTS (SELECT 1 FROM dmc.sucursal q WHERE q.cliente_id = c.id AND q.codigo = x.codigo);
 GO
 
-INSERT INTO dmc.tecnico (rut, nombres, apellido_paterno, apellido_materno, email, telefono, activo)
-SELECT v.rut, v.nombres, v.apellido_paterno, v.apellido_materno, v.email, v.telefono, v.activo
+INSERT INTO dmc.tecnico (rut, nombres, apellido_paterno, apellido_materno, email, telefono, activo, motivo_inactivo)
+SELECT v.rut, v.nombres, v.apellido_paterno, v.apellido_materno, v.email, v.telefono, v.activo,
+       CASE WHEN v.activo = 0 THEN N'Dato de demostración: dejó de operar.' END
 FROM (VALUES
  ('10.000.001-6', N'Alicia', N'Demo', N'Uno',    N'tecnico1@example.com', '+56 9 0000 1001', 1),
  ('10.000.002-4', N'Bruno',  N'Demo', N'Dos',    N'tecnico2@example.com', '+56 9 0000 1002', 1),

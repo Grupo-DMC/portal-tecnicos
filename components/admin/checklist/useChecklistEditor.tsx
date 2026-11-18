@@ -33,6 +33,7 @@ import {
   type Seccion,
   aGruposProblema,
   aMotivos,
+  aSecciones,
   armarListas,
   listaCorta,
   moverEn,
@@ -59,6 +60,7 @@ export function useChecklistEditor({
   estadosProblemaIniciales,
   seccionesMotivoIniciales,
   seccionesTrabajoIniciales,
+  seccionesProblemaIniciales,
   plantillaInicial,
 }: {
   motivosIniciales: CatalogoMotivo[];
@@ -72,6 +74,8 @@ export function useChecklistEditor({
   estadosProblemaIniciales: CatalogoEstadoProblema[];
   seccionesMotivoIniciales: CatalogoSeccion[];
   seccionesTrabajoIniciales: CatalogoSeccion[];
+  /** Las categorías de los tipos de problema (migración 040). */
+  seccionesProblemaIniciales: CatalogoSeccion[];
   plantillaInicial: ChecklistPlantilla | null;
 }) {
   const router = useRouter();
@@ -87,7 +91,13 @@ export function useChecklistEditor({
   const [seccionesTrabajo, setSeccionesTrabajo] = useState<Seccion[]>(inicial.seccionesTrabajo);
   /** Las secciones plegadas. Por defecto todas se ven abiertas. */
   const [plegadas, setPlegadas] = useState<Set<string>>(() => new Set());
-  const [tipos, setTipos] = useState<Grupo[]>(() => aGruposProblema(tiposIniciales));
+  // Los tipos de problema y sus categorías nacen juntos, igual que los trabajos y sus secciones.
+  const [inicialProblemas] = useState(() => {
+    const categorias = aSecciones(seccionesProblemaIniciales);
+    return { categorias, tipos: aGruposProblema(tiposIniciales, categorias) };
+  });
+  const [seccionesProblema, setSeccionesProblema] = useState<Seccion[]>(inicialProblemas.categorias);
+  const [tipos, setTipos] = useState<Grupo[]>(inicialProblemas.tipos);
   const [trabajos, setTrabajos] = useState<Grupo[]>(inicial.trabajos);
   const [internos, setInternos] = useState<Motivo[]>(() => aMotivos(internosIniciales));
   const [pendientes, setPendientes] = useState<Motivo[]>(() => aMotivos(pendientesIniciales));
@@ -126,7 +136,9 @@ export function useChecklistEditor({
     setSeccionesMotivo(listas.seccionesMotivo);
     setSeccionesTrabajo(listas.seccionesTrabajo);
     setMotivos(listas.motivos);
-    setTipos(aGruposProblema(tiposIniciales));
+    const categorias = aSecciones(seccionesProblemaIniciales);
+    setSeccionesProblema(categorias);
+    setTipos(aGruposProblema(tiposIniciales, categorias));
     setTrabajos(listas.trabajos);
     setInternos(aMotivos(internosIniciales));
     setPendientes(aMotivos(pendientesIniciales));
@@ -148,6 +160,7 @@ export function useChecklistEditor({
     motivosIniciales,
     seccionesMotivoIniciales,
     seccionesTrabajoIniciales,
+    seccionesProblemaIniciales,
     tiposIniciales,
     trabajosIniciales,
     internosIniciales,
@@ -229,6 +242,7 @@ export function useChecklistEditor({
   const borrador = (): BorradorChecklist => ({
     seccionesMotivo: seccionesMotivo.map((x) => x.nombre.trim()).filter(Boolean),
     seccionesTrabajo: seccionesTrabajo.map((x) => x.nombre.trim()).filter(Boolean),
+    seccionesProblema: seccionesProblema.map((x) => x.nombre.trim()).filter(Boolean),
     motivos: motivos.map((m) => ({
       id: m.id,
       nombre: m.nombre,
@@ -239,6 +253,7 @@ export function useChecklistEditor({
       id: t.id,
       nombre: t.nombre,
       grupoLabel: t.grupoLabel.trim() || null,
+      seccion: nombreDeSeccion(seccionesProblema, t.seccion),
       opciones: t.items.map((o) => ({ id: o.id, etiqueta: o.etiqueta, permiteCantidad: o.permiteCantidad })),
     })),
     trabajos: trabajos.map((t) => ({
@@ -258,6 +273,7 @@ export function useChecklistEditor({
   const vacios =
     seccionesMotivo.filter((x) => !x.nombre.trim()).length +
     seccionesTrabajo.filter((x) => !x.nombre.trim()).length +
+    seccionesProblema.filter((x) => !x.nombre.trim()).length +
     motivos.filter((m) => !m.nombre.trim()).length +
     tipos.filter((t) => !t.nombre.trim()).length +
     trabajos.filter((t) => !t.nombre.trim()).length +
@@ -452,31 +468,38 @@ export function useChecklistEditor({
     });
   }
 
-  function agregarSeccion(set: React.Dispatch<React.SetStateAction<Seccion[]>>) {
+  function agregarSeccion(set: React.Dispatch<React.SetStateAction<Seccion[]>>, que = "Sección") {
     const key = nuevaClave();
     editar(set, (prev) => [...prev, { key, nombre: "" }]);
-    aviso("Sección agregada · escribe su nombre");
+    aviso(`${que} agregada · escribe su nombre`);
   }
 
-  /** Quitar una sección no quita a nadie: sus entradas pasan a «Sin sección». */
-  function quitarSeccion(sec: Seccion, de: "motivos" | "trabajos") {
-    const cuantas = (de === "motivos" ? motivos : trabajos).filter((x) => x.seccion === sec.key).length;
+  /**
+   * Quitar una sección (o una categoría de problemas) no quita a nadie: sus
+   * entradas pasan a «Sin sección». Se desactiva al guardar; no se borra.
+   */
+  function quitarSeccion(sec: Seccion, de: "motivos" | "trabajos" | "problemas") {
+    const lista = de === "motivos" ? motivos : de === "trabajos" ? trabajos : tipos;
+    const cuantas = lista.filter((x) => x.seccion === sec.key).length;
+    const que = de === "problemas" ? "categoría" : "sección";
+    const nombres = { motivos: "motivos", trabajos: "trabajos", problemas: "tipos de problema" }[de];
     setConfirmar({
-      titulo: "¿Quitar esta sección?",
+      titulo: `¿Quitar esta ${que}?`,
       texto:
-        `«${sec.nombre || "Sin nombre"}» deja de existir como sección. ` +
-        (cuantas
-          ? `Sus ${cuantas} ${de === "motivos" ? "motivos" : "trabajos"} no se quitan: pasan a «Sin sección». `
-          : "") +
+        `«${sec.nombre || "Sin nombre"}» deja de existir como ${que}. ` +
+        (cuantas ? `Sus ${cuantas} ${nombres} no se quitan: pasan a «Sin ${que}». ` : "") +
         "El cambio se aplica al guardar.",
-      cta: "Quitar sección",
+      cta: `Quitar ${que}`,
       accion: () => {
         if (de === "motivos") {
           editar(setSeccionesMotivo, (prev) => prev.filter((x) => x.key !== sec.key));
           setMotivos((prev) => prev.map((m) => (m.seccion === sec.key ? { ...m, seccion: null } : m)));
-        } else {
+        } else if (de === "trabajos") {
           editar(setSeccionesTrabajo, (prev) => prev.filter((x) => x.key !== sec.key));
           setTrabajos((prev) => prev.map((t) => (t.seccion === sec.key ? { ...t, seccion: null } : t)));
+        } else {
+          editar(setSeccionesProblema, (prev) => prev.filter((x) => x.key !== sec.key));
+          setTipos((prev) => prev.map((t) => (t.seccion === sec.key ? { ...t, seccion: null } : t)));
         }
       },
     });
@@ -750,6 +773,7 @@ export function useChecklistEditor({
     estadosProblemaIniciales,
     seccionesMotivoIniciales,
     seccionesTrabajoIniciales,
+    seccionesProblemaIniciales,
     plantillaInicial,
     router,
     toast,
@@ -761,6 +785,8 @@ export function useChecklistEditor({
     setSeccionesMotivo,
     seccionesTrabajo,
     setSeccionesTrabajo,
+    seccionesProblema,
+    setSeccionesProblema,
     plegadas,
     setPlegadas,
     tipos,

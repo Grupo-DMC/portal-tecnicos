@@ -16,6 +16,18 @@ describe.skipIf(!hayBd)("BD · restricciones del esquema", () => {
   });
   afterAll(() => limpiarDatos());
 
+  /** Los roles de una cuenta, en orden. */
+  const roles = async (id: number) =>
+    (await consulta<{ rol: string }>(`SELECT rol FROM dmc.usuario_rol WHERE usuario_id = ${id} ORDER BY rol`)).map((f) => f.rol);
+  /** Una cuenta recién creada, todavía sin roles. */
+  const cuenta = async (email: string, tecnicoId: number | null = null) =>
+    Number(
+      (await uno<{ id: number }>(
+        `INSERT INTO dmc.usuario (email, password_hash, tecnico_id) VALUES ('${email}', N'x', ${tecnicoId ?? "NULL"});
+         SELECT CAST(SCOPE_IDENTITY() AS bigint) AS id`
+      ))!.id
+    );
+
   describe("unicidad", () => {
     it("el RUT de un cliente no se repite", async () => {
       const e = await mensajeDeError(`INSERT INTO dmc.cliente (rut, razon_social, nombre_fantasia) VALUES ('76.000.001-0', N'Otra', N'Otra')`);
@@ -23,14 +35,24 @@ describe.skipIf(!hayBd)("BD · restricciones del esquema", () => {
     });
 
     it("el correo del usuario y el del técnico no se repiten", async () => {
-      expect(await mensajeDeError(`INSERT INTO dmc.usuario (email, password_hash, rol) VALUES ('admin@example.com', N'x', 'ADMIN')`)).toMatch(/uq_usuario_email/);
+      expect(await mensajeDeError(`INSERT INTO dmc.usuario (email, password_hash) VALUES ('admin@example.com', N'x')`)).toMatch(/uq_usuario_email/);
       expect(await mensajeDeError(`INSERT INTO dmc.tecnico (rut, nombres, apellido_paterno, email) VALUES ('33.333.333-3', N'X', N'Y', 'ana@example.com')`)).toMatch(/uq_tecnico_email/);
       expect(await mensajeDeError(`INSERT INTO dmc.tecnico (rut, nombres, apellido_paterno, email) VALUES ('11.111.111-1', N'X', N'Y', 'otro@example.com')`)).toMatch(/uq_tecnico_rut/);
     });
 
-    it("un técnico solo puede estar vinculado a un usuario", async () => {
-      const e = await mensajeDeError(`INSERT INTO dmc.usuario (email, password_hash, rol, tecnico_id) VALUES ('copia@example.com', N'x', 'TECNICO', ${m.tecnicoId})`);
+    it("un técnico solo puede estar vinculado a una cuenta activa", async () => {
+      const e = await mensajeDeError(`INSERT INTO dmc.usuario (email, password_hash, tecnico_id) VALUES ('copia@example.com', N'x', ${m.tecnicoId})`);
       expect(e).toMatch(/uq_usuario_tecnico/);
+    });
+
+    it("con la cuenta vieja del técnico desactivada, su técnico se puede vincular a otra cuenta", async () => {
+      await consulta(`UPDATE dmc.usuario SET activo = 0, motivo_inactivo = N'Ahora entra con su cuenta de admin' WHERE id = ${m.usuarioTecnicoId}`);
+      await consulta(`
+        UPDATE dmc.usuario SET tecnico_id = ${m.tecnicoId} WHERE id = ${m.adminId};
+        INSERT INTO dmc.usuario_rol (usuario_id, rol) VALUES (${m.adminId}, 'TECNICO');`);
+      expect(await roles(m.adminId)).toEqual(["ADMIN", "TECNICO"]);
+      // Reactivar la vieja choca: dos cuentas activas con el mismo técnico.
+      expect(await mensajeDeError(`UPDATE dmc.usuario SET activo = 1, motivo_inactivo = NULL WHERE id = ${m.usuarioTecnicoId}`)).toMatch(/uq_usuario_tecnico/);
     });
 
     it("una marca no puede tener dos sucursales con el mismo nombre", async () => {
@@ -48,14 +70,43 @@ describe.skipIf(!hayBd)("BD · restricciones del esquema", () => {
   });
 
   describe("reglas de negocio (CHECK)", () => {
-    it("un usuario TÉCNICO necesita técnico vinculado y los demás roles no pueden tenerlo", async () => {
-      expect(await mensajeDeError(`INSERT INTO dmc.usuario (email, password_hash, rol) VALUES ('t@example.com', N'x', 'TECNICO')`)).toMatch(/ck_usuario_tecnico/);
-      const libre = await uno<{ id: number }>(`INSERT INTO dmc.tecnico (rut, nombres, apellido_paterno, email) VALUES ('44.444.444-4', N'C', N'D', 'c@example.com'); SELECT SCOPE_IDENTITY() AS id`);
-      expect(await mensajeDeError(`INSERT INTO dmc.usuario (email, password_hash, rol, tecnico_id) VALUES ('a2@example.com', N'x', 'ADMIN', ${libre!.id})`)).toMatch(/ck_usuario_tecnico/);
+    it("el rol TECNICO necesita técnico vinculado, y no se le puede soltar mientras lo tenga", async () => {
+      const id = await cuenta("t@example.com");
+      expect(await mensajeDeError(`INSERT INTO dmc.usuario_rol (usuario_id, rol) VALUES (${id}, 'TECNICO')`)).toMatch(/ck_usuario_roles_tecnico/);
+      expect(await mensajeDeError(`UPDATE dmc.usuario SET tecnico_id = NULL WHERE id = ${m.usuarioTecnicoId}`)).toMatch(/ck_usuario_roles_tecnico/);
     });
 
-    it("el rol del usuario solo puede ser ADMIN, COORDINADOR o TECNICO", async () => {
-      expect(await mensajeDeError(`INSERT INTO dmc.usuario (email, password_hash, rol) VALUES ('x@example.com', N'x', 'SUPERUSUARIO')`)).toMatch(/ck_usuario_rol/);
+    it("una cuenta puede ser ADMIN + TECNICO o COORDINADOR + TECNICO, pero no ADMIN + COORDINADOR", async () => {
+      const libre = await uno<{ id: number }>(`INSERT INTO dmc.tecnico (rut, nombres, apellido_paterno, email) VALUES ('44.444.444-4', N'C', N'D', 'c@example.com'); SELECT SCOPE_IDENTITY() AS id`);
+      const a = await cuenta("a2@example.com", libre!.id);
+      await consulta(`INSERT INTO dmc.usuario_rol (usuario_id, rol) VALUES (${a}, 'ADMIN'), (${a}, 'TECNICO')`);
+      expect(await roles(a)).toEqual(["ADMIN", "TECNICO"]);
+      expect(await mensajeDeError(`INSERT INTO dmc.usuario_rol (usuario_id, rol) VALUES (${a}, 'COORDINADOR')`)).toMatch(/ck_usuario_roles_panel/);
+      // Un mismo rol dos veces no.
+      expect(await mensajeDeError(`INSERT INTO dmc.usuario_rol (usuario_id, rol) VALUES (${a}, 'ADMIN')`)).toMatch(/pk_usuario_rol/);
+    });
+
+    it("toda cuenta conserva al menos un rol", async () => {
+      expect(await mensajeDeError(`DELETE FROM dmc.usuario_rol WHERE usuario_id = ${m.adminId}`)).toMatch(/ck_usuario_roles_alguno/);
+      // Cambiar el único rol en una sola sentencia sí se puede.
+      await consulta(`UPDATE dmc.usuario_rol SET rol = 'COORDINADOR' WHERE usuario_id = ${m.adminId}`);
+      expect(await roles(m.adminId)).toEqual(["COORDINADOR"]);
+    });
+
+    it("el rol del panel (rol_id) solo lo lleva una cuenta COORDINADOR", async () => {
+      const rolId = (await uno<{ id: number }>(`SELECT TOP 1 id FROM dmc.rol`))!.id;
+      expect(await mensajeDeError(`UPDATE dmc.usuario SET rol_id = ${rolId} WHERE id = ${m.adminId}`)).toMatch(/ck_usuario_roles_rol_id/);
+    });
+
+    it("el rol solo puede ser ADMIN, COORDINADOR o TECNICO", async () => {
+      expect(await mensajeDeError(`INSERT INTO dmc.usuario_rol (usuario_id, rol) VALUES (${m.adminId}, 'SUPERUSUARIO')`)).toMatch(/ck_usuario_rol_valor/);
+    });
+
+    it("borrar una cuenta se lleva sus roles", async () => {
+      const id = await cuenta("borrar@example.com");
+      await consulta(`INSERT INTO dmc.usuario_rol (usuario_id, rol) VALUES (${id}, 'ADMIN')`);
+      await consulta(`DELETE FROM dmc.usuario WHERE id = ${id}`);
+      expect(await roles(id)).toEqual([]);
     });
 
     it("el estado de la visita está acotado", async () => {

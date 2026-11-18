@@ -10,10 +10,10 @@ import type {
   Cliente,
   Mall,
   Marca,
-  RolUsuario,
   Sucursal,
   Tecnico,
 } from "@/lib/types";
+import type { Modo } from "@/lib/roles";
 
 // Maestros y catálogos para los componentes de cliente.
 //
@@ -24,11 +24,10 @@ import type {
 
 export interface Referencias {
   /**
-   * Con qué rol entró quien está mirando. Lo necesitan las acciones que no son
-   * de cualquiera —cerrar una visita por administración, por ejemplo— para no
-   * ofrecer un botón que el servidor va a rechazar igual.
+   * En qué panel está quien mira: el de administración o el de técnico (ver
+   * lib/roles). Lo que puede hacer ahí lo dicen los permisos.
    */
-  rol: RolUsuario;
+  modo: Modo;
   /** Lo que puede hacer quien está mirando: "<módulo>.<acción>". Ver lib/permisos.ts. */
   permisos: string[];
   clientes: Cliente[];
@@ -46,7 +45,7 @@ export interface Referencias {
 }
 
 export const REFERENCIAS_VACIAS: Referencias = {
-  rol: "TECNICO",
+  modo: "tecnico",
   permisos: [],
   clientes: [],
   marcas: [],

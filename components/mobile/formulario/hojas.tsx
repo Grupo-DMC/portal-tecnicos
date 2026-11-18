@@ -236,6 +236,28 @@ export function HojaProblema({ fv }: { fv: FormularioVisitaApi }) {
     probListo,
     cambiarCantidad,
   } = fv;
+
+  const filaTipo = (t: (typeof catalogoProblema)[number]) => {
+    const activo = np.codigo === t.codigo;
+    return (
+      <button
+        key={t.codigo}
+        onClick={() => setNp((p) => ({ ...p, codigo: t.codigo, items: [] }))}
+        className="w-full min-h-[54px] flex items-center gap-3 px-3.5 font-extrabold text-body leading-[1.3] cursor-pointer text-left"
+        style={{
+          background: activo ? "var(--color-accent)" : "var(--color-surface-3)",
+          color: activo ? "#fff" : "var(--color-text)",
+          border: `1px solid ${activo ? "var(--color-accent)" : "rgba(31,28,33,.35)"}`,
+        }}
+      >
+        <span className="w-[18px] h-[18px] flex-none border-2 border-current grid place-items-center">
+          {activo ? <span className="w-2 h-2 bg-current" /> : null}
+        </span>
+        <span className="flex-1 min-w-0">{t.nombre}</span>
+      </button>
+    );
+  };
+
   return (
     <>
       {/* ── Hoja: agregar un problema ── */}
@@ -243,29 +265,34 @@ export function HojaProblema({ fv }: { fv: FormularioVisitaApi }) {
         <Sheet titulo={np.editando === null ? "Nuevo problema" : "Corregir problema"} onClose={() => setSheet(null)}>
           <div className="p-4 flex flex-col gap-3.5">
             <div>
-              <PasoTitulo n="1" texto="¿Qué tipo de problema es?" />
-              <div className="flex flex-col gap-1.5">
-                {catalogoProblema.map((t) => {
-                  const activo = np.codigo === t.codigo;
-                  return (
-                    <button
-                      key={t.codigo}
-                      onClick={() => setNp((p) => ({ ...p, codigo: t.codigo, items: [] }))}
-                      className="w-full min-h-[54px] flex items-center gap-3 px-3.5 font-extrabold text-body leading-[1.3] cursor-pointer text-left"
-                      style={{
-                        background: activo ? "var(--color-accent)" : "var(--color-surface-3)",
-                        color: activo ? "#fff" : "var(--color-text)",
-                        border: `1px solid ${activo ? "var(--color-accent)" : "rgba(31,28,33,.35)"}`,
-                      }}
-                    >
-                      <span className="w-[18px] h-[18px] flex-none border-2 border-current grid place-items-center">
-                        {activo ? <span className="w-2 h-2 bg-current" /> : null}
-                      </span>
-                      <span className="flex-1 min-w-0">{t.nombre}</span>
-                    </button>
-                  );
-                })}
-              </div>
+              <PasoTitulo
+                n="1"
+                texto={hayAlgunaSeccion(catalogoProblema) ? "¿De qué categoría y tipo es el problema?" : "¿Qué tipo de problema es?"}
+              />
+              {/* Con categorías (migración 040) se elige primero la categoría
+                  y dentro de ella el tipo, igual que los trabajos por sección.
+                  La del tipo ya elegido nace abierta. */}
+              {hayAlgunaSeccion(catalogoProblema) ? (
+                <div className="flex flex-col gap-3.5">
+                  {agruparPorSeccion(catalogoProblema).map((g) => {
+                    const elegidoAca = g.items.some((t) => t.codigo === np.codigo);
+                    return (
+                      <SeccionPlegable
+                        key={g.nombre ?? "__sin"}
+                        titulo={g.nombre ?? "Sin categoría"}
+                        total={g.items.length}
+                        marcados={elegidoAca ? 1 : 0}
+                        abiertaInicial={elegidoAca}
+                        tono="movil"
+                      >
+                        <div className="flex flex-col gap-1.5">{g.items.map(filaTipo)}</div>
+                      </SeccionPlegable>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1.5">{catalogoProblema.map(filaTipo)}</div>
+              )}
             </div>
 
             {probSel && probSel.opciones.length > 0 ? (

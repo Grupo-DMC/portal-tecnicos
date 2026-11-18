@@ -55,7 +55,7 @@ CREATE TABLE dmc.cliente (
     razon_social     nvarchar(160) NOT NULL,
     nombre_fantasia  nvarchar(80)  NOT NULL,
     activo           bit           NOT NULL CONSTRAINT df_cliente_activo DEFAULT (1),
-    motivo_inactivo  nvarchar(400) NULL,         -- por qué se desactivó; el panel lo exige (migración 009)
+    motivo_inactivo  nvarchar(400) NULL,         -- por qué se desactivó; obligatorio si activo = 0 (migraciones 009 y 039)
     notas            nvarchar(max) NULL,         -- texto libre del panel
     plan_calibracion bit           NULL,         -- en plan de calibración; NULL = no se sabe (migración 017)
     garantia_meses   smallint      NULL,         -- plan de garantía que cubre todos sus locales; NULL = ninguno (migración 029)
@@ -63,7 +63,9 @@ CREATE TABLE dmc.cliente (
     actualizado_en   datetime2(0)  NOT NULL CONSTRAINT df_cliente_actualizado DEFAULT (SYSDATETIME()),
     CONSTRAINT pk_cliente     PRIMARY KEY (id),
     CONSTRAINT uq_cliente_rut UNIQUE (rut),
-    CONSTRAINT ck_cliente_garantia_meses CHECK (garantia_meses IS NULL OR garantia_meses BETWEEN 1 AND 240)
+    CONSTRAINT ck_cliente_garantia_meses CHECK (garantia_meses IS NULL OR garantia_meses BETWEEN 1 AND 240),
+    CONSTRAINT ck_cliente_motivo_inactivo CHECK (
+        activo = 1 OR (motivo_inactivo IS NOT NULL AND LEN(LTRIM(RTRIM(motivo_inactivo))) > 0))
 );
 GO
 
@@ -73,12 +75,15 @@ CREATE TABLE dmc.marca (
     cliente_id      bigint        NOT NULL,
     nombre          nvarchar(80)  NOT NULL,
     activo          bit           NOT NULL CONSTRAINT df_marca_activo DEFAULT (1),
+    motivo_inactivo nvarchar(400) NULL,         -- obligatorio si activo = 0 (migración 039)
     creado_en       datetime2(0)  NOT NULL CONSTRAINT df_marca_creado DEFAULT (SYSDATETIME()),
     actualizado_en  datetime2(0)  NOT NULL CONSTRAINT df_marca_actualizado DEFAULT (SYSDATETIME()),
     CONSTRAINT pk_marca                PRIMARY KEY (id),
     CONSTRAINT uq_marca_cliente_nombre UNIQUE (cliente_id, nombre),
     CONSTRAINT uq_marca_id_cliente     UNIQUE (id, cliente_id),   -- destino de la FK compuesta de sucursal
-    CONSTRAINT fk_marca_cliente        FOREIGN KEY (cliente_id) REFERENCES dmc.cliente (id)
+    CONSTRAINT fk_marca_cliente        FOREIGN KEY (cliente_id) REFERENCES dmc.cliente (id),
+    CONSTRAINT ck_marca_motivo_inactivo CHECK (
+        activo = 1 OR (motivo_inactivo IS NOT NULL AND LEN(LTRIM(RTRIM(motivo_inactivo))) > 0))
 );
 GO
 
@@ -90,10 +95,13 @@ CREATE TABLE dmc.mall (
     comuna          nvarchar(80)  NOT NULL CONSTRAINT df_mall_comuna DEFAULT (N''),   -- migración 012
     region          nvarchar(80)  NOT NULL CONSTRAINT df_mall_region DEFAULT (N''),   -- migración 012
     activo          bit           NOT NULL CONSTRAINT df_mall_activo DEFAULT (1),
+    motivo_inactivo nvarchar(400) NULL,         -- obligatorio si activo = 0 (migración 039)
     creado_en       datetime2(0)  NOT NULL CONSTRAINT df_mall_creado DEFAULT (SYSDATETIME()),
     actualizado_en  datetime2(0)  NOT NULL CONSTRAINT df_mall_actualizado DEFAULT (SYSDATETIME()),
     CONSTRAINT pk_mall        PRIMARY KEY (id),
-    CONSTRAINT uq_mall_nombre UNIQUE (nombre)
+    CONSTRAINT uq_mall_nombre UNIQUE (nombre),
+    CONSTRAINT ck_mall_motivo_inactivo CHECK (
+        activo = 1 OR (motivo_inactivo IS NOT NULL AND LEN(LTRIM(RTRIM(motivo_inactivo))) > 0))
 );
 GO
 
@@ -109,7 +117,7 @@ CREATE TABLE dmc.sucursal (
     region          nvarchar(80)  NOT NULL,
     telefono        varchar(30)   NULL,
     activo          bit           NOT NULL CONSTRAINT df_sucursal_activo DEFAULT (1),
-    motivo_inactivo nvarchar(400) NULL,         -- por qué se desactivó; el panel lo exige (migración 009)
+    motivo_inactivo nvarchar(400) NULL,         -- por qué se desactivó; obligatorio si activo = 0 (migraciones 009 y 039)
     notas           nvarchar(max) NULL,         -- texto libre del panel
     fecha_instalacion date        NULL,         -- cuándo se instaló (migración 017)
     remota          bit           NULL,         -- se atiende en remoto; NULL = no se sabe (migración 017)
@@ -121,6 +129,8 @@ CREATE TABLE dmc.sucursal (
     CONSTRAINT pk_sucursal                PRIMARY KEY (id),
     CONSTRAINT uq_sucursal_marca_nombre   UNIQUE (marca_id, nombre),
     CONSTRAINT ck_sucursal_garantia_meses CHECK (garantia_meses IS NULL OR garantia_meses BETWEEN 1 AND 240),
+    CONSTRAINT ck_sucursal_motivo_inactivo CHECK (
+        activo = 1 OR (motivo_inactivo IS NOT NULL AND LEN(LTRIM(RTRIM(motivo_inactivo))) > 0)),
     CONSTRAINT fk_sucursal_cliente FOREIGN KEY (cliente_id) REFERENCES dmc.cliente (id),
     CONSTRAINT fk_sucursal_marca   FOREIGN KEY (marca_id, cliente_id) REFERENCES dmc.marca (id, cliente_id),
     CONSTRAINT fk_sucursal_mall    FOREIGN KEY (mall_id)    REFERENCES dmc.mall (id)
@@ -145,12 +155,15 @@ CREATE TABLE dmc.tecnico (
     email             nvarchar(160) NOT NULL,
     telefono          varchar(30)   NULL,              -- formato +56 9 1234 5678
     activo            bit           NOT NULL CONSTRAINT df_tecnico_activo DEFAULT (1),
+    motivo_inactivo   nvarchar(400) NULL,              -- obligatorio si activo = 0 (migración 039)
     creado_en         datetime2(0)  NOT NULL CONSTRAINT df_tecnico_creado DEFAULT (SYSDATETIME()),
     actualizado_en    datetime2(0)  NOT NULL CONSTRAINT df_tecnico_actualizado DEFAULT (SYSDATETIME()),
     nombre_completo   AS (CONCAT(nombres, N' ', apellido_paterno)) PERSISTED,
     CONSTRAINT pk_tecnico       PRIMARY KEY (id),
     CONSTRAINT uq_tecnico_rut   UNIQUE (rut),
-    CONSTRAINT uq_tecnico_email UNIQUE (email)
+    CONSTRAINT uq_tecnico_email UNIQUE (email),
+    CONSTRAINT ck_tecnico_motivo_inactivo CHECK (
+        activo = 1 OR (motivo_inactivo IS NOT NULL AND LEN(LTRIM(RTRIM(motivo_inactivo))) > 0))
 );
 GO
 -- Todos los técnicos salen desde la oficina central: no se asigna zona.
@@ -180,7 +193,8 @@ CREATE TABLE dmc.usuario (
     id                bigint         IDENTITY(1,1) NOT NULL,
     email             nvarchar(160)  NOT NULL,
     password_hash     nvarchar(200)  NOT NULL,
-    rol               varchar(12)    NOT NULL,
+    -- Los roles de la cuenta (ADMIN, COORDINADOR, TECNICO) viven en
+    -- dmc.usuario_rol (migraciones 044 y 045).
     -- El rol del panel. Solo las cuentas COORDINADOR: el ADMIN puede todo y el
     -- TECNICO entra por el celular.
     rol_id            bigint         NULL,
@@ -189,6 +203,7 @@ CREATE TABLE dmc.usuario (
     nombre            nvarchar(120)  NULL,
     telefono          nvarchar(30)   NULL,
     activo            bit            NOT NULL CONSTRAINT df_usuario_activo DEFAULT (1),
+    motivo_inactivo   nvarchar(400)  NULL,     -- obligatorio si activo = 0 (migración 039)
     ultimo_acceso_en  datetime2(0)   NULL,
     -- Va dentro del token de sesión: subirlo cierra las sesiones abiertas.
     sesion_version    int            NOT NULL CONSTRAINT df_usuario_sesion_version DEFAULT (0),
@@ -198,16 +213,30 @@ CREATE TABLE dmc.usuario (
     actualizado_en    datetime2(0)   NOT NULL CONSTRAINT df_usuario_actualizado DEFAULT (SYSDATETIME()),
     CONSTRAINT pk_usuario         PRIMARY KEY (id),
     CONSTRAINT uq_usuario_email   UNIQUE (email),
+    CONSTRAINT ck_usuario_motivo_inactivo CHECK (
+        activo = 1 OR (motivo_inactivo IS NOT NULL AND LEN(LTRIM(RTRIM(motivo_inactivo))) > 0)),
     CONSTRAINT fk_usuario_tecnico FOREIGN KEY (tecnico_id) REFERENCES dmc.tecnico (id),
-    CONSTRAINT fk_usuario_rol     FOREIGN KEY (rol_id) REFERENCES dmc.rol (id),
-    CONSTRAINT ck_usuario_rol_id  CHECK (rol_id IS NULL OR rol = 'COORDINADOR'),
-    CONSTRAINT ck_usuario_rol     CHECK (rol IN ('ADMIN','COORDINADOR','TECNICO')),
-    CONSTRAINT ck_usuario_tecnico CHECK (
-        (rol =  'TECNICO' AND tecnico_id IS NOT NULL) OR
-        (rol <> 'TECNICO' AND tecnico_id IS NULL))
+    CONSTRAINT fk_usuario_rol     FOREIGN KEY (rol_id) REFERENCES dmc.rol (id)
 );
 GO
-CREATE UNIQUE INDEX uq_usuario_tecnico ON dmc.usuario (tecnico_id) WHERE tecnico_id IS NOT NULL;
+-- Un técnico, una sola cuenta activa (migración 044).
+CREATE UNIQUE INDEX uq_usuario_tecnico ON dmc.usuario (tecnico_id) WHERE tecnico_id IS NOT NULL AND activo = 1;
+GO
+
+-- Los roles de cada cuenta (migración 044). Combinaciones válidas: ADMIN,
+-- COORDINADOR, TECNICO, ADMIN + TECNICO y COORDINADOR + TECNICO. Las reglas
+-- que cruzan con dmc.usuario las cuidan tg_usuario_rol_coherente y
+-- tg_usuario_roles_coherentes (sección de triggers).
+CREATE TABLE dmc.usuario_rol (
+    usuario_id  bigint        NOT NULL,
+    rol         varchar(12)   NOT NULL,
+    creado_en   datetime2(0)  NOT NULL CONSTRAINT df_usuario_rol_creado DEFAULT (SYSDATETIME()),
+    CONSTRAINT pk_usuario_rol         PRIMARY KEY (usuario_id, rol),
+    CONSTRAINT fk_usuario_rol_usuario FOREIGN KEY (usuario_id) REFERENCES dmc.usuario (id) ON DELETE CASCADE,
+    CONSTRAINT ck_usuario_rol_valor   CHECK (rol IN ('ADMIN', 'COORDINADOR', 'TECNICO'))
+);
+GO
+CREATE INDEX ix_usuario_rol_rol ON dmc.usuario_rol (rol) INCLUDE (usuario_id);
 GO
 
 -- Foto de perfil (migración 034). Aparte de dmc.usuario para que la lectura de
@@ -230,16 +259,17 @@ GO
       Lista 2 · Tipos de problema  (+ sus opciones de detalle)
       Lista 3 · Trabajos realizados (+ sus subtrabajos)
    ===================================================================== */
--- Una capa por encima de las listas: agrupa motivos o agrupa trabajos para
--- ordenarlos y plegarlos. Null en seccion_id = «sin sección».
+-- Una capa por encima de las listas: agrupa motivos, trabajos o tipos de
+-- problema (la «categoría», migración 040) para ordenarlos y plegarlos. Null en
+-- seccion_id = «sin sección».
 CREATE TABLE dmc.catalogo_seccion (
     id      bigint        IDENTITY(1,1) NOT NULL,
-    tipo    varchar(10)   NOT NULL,     -- MOTIVO | TRABAJO
+    tipo    varchar(10)   NOT NULL,     -- MOTIVO | TRABAJO | PROBLEMA
     nombre  nvarchar(80)  NOT NULL,     -- "Visitas", "Instalaciones"…
     orden   smallint      NOT NULL CONSTRAINT df_cat_seccion_orden DEFAULT (0),
     activo  bit           NOT NULL CONSTRAINT df_cat_seccion_activo DEFAULT (1),
     CONSTRAINT pk_catalogo_seccion PRIMARY KEY (id),
-    CONSTRAINT ck_catalogo_seccion_tipo CHECK (tipo IN ('MOTIVO', 'TRABAJO')),
+    CONSTRAINT ck_catalogo_seccion_tipo CHECK (tipo IN ('MOTIVO', 'TRABAJO', 'PROBLEMA')),
     CONSTRAINT uq_catalogo_seccion_nombre UNIQUE (tipo, nombre)
 );
 GO
@@ -267,13 +297,15 @@ CREATE TABLE dmc.catalogo_problema (
     grupo_label     nvarchar(60)  NULL,         -- "Antena afectada" (título del paso 2)
     singular        nvarchar(30)  NULL,         -- "antena", "modelo", "cable"…
     ayuda           nvarchar(160) NULL,
+    seccion_id      bigint        NULL,         -- su categoría (migración 040)
     orden           smallint      NOT NULL CONSTRAINT df_cat_prob_orden DEFAULT (0),
     activo          bit           NOT NULL CONSTRAINT df_cat_prob_activo DEFAULT (1),
     creado_en       datetime2(0)  NOT NULL CONSTRAINT df_cat_prob_creado DEFAULT (SYSDATETIME()),
     actualizado_en  datetime2(0)  NOT NULL CONSTRAINT df_cat_prob_actualizado DEFAULT (SYSDATETIME()),
     CONSTRAINT pk_catalogo_problema        PRIMARY KEY (id),
     CONSTRAINT uq_catalogo_problema_codigo UNIQUE (codigo),
-    CONSTRAINT uq_catalogo_problema_nombre UNIQUE (nombre)
+    CONSTRAINT uq_catalogo_problema_nombre UNIQUE (nombre),
+    CONSTRAINT fk_cat_problema_seccion FOREIGN KEY (seccion_id) REFERENCES dmc.catalogo_seccion (id)
 );
 GO
 
@@ -525,6 +557,7 @@ CREATE TABLE dmc.visita_ejecucion (
     responsable_rut       varchar(12)   NULL,
     responsable_telefono  varchar(30)   NULL,
     responsable_cargo     nvarchar(80)  NULL,      -- el cargo de quien firmó; sale en el acta y el PDF (migración 022)
+    responsable_email     nvarchar(160) NULL,      -- opcional, como el teléfono (migración 041)
     motivo_real_codigo    varchar(40)   NULL,      -- el motivo que el técnico confirma en terreno
     observaciones         nvarchar(max) NULL,      -- las ve el cliente en el acta
     comentario_interno    nvarchar(max) NULL,      -- solo coordinación
@@ -540,7 +573,8 @@ CREATE TABLE dmc.visita_ejecucion (
     CONSTRAINT pk_visita_ejecucion PRIMARY KEY (visita_id),
     CONSTRAINT fk_ejecucion_visita FOREIGN KEY (visita_id) REFERENCES dmc.visita (id) ON DELETE CASCADE,
     CONSTRAINT fk_ejecucion_motivo FOREIGN KEY (motivo_real_codigo) REFERENCES dmc.catalogo_motivo (codigo),
-    CONSTRAINT ck_ejecucion_horas  CHECK (hora_termino IS NULL OR hora_termino >= hora_inicio)
+    CONSTRAINT ck_ejecucion_horas  CHECK (hora_termino IS NULL OR hora_termino >= hora_inicio),
+    CONSTRAINT ck_ejecucion_responsable_email CHECK (responsable_email IS NULL OR responsable_email LIKE N'%_@_%')
 );
 GO
 
@@ -594,9 +628,12 @@ CREATE TABLE dmc.contacto (
     email           nvarchar(160) NULL,
     telefono        varchar(30)   NULL,
     activo          bit           NOT NULL CONSTRAINT df_contacto_activo DEFAULT (1),
+    motivo_inactivo nvarchar(400) NULL,         -- obligatorio si activo = 0 (migración 039)
     creado_en       datetime2(0)  NOT NULL CONSTRAINT df_contacto_creado DEFAULT (SYSDATETIME()),
     actualizado_en  datetime2(0)  NOT NULL CONSTRAINT df_contacto_actualizado DEFAULT (SYSDATETIME()),
-    CONSTRAINT pk_contacto PRIMARY KEY (id)
+    CONSTRAINT pk_contacto PRIMARY KEY (id),
+    CONSTRAINT ck_contacto_motivo_inactivo CHECK (
+        activo = 1 OR (motivo_inactivo IS NOT NULL AND LEN(LTRIM(RTRIM(motivo_inactivo))) > 0))
 );
 GO
 CREATE TABLE dmc.contacto_cargo (
@@ -617,6 +654,9 @@ GO
 CREATE UNIQUE INDEX uq_contacto_cargo ON dmc.contacto_cargo (contacto_id, cargo, alcance_tipo, alcance_id, alcance_texto);
 GO
 CREATE INDEX ix_contacto_cargo_alcance ON dmc.contacto_cargo (alcance_tipo, alcance_id, alcance_texto);
+-- Los contactos propios de una tienda: se piden en cada acta (migración 041).
+CREATE INDEX ix_contacto_cargo_sucursal ON dmc.contacto_cargo (alcance_id)
+    INCLUDE (contacto_id, cargo) WHERE alcance_tipo = 'SUCURSAL';
 GO
 
 -- Quienes han recibido o firmado en cada tienda (migración 021). Se ofrecen al
@@ -629,9 +669,11 @@ CREATE TABLE dmc.persona_local (
     rut         varchar(12)   NULL,
     telefono    varchar(30)   NULL,
     cargo       nvarchar(80)  NULL,
+    email       nvarchar(160) NULL,               -- migración 041
     ultima_vez  datetime2(0)  NOT NULL CONSTRAINT df_persona_local_ultima DEFAULT (SYSDATETIME()),
     CONSTRAINT pk_persona_local          PRIMARY KEY (id),
-    CONSTRAINT fk_persona_local_sucursal FOREIGN KEY (sucursal_id) REFERENCES dmc.sucursal (id)
+    CONSTRAINT fk_persona_local_sucursal FOREIGN KEY (sucursal_id) REFERENCES dmc.sucursal (id),
+    CONSTRAINT ck_persona_local_email    CHECK (email IS NULL OR email LIKE N'%_@_%')
 );
 GO
 CREATE UNIQUE INDEX uq_persona_local_rut    ON dmc.persona_local (sucursal_id, rut)    WHERE rut IS NOT NULL;
@@ -1204,6 +1246,28 @@ GO
 CREATE INDEX ix_auditoria_usuario ON dmc.auditoria (usuario_id, creado_en DESC) WHERE usuario_id IS NOT NULL;
 GO
 
+-- Historial de activaciones y desactivaciones de los maestros (migración 039):
+-- quién, cuándo y por qué. Solo se agrega y no lleva FK a dmc.usuario, como la
+-- auditoría. El motivo vigente vive además en <tabla>.motivo_inactivo.
+CREATE TABLE dmc.cambio_estado (
+    id             bigint         IDENTITY(1,1) NOT NULL,
+    entidad        varchar(20)    NOT NULL,     -- cliente, marca, mall…
+    entidad_id     bigint         NOT NULL,
+    activo         bit            NOT NULL,     -- el estado en que quedó
+    motivo         nvarchar(400)  NULL,         -- obligatorio al desactivar
+    usuario_id     bigint         NULL,
+    usuario_email  nvarchar(160)  NULL,
+    creado_en      datetime2(0)   NOT NULL CONSTRAINT df_cambio_estado_creado DEFAULT (SYSDATETIME()),
+    CONSTRAINT pk_cambio_estado PRIMARY KEY (id),
+    CONSTRAINT ck_cambio_estado_entidad CHECK (
+        entidad IN ('cliente', 'marca', 'mall', 'sucursal', 'tecnico', 'usuario', 'contacto')),
+    CONSTRAINT ck_cambio_estado_motivo CHECK (
+        activo = 1 OR (motivo IS NOT NULL AND LEN(LTRIM(RTRIM(motivo))) > 0))
+);
+GO
+CREATE INDEX ix_cambio_estado_entidad ON dmc.cambio_estado (entidad, entidad_id, id DESC);
+GO
+
 -- Campanita de notificaciones (migración 035). dmc.actividad es lo que se
 -- hizo en el sistema; la app lee solo los últimos 30 días. Sin FK a
 -- dmc.usuario, como la auditoría. Las preferencias guardan solo lo que la
@@ -1295,6 +1359,62 @@ BEGIN
     UPDATE u SET actualizado_en = SYSDATETIME() FROM dmc.usuario u JOIN inserted i ON i.id = u.id;
 END;
 GO
+-- Las reglas de los roles de cada cuenta (migración 044).
+CREATE OR ALTER TRIGGER dmc.tg_usuario_rol_coherente ON dmc.usuario_rol AFTER INSERT, UPDATE, DELETE AS
+BEGIN
+    SET NOCOUNT ON;
+    -- Las cuentas tocadas que siguen existiendo: al borrar una cuenta, el
+    -- ON DELETE CASCADE se lleva sus roles y no hay nada que revisar.
+    DECLARE @cuentas TABLE (id bigint PRIMARY KEY);
+    INSERT INTO @cuentas (id)
+    SELECT x.usuario_id
+      FROM (SELECT usuario_id FROM inserted UNION SELECT usuario_id FROM deleted) x
+      JOIN dmc.usuario u ON u.id = x.usuario_id;
+
+    IF EXISTS (SELECT 1 FROM @cuentas c
+                WHERE NOT EXISTS (SELECT 1 FROM dmc.usuario_rol r WHERE r.usuario_id = c.id))
+        THROW 51044, 'ck_usuario_roles_alguno: toda cuenta necesita al menos un rol.', 1;
+
+    IF EXISTS (SELECT 1 FROM @cuentas c
+                WHERE (SELECT COUNT(*) FROM dmc.usuario_rol r
+                        WHERE r.usuario_id = c.id AND r.rol IN ('ADMIN', 'COORDINADOR')) > 1)
+        THROW 51045, 'ck_usuario_roles_panel: una cuenta no puede ser ADMIN y COORDINADOR a la vez.', 1;
+
+    IF EXISTS (SELECT 1 FROM @cuentas c
+                 JOIN dmc.usuario u ON u.id = c.id
+                 JOIN dmc.usuario_rol r ON r.usuario_id = c.id AND r.rol = 'TECNICO'
+                WHERE u.tecnico_id IS NULL)
+        THROW 51046, 'ck_usuario_roles_tecnico: el rol TECNICO necesita un técnico vinculado.', 1;
+
+    IF EXISTS (SELECT 1 FROM @cuentas c
+                 JOIN dmc.usuario u ON u.id = c.id
+                WHERE u.rol_id IS NOT NULL
+                  AND NOT EXISTS (SELECT 1 FROM dmc.usuario_rol r WHERE r.usuario_id = c.id AND r.rol = 'COORDINADOR'))
+        THROW 51047, 'ck_usuario_roles_rol_id: solo una cuenta COORDINADOR lleva un rol del panel.', 1;
+END;
+GO
+
+-- Lo mismo mirado desde dmc.usuario: no se puede soltar el técnico de quien
+-- tiene el rol TECNICO, ni darle un rol del panel a quien no es COORDINADOR.
+-- Solo en UPDATE: una cuenta recién insertada todavía no tiene roles, y es el
+-- alta de sus roles la que dispara el trigger de arriba.
+CREATE OR ALTER TRIGGER dmc.tg_usuario_roles_coherentes ON dmc.usuario AFTER UPDATE AS
+BEGIN
+    SET NOCOUNT ON;
+    IF NOT (UPDATE(tecnico_id) OR UPDATE(rol_id)) RETURN;
+
+    IF EXISTS (SELECT 1 FROM inserted i
+                 JOIN dmc.usuario_rol r ON r.usuario_id = i.id AND r.rol = 'TECNICO'
+                WHERE i.tecnico_id IS NULL)
+        THROW 51046, 'ck_usuario_roles_tecnico: el rol TECNICO necesita un técnico vinculado.', 1;
+
+    IF EXISTS (SELECT 1 FROM inserted i
+                WHERE i.rol_id IS NOT NULL
+                  AND NOT EXISTS (SELECT 1 FROM dmc.usuario_rol r WHERE r.usuario_id = i.id AND r.rol = 'COORDINADOR'))
+        THROW 51047, 'ck_usuario_roles_rol_id: solo una cuenta COORDINADOR lleva un rol del panel.', 1;
+END;
+GO
+
 CREATE OR ALTER TRIGGER dmc.tg_cat_motivo_actualizado ON dmc.catalogo_motivo AFTER UPDATE AS
 BEGIN
     SET NOCOUNT ON;
@@ -1530,6 +1650,97 @@ GO
    solo renombra sucursales existentes: en una base nueva no hay nada). */
 INSERT INTO dmc.schema_version (version, descripcion)
 VALUES (38, N'Problemas registrados desde el panel en visitas sin cerrar');
+GO
+/* El motivo obligatorio al desactivar y su historial (migración 039), y las
+   categorías de los tipos de problema (migración 040; en una base nueva no hay
+   tipos que mover a «General»). */
+INSERT INTO dmc.schema_version (version, descripcion)
+VALUES (39, N'Motivo obligatorio al desactivar e historial de cambios de estado');
+INSERT INTO dmc.schema_version (version, descripcion)
+VALUES (40, N'Categorías de los tipos de problema');
+INSERT INTO dmc.schema_version (version, descripcion)
+VALUES (41, N'Contactos de cliente y de sucursal; correo del responsable de tienda');
+GO
+/* Las secciones obligatorias del acta (migración 042). */
+CREATE TABLE dmc.acta_seccion_config (
+    clave           varchar(12)   NOT NULL,     -- problemas | interno | fotos
+    obligatoria     bit           NOT NULL CONSTRAINT df_acta_seccion_obligatoria DEFAULT (0),
+    actualizado_en  datetime2(0)  NOT NULL CONSTRAINT df_acta_seccion_actualizado DEFAULT (SYSDATETIME()),
+    actualizado_por bigint        NULL,
+    CONSTRAINT pk_acta_seccion_config PRIMARY KEY (clave),
+    CONSTRAINT ck_acta_seccion_clave CHECK (clave IN ('problemas', 'interno', 'fotos')),
+    CONSTRAINT fk_acta_seccion_usuario FOREIGN KEY (actualizado_por) REFERENCES dmc.usuario (id)
+);
+GO
+INSERT INTO dmc.acta_seccion_config (clave, obligatoria)
+VALUES ('problemas', 0), ('interno', 0), ('fotos', 1);
+GO
+INSERT INTO dmc.schema_version (version, descripcion)
+VALUES (42, N'Secciones obligatorias del acta del técnico');
+GO
+/* Avisos por correo y preferencias por canal (migración 043). */
+CREATE TABLE dmc.notificacion_canal (
+    usuario_id  bigint       NOT NULL,
+    tipo        varchar(40)  NOT NULL,
+    push        bit          NULL,
+    correo      varchar(8)   NULL,
+    CONSTRAINT pk_notificacion_canal PRIMARY KEY (usuario_id, tipo),
+    CONSTRAINT ck_notificacion_canal_correo CHECK (correo IS NULL OR correo IN ('NUNCA', 'MOMENTO', 'RESUMEN'))
+);
+GO
+CREATE TABLE dmc.notificacion_correo (
+    usuario_id      bigint        NOT NULL,
+    activo          bit           NOT NULL CONSTRAINT df_notif_correo_activo DEFAULT (1),
+    hora_resumen    tinyint       NOT NULL CONSTRAINT df_notif_correo_hora DEFAULT (18),
+    actualizado_en  datetime2(0)  NOT NULL CONSTRAINT df_notif_correo_act DEFAULT (SYSDATETIME()),
+    CONSTRAINT pk_notificacion_correo PRIMARY KEY (usuario_id),
+    CONSTRAINT ck_notificacion_correo_hora CHECK (hora_resumen BETWEEN 0 AND 23)
+);
+GO
+CREATE TABLE dmc.correo_aviso_lote (
+    id            bigint         IDENTITY(1,1) NOT NULL,
+    usuario_id    bigint         NOT NULL,
+    modo          varchar(8)     NOT NULL,
+    estado        varchar(10)    NOT NULL CONSTRAINT df_correo_aviso_lote_estado DEFAULT ('ENVIANDO'),
+    cantidad      int            NOT NULL CONSTRAINT df_correo_aviso_lote_cantidad DEFAULT (0),
+    proveedor_id  varchar(100)   NULL,
+    error         nvarchar(400)  NULL,
+    creado_en     datetime2(0)   NOT NULL CONSTRAINT df_correo_aviso_lote_creado DEFAULT (SYSDATETIME()),
+    cerrado_en    datetime2(0)   NULL,
+    CONSTRAINT pk_correo_aviso_lote PRIMARY KEY (id),
+    CONSTRAINT ck_correo_aviso_lote_modo CHECK (modo IN ('MOMENTO', 'RESUMEN')),
+    CONSTRAINT ck_correo_aviso_lote_estado CHECK (estado IN ('ENVIANDO', 'ENVIADO', 'ERROR', 'DESCARTADO'))
+);
+GO
+CREATE INDEX ix_correo_aviso_lote_usuario ON dmc.correo_aviso_lote (usuario_id, modo, creado_en DESC) INCLUDE (estado);
+GO
+CREATE TABLE dmc.correo_aviso (
+    id            bigint        IDENTITY(1,1) NOT NULL,
+    usuario_id    bigint        NOT NULL,
+    actividad_id  bigint        NOT NULL,
+    modo          varchar(8)    NOT NULL,
+    creado_en     datetime2(0)  NOT NULL CONSTRAINT df_correo_aviso_creado DEFAULT (SYSDATETIME()),
+    enviar_desde  datetime2(0)  NOT NULL,
+    lote_id       bigint        NULL,
+    intentos      tinyint       NOT NULL CONSTRAINT df_correo_aviso_intentos DEFAULT (0),
+    CONSTRAINT pk_correo_aviso PRIMARY KEY (id),
+    CONSTRAINT uq_correo_aviso UNIQUE (usuario_id, actividad_id),
+    CONSTRAINT ck_correo_aviso_modo CHECK (modo IN ('MOMENTO', 'RESUMEN'))
+);
+GO
+CREATE INDEX ix_correo_aviso_cola ON dmc.correo_aviso (enviar_desde) INCLUDE (usuario_id, modo) WHERE lote_id IS NULL;
+GO
+CREATE INDEX ix_correo_aviso_lote ON dmc.correo_aviso (lote_id) WHERE lote_id IS NOT NULL;
+GO
+INSERT INTO dmc.schema_version (version, descripcion)
+VALUES (43, N'Avisos por correo: preferencias por canal y cola de envío');
+GO
+/* Varios roles por cuenta (migraciones 044 y 045): dmc.usuario_rol, ya creada
+   arriba, y dmc.usuario sin la columna rol. */
+INSERT INTO dmc.schema_version (version, descripcion)
+VALUES (44, N'Varios roles por cuenta: dmc.usuario_rol');
+INSERT INTO dmc.schema_version (version, descripcion)
+VALUES (45, N'Fuera dmc.usuario.rol: los roles viven en dmc.usuario_rol');
 GO
 
 

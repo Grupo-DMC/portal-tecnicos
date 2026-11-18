@@ -21,6 +21,9 @@ import type {
 
 // ── Lectura ─────────────────────────────────────────────────────────────────
 
+/** Lo que agrupa una sección. En los tipos de problema se la llama «categoría». */
+export type TipoSeccion = "MOTIVO" | "TRABAJO" | "PROBLEMA";
+
 interface FilaMotivo {
   id: number;
   codigo: string;
@@ -29,8 +32,8 @@ interface FilaMotivo {
   activo: boolean;
 }
 
-/** Las secciones activas de motivos o de trabajos, en su orden. */
-export async function listarSecciones(tipo: "MOTIVO" | "TRABAJO"): Promise<CatalogoSeccion[]> {
+/** Las secciones activas de motivos, de trabajos o de tipos de problema (categorías), en su orden. */
+export async function listarSecciones(tipo: TipoSeccion): Promise<CatalogoSeccion[]> {
   const filas = await consultaCon<{ id: number; nombre: string; orden: number }>(
     `SELECT id, nombre, orden FROM dmc.catalogo_seccion
       WHERE tipo = @tipo AND activo = 1 ORDER BY orden, id`,
@@ -79,9 +82,12 @@ interface FilaOpcion {
 
 export async function listarProblemas(): Promise<CatalogoProblema[]> {
   const [filas, opciones] = await Promise.all([
-    consulta<FilaProblema>(
-      `SELECT id, codigo, nombre, grupo_label, singular, ayuda, orden, activo
-         FROM dmc.catalogo_problema WHERE activo = 1 ORDER BY orden, id`
+    consulta<FilaProblema & { seccion: string | null; seccion_orden: number | null }>(
+      `SELECT p.id, p.codigo, p.nombre, p.grupo_label, p.singular, p.ayuda, p.orden, p.activo,
+              s.nombre AS seccion, s.orden AS seccion_orden
+         FROM dmc.catalogo_problema p
+         LEFT JOIN dmc.catalogo_seccion s ON s.id = p.seccion_id AND s.activo = 1
+        WHERE p.activo = 1 ORDER BY p.orden, p.id`
     ),
     consulta<FilaOpcion>(
       `SELECT id, problema_id, etiqueta, orden, permite_cantidad, activo
@@ -109,6 +115,8 @@ export async function listarProblemas(): Promise<CatalogoProblema[]> {
         activo: Boolean(o.activo),
       })
     ),
+    seccion: f.seccion,
+    seccionOrden: f.seccion_orden ?? 0,
   }));
 }
 

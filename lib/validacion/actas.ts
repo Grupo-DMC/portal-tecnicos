@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   arreglo,
   codigo,
+  correoOpcional,
   folio,
   idPositivo,
   rutGuardable,
@@ -54,6 +55,7 @@ export const actaEntrada = z.object({
   responsableNombre: texto(120),
   responsableRut: rutGuardable.nullable(),
   responsableTelefono: telefono.nullable(),
+  responsableEmail: correoOpcional.nullable().optional(),
   responsableCargo: texto(80).nullable().optional(),
   motivosCodigos: arreglo(codigo, 30),
   observaciones: textoLibre.nullable(),
@@ -91,6 +93,7 @@ export const edicionActaEntrada = z.object({
   responsableNombre: texto(120),
   responsableRut: rutGuardable.nullable(),
   responsableTelefono: telefono.nullable(),
+  responsableEmail: correoOpcional.nullable().optional(),
   responsableCargo: texto(80).nullable().optional(),
   motivosCodigos: arreglo(codigo, 30),
   observaciones: textoLibre.nullable(),

@@ -24,6 +24,8 @@ export interface ProblemaBorrador {
   nombre: string;
   grupoLabel: string | null;
   opciones: ItemBorrador[];
+  /** Su categoría, por nombre (debe estar en `seccionesProblema`). Null o ausente = sin categoría. */
+  seccion?: string | null;
 }
 
 /** Un motivo con los trabajos que se ofrecen bajo él. */
@@ -62,6 +64,8 @@ export interface BorradorChecklist {
    */
   seccionesMotivo?: string[];
   seccionesTrabajo?: string[];
+  /** Las categorías de los tipos de problema (migración 040). Misma regla: sin la lista no se tocan. */
+  seccionesProblema?: string[];
   /** Checklist del comentario interno. Misma forma que los motivos. */
   internos?: MotivoBorrador[];
   /** Checklist de gestión de reagendas y pendientes. Misma forma que los motivos. */

@@ -31,6 +31,34 @@ dar seguimiento, y una vista móvil para que el técnico registre el trabajo y c
 - **Girar fotos**: cada foto del acta (al llenar el formulario y al corregir una ya guardada) se gira 90° a
   izquierda o derecha; se vuelve a codificar la imagen, así el detalle y el PDF la muestran girada. La
   orientación EXIF se aplica al reducirla (`lib/ui/imagen.ts`).
+- **Motivo obligatorio al desactivar**: clientes, marcas, malls, sucursales, técnicos, usuarios y contactos
+  no quedan inactivos sin un motivo escrito. Pasar a «Inactivo» abre un diálogo que lo pide
+  (`components/ui/MotivoDesactivacion.tsx`, desde el campo «Estado» del `Dialogo`); la acción lo valida con
+  la misma regla (`lib/ui/estado-activo.ts`) y la base lo exige con un CHECK en cada tabla. Cada cambio de
+  estado queda en `dmc.cambio_estado` (quién, cuándo y por qué); la tabla muestra el motivo bajo «Inactivo» y
+  quién y cuándo al pasar el cursor (migración 039).
+- **Categorías de problemas**: los tipos de problema del checklist se agrupan en categorías, como los
+  trabajos en secciones (categoría → tipo → subdetalles). Se editan en Checklist › Lista 2; el técnico elige
+  primero la categoría y después el tipo, y lo mismo en «Registrar problemas» y «Editar el acta». Los tipos
+  que ya existían quedaron en «General»; las visitas no cambian (migración 040).
+- **Contactos de cliente y de sucursal**: la ficha del cliente lista los contactos de la empresa y de sus
+  marcas; la de la sucursal, aparte, los **propios de la tienda** y, en otra sección, los que hereda de su
+  cliente, marca o región. En ambas se agregan, editan y **quitan** (quitar borra ese cargo; el contacto
+  sigue en Contactos). Es la misma tabla `dmc.contacto` con cargos por alcance (migración 029).
+- **Datos del responsable en el acta**: el técnico anota un **correo** opcional y el **teléfono** también es
+  opcional (si se escribe, tiene que estar completo). «Personas del local» sugiere los contactos propios de
+  la sucursal junto a quienes ya firmaron ahí; el correo queda en el acta, el PDF y la lista de la tienda
+  (migración 041).
+- **Secciones obligatorias del acta**: en Checklist, el panel marca qué secciones el técnico debe llenar para
+  cerrar la visita (responsable, motivo y trabajo, y firma lo son siempre). Configurables: *Problemas
+  detectados* (revisarla), *Comentario interno* (texto o un ítem) y *Fotos y video del trabajo* (al menos una
+  foto y un video; viene activada). El celular marca «Obligatorio», lleva a la primera pendiente y el servidor
+  lo vuelve a comprobar. No afecta a las actas ya cerradas ni a su corrección (migración 042).
+- **Panel y técnico con la misma cuenta**: una cuenta puede tener varios roles (`dmc.usuario_rol`):
+  administrador o coordinador y, además, técnico. Entra al panel y pasa al de técnico con «Ir al panel de
+  técnico» (y vuelve con «Volver al panel de admin») sin escribir otra vez la clave. El modo va en el token
+  firmado, pero el servidor lo vuelve a comprobar contra los roles en cada petición. Solo un administrador
+  marca una cuenta del panel como «También es técnico» (migraciones 044 y 045; ver `lib/roles.ts`).
 - **Acta en PDF** por visita, con las partes editadas resaltadas y quién las modificó.
 - **Sucursales y malls**: una sucursal puede estar en un mall; con mall y marca su nombre se arma solo
   («Cliente · Marca · Mall»). El alta masiva permite mezclar clientes y marcas en una misma carga, y

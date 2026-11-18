@@ -5,6 +5,8 @@ import { useCallback, useMemo } from "react";
 import Link from "next/link";
 import MaestroTable from "@/components/admin/MaestroTable";
 import Tag from "@/components/Tag";
+import EstadoActivo from "@/components/ui/EstadoActivo";
+import { problemaDeBaja } from "@/lib/ui/estado-activo";
 import { guardarClienteAction } from "@/app/actions/maestros";
 import { hoyISO } from "@/lib/ui/fecha";
 import { mensajeRut, rutLimpio } from "@/lib/ui/formato";
@@ -201,14 +203,7 @@ export default function ClientesTable({ clientes, sucursales }: { clientes: Clie
         {
           key: "activo",
           label: "Estado",
-          render: (c) => (
-            <>
-              <Tag variant={c.activo ? "accent" : "neutral"}>{c.activo ? "Activo" : "Inactivo"}</Tag>
-              {!c.activo && c.motivoInactivo ? (
-                <div className="text-cap leading-[1.4] opacity-66 mt-1 max-w-[260px]">{c.motivoInactivo}</div>
-              ) : null}
-            </>
-          ),
+          render: (c) => <EstadoActivo activo={c.activo} baja={c.baja} motivo={c.motivoInactivo} />,
         },
       ]}
       accionFila={(c) => (
@@ -254,23 +249,14 @@ export default function ClientesTable({ clientes, sucursales }: { clientes: Clie
           ph: "12",
           ayuda: "Cubre todos sus locales, contando desde la instalación de cada uno. Un local con garantía propia manda sobre este plan.",
         },
-        { k: "activo", label: "Estado", tipo: "toggle" },
-        {
-          k: "motivoInactivo",
-          label: "¿Por qué se desactiva?",
-          tipo: "area",
-          span: 2,
-          ph: "Término de contrato, deuda, cierre de la empresa…",
-          ayuda: "Obligatorio para dejar al cliente inactivo. Se borra si se reactiva.",
-          visible: (f) => f.activo === false,
-        },
+        // Pasar a «Inactivo» pide el motivo en un diálogo (migración 039).
+        { k: "activo", label: "Estado", tipo: "toggle", desactiva: "el cliente" },
         { k: "notas", label: "Notas", tipo: "area", span: 2, ph: "Lo que conviene saber de este cliente" },
       ]}
       validar={(f, id) => {
         if (!String(f.razonSocial).trim() || !String(f.rut).trim()) return "Razón social y RUT son obligatorios";
-        if (f.activo === false && !String(f.motivoInactivo ?? "").trim()) {
-          return "Explica por qué se desactiva el cliente";
-        }
+        const sinMotivo = problemaDeBaja(f.activo !== false, String(f.motivoInactivo ?? ""), "el cliente");
+        if (sinMotivo) return sinMotivo;
         if (mesesDeForm(f.garantiaMeses) === undefined) return "La garantía va en meses, entre 1 y 240";
         // El dígito verificador se valida al crear: un RUT mal tecleado deja al
         // cliente duplicado y sin forma de cruzarlo con la facturación.

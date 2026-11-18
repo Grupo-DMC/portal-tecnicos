@@ -2,6 +2,7 @@ import "server-only";
 import { log } from "@/lib/log";
 import { consultaCon, ejecutar, num, sql, F_TS } from "@/lib/data/sql";
 import type { PersonaLocal } from "@/lib/types";
+import { mensajeCorreo } from "@/lib/ui/formato";
 
 // Quienes han recibido o firmado en cada tienda (dmc.persona_local). Es una
 // ayuda para no reescribir datos: si la lectura o la escritura falla, la visita
@@ -11,6 +12,7 @@ export interface DatosPersona {
   nombre: string | null | undefined;
   rut?: string | null;
   telefono?: string | null;
+  email?: string | null;
   cargo?: string | null;
 }
 
@@ -37,9 +39,10 @@ export async function listarPersonasLocal(sucursalId: number): Promise<PersonaLo
       rut: string | null;
       telefono: string | null;
       cargo: string | null;
+      email: string | null;
       ultima_vez: string;
     }>(
-      `SELECT id, nombre, rut, telefono, cargo, ${F_TS("ultima_vez")} AS ultima_vez
+      `SELECT id, nombre, rut, telefono, cargo, email, ${F_TS("ultima_vez")} AS ultima_vez
          FROM dmc.persona_local
         WHERE sucursal_id = @sucursal
         ORDER BY dmc.persona_local.ultima_vez DESC, id DESC`,
@@ -51,6 +54,7 @@ export async function listarPersonasLocal(sucursalId: number): Promise<PersonaLo
       rut: f.rut,
       telefono: f.telefono,
       cargo: f.cargo,
+      email: f.email,
       ultimaVez: f.ultima_vez,
     }));
   } catch (err) {
@@ -74,23 +78,27 @@ export async function registrarPersonaLocal(sucursalId: number, persona: DatosPe
        IF @rut IS NOT NULL
          UPDATE dmc.persona_local
             SET nombre = @nombre, telefono = COALESCE(@telefono, telefono),
+                email = COALESCE(@email, email),
                 cargo = COALESCE(@cargo, cargo), ultima_vez = SYSDATETIME()
           WHERE sucursal_id = @sucursal AND rut = @rut;
        ELSE
          UPDATE dmc.persona_local
             SET telefono = COALESCE(@telefono, telefono),
+                email = COALESCE(@email, email),
                 cargo = COALESCE(@cargo, cargo), ultima_vez = SYSDATETIME()
           WHERE sucursal_id = @sucursal AND rut IS NULL AND nombre = @nombre;
        SET @n = @@ROWCOUNT;
 
        IF @n = 0
-         INSERT INTO dmc.persona_local (sucursal_id, nombre, rut, telefono, cargo)
-         VALUES (@sucursal, @nombre, @rut, @telefono, @cargo);`,
+         INSERT INTO dmc.persona_local (sucursal_id, nombre, rut, telefono, email, cargo)
+         VALUES (@sucursal, @nombre, @rut, @telefono, @email, @cargo);`,
       [
         ["sucursal", sql.BigInt, sucursalId],
         ["nombre", sql.NVarChar(120), nombre],
         ["rut", sql.VarChar(12), persona.rut?.trim() || null],
         ["telefono", sql.VarChar(30), persona.telefono?.trim() || null],
+        // Un correo mal escrito no se guarda aquí: rompería ck_persona_local_email.
+        ["email", sql.NVarChar(160), mensajeCorreo(persona.email) === null ? persona.email?.trim() || null : null],
         ["cargo", sql.NVarChar(80), persona.cargo?.trim() || null],
       ]
     );

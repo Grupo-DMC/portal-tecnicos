@@ -6,6 +6,7 @@ import { arreglo, correo, fechaOVacia, idPositivo, rutEscrito, telefono, texto, 
 /** `id` null = alta. */
 const idOAlta = idPositivo.nullable();
 
+/** El motivo de una baja (migración 039). Lo que falte o sobre lo dice `problemaDeBaja`. */
 const MOTIVO_INACTIVO = texto(400);
 
 /** Duración de una garantía, en meses (la base la limita igual a 1–240). */
@@ -31,6 +32,7 @@ export const entradaMarca = z.object({
     clienteId: idPositivo,
     nombre: texto(80),
     activo: z.boolean(),
+    motivoInactivo: MOTIVO_INACTIVO.nullable().default(null),
   }),
 });
 
@@ -42,6 +44,7 @@ export const entradaMall = z.object({
     comuna: texto(80),
     region: texto(80),
     activo: z.boolean(),
+    motivoInactivo: MOTIVO_INACTIVO.nullable().default(null),
   }),
 });
 
@@ -99,6 +102,7 @@ export const entradaTecnico = z.object({
     email: correo,
     telefono: telefono.nullable(),
     activo: z.boolean(),
+    motivoInactivo: MOTIVO_INACTIVO.nullable().default(null),
   }),
 });
 
@@ -106,11 +110,13 @@ export const entradaUsuario = z.object({
   id: idOAlta,
   datos: z.object({
     email: correo,
-    rol: z.enum(["ADMIN", "COORDINADOR", "TECNICO"]),
+    // Uno a tres roles; qué combinaciones valen lo dice lib/roles.problemaDeRoles.
+    roles: z.array(z.enum(["ADMIN", "COORDINADOR", "TECNICO"])).min(1, "Marca al menos un rol para la cuenta.").max(3),
     rolId: idPositivo.nullable().optional(),
     // Un select vacío manda 0: la acción lo trata como «sin técnico».
     tecnicoId: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).nullable(),
     activo: z.boolean(),
+    motivoInactivo: MOTIVO_INACTIVO.nullable().default(null),
     // Sin recortar y con tope: bcrypt solo mira 72 bytes y validarPasswordNueva
     // pone el mensaje; esto solo corta lo absurdo.
     password: z.string().max(256, "La contraseña es demasiado larga (máximo 72 caracteres)."),

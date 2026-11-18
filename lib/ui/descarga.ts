@@ -39,3 +39,36 @@ export async function descargarZip(archivos: ArchivoADescargar[], nombreZip: str
   setTimeout(() => URL.revokeObjectURL(objeto), 10_000);
   return n;
 }
+
+/** Un archivo del .zip de multimedia, con de dónde sale. */
+export interface ArchivoMultimedia extends ArchivoADescargar {
+  tipo: "FOTO" | "VIDEO";
+  id: number;
+}
+
+/**
+ * Lo que va en el .zip de multimedia de un acta: las fotos y los videos del
+ * cliente (nunca los internos), con los nombres que tienen dentro del zip. Lo
+ * usan la descarga del panel y el correo, para que entreguen el mismo zip.
+ */
+export function archivosMultimedia(
+  visita: {
+    folio: string;
+    fotos?: { id: number; archivoUrl: string; interno?: boolean }[];
+    videos?: { id: number; archivoUrl: string; mime: string; interno?: boolean }[];
+  },
+  tipo: "fotos" | "videos" | "multimedia" = "multimedia"
+): ArchivoMultimedia[] {
+  const fotos: ArchivoMultimedia[] = (visita.fotos ?? [])
+    .filter((f) => !f.interno)
+    .map((f, i) => ({ tipo: "FOTO", id: f.id, url: f.archivoUrl, nombre: `${visita.folio} - foto ${i + 1}.jpeg` }));
+  const videos: ArchivoMultimedia[] = (visita.videos ?? [])
+    .filter((v) => !v.interno)
+    .map((v, i) => ({
+      tipo: "VIDEO",
+      id: v.id,
+      url: v.archivoUrl,
+      nombre: `${visita.folio} - video ${i + 1}.${extensionDe(v.mime, "mp4")}`,
+    }));
+  return tipo === "fotos" ? fotos : tipo === "videos" ? videos : [...fotos, ...videos];
+}

@@ -32,12 +32,15 @@ export function Cabecera({
   ok,
   chip,
   onToggle,
+  obligatoria = false,
 }: {
   n: number;
   titulo: string;
   ok: boolean;
   chip: { variante: "accent" | "neutral" | "outline"; texto: string };
   onToggle: () => void;
+  /** La sección hay que llenarla para poder cerrar el acta: se marca bajo el título. */
+  obligatoria?: boolean;
 }) {
   return (
     <button
@@ -55,7 +58,14 @@ export function Cabecera({
       >
         {n}
       </span>
-      <span className="font-extrabold text-lead leading-[1.2] flex-1">{titulo}</span>
+      <span className="flex-1 min-w-0">
+        <span className="block font-extrabold text-lead leading-[1.2]">{titulo}</span>
+        {obligatoria ? (
+          <span className="block text-cap font-extrabold uppercase tracking-[.06em] text-[var(--color-accent-active)] mt-0.5">
+            Obligatorio
+          </span>
+        ) : null}
+      </span>
       <span className={`tag tag-${chip.variante}`}>{chip.texto}</span>
     </button>
   );

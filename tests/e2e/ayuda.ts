@@ -11,5 +11,6 @@ export async function iniciarSesion(page: Page, cuenta: keyof typeof CUENTAS, cl
 
 export async function entrarComo(page: Page, cuenta: keyof typeof CUENTAS) {
   await iniciarSesion(page, cuenta);
+  // Quien tiene panel y técnico («doble») entra al panel.
   await expect(page).toHaveURL(cuenta === "tecnico" ? /\/tecnico/ : /\/admin/);
 }

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { log } from "@/lib/log";
-import { mensajeTel } from "@/lib/ui/formato";
+import { mensajeCorreo, mensajeTel } from "@/lib/ui/formato";
 
 // Validación en runtime de lo que llega a las Server Actions.
 //
@@ -79,6 +79,9 @@ export const telefono = z
   .refine((v) => mensajeTel(v) === null, { message: "El teléfono necesita 8 dígitos después del +56 9." });
 
 export const correo = z.string().max(160, "El correo es demasiado largo.");
+
+/** Un correo que puede venir vacío; si trae algo, tiene que tener forma de correo. */
+export const correoOpcional = correo.refine((v) => mensajeCorreo(v) === null, { message: "Escribe un correo válido." });
 
 /** Texto libre de las columnas nvarchar(max). */
 export const textoLibre = texto(20_000);

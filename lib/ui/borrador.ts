@@ -115,6 +115,8 @@ export interface BorradorActa {
   respNombre: string;
   respRut: string;
   respTel: string;
+  /** Opcional (migración 041); los borradores viejos no lo traen. */
+  respEmail?: string;
   /** Opcional; los borradores viejos no lo traen. */
   respCargo?: string;
   motivosCodigos: string[];
@@ -288,6 +290,7 @@ export function borradorConDatos(b: BorradorActa | null): boolean {
     b.respNombre?.trim() ||
       b.respRut?.trim() ||
       b.respTel?.trim() ||
+      b.respEmail?.trim() ||
       b.obs?.trim() ||
       b.interno?.trim() ||
       b.internos?.length ||

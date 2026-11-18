@@ -3,7 +3,7 @@
 import SelectBuscable from "@/components/ui/SelectBuscable";
 import EditorProblemas from "@/components/admin/EditorProblemas";
 import { fechaHoraCorta } from "@/lib/ui/edicion";
-import { fmtRut } from "@/lib/ui/formato";
+import { autorDeVisita, fmtRut } from "@/lib/ui/formato";
 import CampoTelefono from "@/components/ui/CampoTelefono";
 import { trabajosDelMotivo } from "@/lib/ui/motivos";
 import { agruparPorSeccion, hayAlgunaSeccion } from "@/lib/ui/secciones";
@@ -61,6 +61,8 @@ export function SeccionResponsable({ fv }: { fv: EditarActaApi }) {
     setRespRut,
     respTel,
     setRespTel,
+    respEmail,
+    setRespEmail,
     cargos,
     respCargo,
     setRespCargo,
@@ -104,8 +106,20 @@ export function SeccionResponsable({ fv }: { fv: EditarActaApi }) {
             {errorRut ? <div className="mt-1.5 text-cap text-[var(--color-danger-800)]">{errorRut}</div> : null}
           </div>
           <div className="field min-w-0">
-            <label htmlFor="ea-tel">Teléfono</label>
+            <label htmlFor="ea-tel">Teléfono (opcional)</label>
             <CampoTelefono id="ea-tel" value={respTel} onChange={setRespTel} />
+          </div>
+          <div className="field min-w-0">
+            <label htmlFor="ea-email">Correo (opcional)</label>
+            <input
+              id="ea-email"
+              type="email"
+              className="input"
+              value={respEmail}
+              onChange={(e) => setRespEmail(e.target.value)}
+              placeholder="nombre@empresa.cl"
+              autoComplete="off"
+            />
           </div>
           {cargos.length > 0 || respCargo ? (
             <div className="field min-w-0">
@@ -133,6 +147,7 @@ export function SeccionResponsable({ fv }: { fv: EditarActaApi }) {
 /** 2 · Motivos y trabajo realizado. */
 export function SeccionTrabajo({ fv }: { fv: EditarActaApi }) {
   const {
+    visita,
     motivos,
     catalogoTrabajo,
     nuevoId,
@@ -174,7 +189,7 @@ export function SeccionTrabajo({ fv }: { fv: EditarActaApi }) {
                     <div className="font-extrabold text-lead leading-[1.25]">{nombreMotivo(codigo)}</div>
                   </div>
                   {agendados.includes(codigo) ? (
-                    <span className="tag tag-neutral flex-none" title="Lo agendó coordinación">
+                    <span className="tag tag-neutral flex-none" title={autorDeVisita(visita) ? `Lo agendó ${autorDeVisita(visita)}` : "Lo agendó quien creó la visita"}>
                       Agendado
                     </span>
                   ) : null}

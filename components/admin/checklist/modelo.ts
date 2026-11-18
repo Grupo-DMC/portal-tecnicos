@@ -63,12 +63,16 @@ export interface Grupo {
   items: Item[];
   /** Solo los trabajos: los grupos de subtrabajos después del primero, en orden. */
   subgrupos?: Subgrupo[];
-  /** Solo los trabajos: la `key` de su sección en la Lista 3. Null = sin sección. */
+  /**
+   * La `key` de su sección en la Lista 3 (trabajos) o de su categoría en la
+   * Lista 2 (tipos de problema). Null = sin sección.
+   */
   seccion?: string | null;
 }
 
 /**
- * Una sección de la Lista 1 (agrupa motivos) o de la Lista 3 (agrupa trabajos).
+ * Una sección de la Lista 1 (agrupa motivos), una categoría de la Lista 2
+ * (agrupa tipos de problema) o una sección de la Lista 3 (agrupa trabajos).
  * Quien está en ella la nombra por su `key`, así renombrarla no suelta a nadie.
  */
 export interface Seccion {
@@ -114,13 +118,14 @@ export function aMotivosConTrabajos(
   }));
 }
 
-export function aGruposProblema(lista: CatalogoProblema[]): Grupo[] {
+export function aGruposProblema(lista: CatalogoProblema[], categorias: Seccion[] = []): Grupo[] {
   return lista.map((p) => ({
     key: nuevaClave(),
     id: p.id,
     codigo: p.codigo,
     nombre: p.nombre,
     grupoLabel: p.grupoLabel ?? "",
+    seccion: claveDeSeccion(categorias, p.seccion),
     items: p.opciones.map((o) => ({
       key: nuevaClave(),
       id: o.id,

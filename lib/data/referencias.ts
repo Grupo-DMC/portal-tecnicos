@@ -2,7 +2,7 @@ import "server-only";
 import { listarCargos, listarEstadosProblema, listarMotivos, listarProblemas, listarTrabajos } from "@/lib/data/catalogos";
 import { listarClientes, listarMalls, listarMarcas, listarSucursales, listarTecnicos } from "@/lib/data/maestros";
 import { tiene } from "@/lib/permisos";
-import type { Cliente, RolUsuario, Sucursal, Tecnico } from "@/lib/types";
+import type { Cliente, Sucursal, Tecnico } from "@/lib/types";
 import type { Referencias } from "@/lib/ui/referencias";
 
 /**
@@ -46,7 +46,7 @@ const reducirSucursal = (permisos: string[]) => (s: Sucursal): Sucursal => ({
  * Maestros y catálogos que los diálogos y tablas del panel necesitan tener
  * completos. Se carga una vez por petición en el layout y baja por contexto.
  */
-export async function cargarReferencias(rol: RolUsuario, permisos: string[]): Promise<Referencias> {
+export async function cargarReferencias(permisos: string[]): Promise<Referencias> {
   const [clientes, marcas, malls, sucursales, tecnicos, motivos, problemas, trabajos, estadosProblema, cargos] = await Promise.all([
     listarClientes(),
     listarMarcas(),
@@ -60,7 +60,7 @@ export async function cargarReferencias(rol: RolUsuario, permisos: string[]): Pr
     listarCargos(),
   ]);
   return {
-    rol,
+    modo: "panel",
     permisos,
     clientes: clientes.map(reducirCliente(permisos)),
     marcas,
@@ -95,7 +95,7 @@ export async function cargarReferenciasTecnico(permisos: string[]): Promise<Refe
   ]);
   const companeros = tecnicos.filter((t) => t.activo).map(tecnicoReducido);
   return {
-    rol: "TECNICO",
+    modo: "tecnico",
     permisos,
     clientes: clientes.map(reducirCliente(permisos)),
     marcas,

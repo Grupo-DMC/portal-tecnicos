@@ -9,6 +9,7 @@ import { useSucursalForm } from "@/components/admin/maestros/useSucursalForm";
 import SucursalesLoteDialogo from "@/components/admin/maestros/SucursalesLoteDialogo";
 import { Toast, useToast } from "@/components/ui/Toast";
 import Tag from "@/components/Tag";
+import EstadoActivo from "@/components/ui/EstadoActivo";
 import { useReferencias } from "@/lib/ui/referencias";
 import { REGIONES } from "@/lib/ui/regiones";
 import { calibracionDeSucursal, siNoAForm } from "@/lib/ui/sino";
@@ -243,14 +244,7 @@ export default function SucursalesTable({
         {
           key: "activo",
           label: "Estado",
-          render: (s) => (
-            <>
-              <Tag variant={s.activo ? "accent" : "neutral"}>{s.activo ? "Activa" : "Inactiva"}</Tag>
-              {!s.activo && s.motivoInactivo ? (
-                <div className="text-cap leading-[1.4] opacity-66 mt-1 max-w-[260px]">{s.motivoInactivo}</div>
-              ) : null}
-            </>
-          ),
+          render: (s) => <EstadoActivo activo={s.activo} baja={s.baja} motivo={s.motivoInactivo} femenino />,
         },
       ]}
       {...form}

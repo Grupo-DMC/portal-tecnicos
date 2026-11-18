@@ -16,6 +16,7 @@ vi.mock("@/lib/data/ediciones");
 vi.mock("@/lib/data/contactos");
 vi.mock("@/lib/data/visitas-papel");
 vi.mock("@/lib/data/personas-local");
+vi.mock("@/lib/data/secciones-acta");
 
 import * as admin from "@/app/actions/admin";
 import * as maestros from "@/app/actions/maestros";
@@ -62,6 +63,7 @@ const CASOS: Caso[] = [
   caso("guardarChecklistAction", "checklist.editar", () => A.guardarChecklistAction({})),
   caso("guardarPlantillaChecklistAction", "checklist.editar", () => A.guardarPlantillaChecklistAction()),
   caso("reiniciarChecklistAction", "checklist.editar", () => A.reiniciarChecklistAction()),
+  caso("guardarSeccionesActaAction", "checklist.editar", () => A.guardarSeccionesActaAction({})),
   caso("atenderSolicitudPasswordAction", "usuarios.contrasenas", () => A.atenderSolicitudPasswordAction(0, "")),
   caso("descartarSolicitudPasswordAction", "usuarios.contrasenas", () => A.descartarSolicitudPasswordAction(0)),
   caso("guardarTiendasMallAction", "malls.editar", () => M.guardarTiendasMallAction(0, [])),

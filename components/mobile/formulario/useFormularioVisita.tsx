@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ConfirmarCfg } from "@/components/ui/Confirmar";
 import type { FirmaGuardada } from "@/components/mobile/FirmaSheet";
 import { useToast } from "@/components/ui/Toast";
-import { fmtRut, mensajeRut, normalizarTel, rutCompleto, rutDvCorrecto, telCompleto } from "@/lib/ui/formato";
+import { fmtRut, mensajeCorreo, mensajeRut, mensajeTel, normalizarTel, rutCompleto, rutDvCorrecto } from "@/lib/ui/formato";
 import { ajustarFotos, comprimirFoto, PRESUPUESTO_FOTOS_BYTES, pesoDeFotos } from "@/lib/ui/imagen";
 import { useGirarFotos } from "@/components/ui/useGirarFotos";
 import { useUsuarioLocal } from "@/lib/ui/usuario-local";
@@ -42,6 +42,12 @@ import {
 import type { ActaEntrada, EdicionActaEntrada } from "@/lib/contratos/acta";
 import type { ProblemaSinResolver } from "@/lib/contratos/visitas";
 import { FALTA_RESOLUCION } from "@/lib/validacion/aviso-problemas";
+import {
+  faltaEnFotos,
+  faltaEnInterno,
+  queFaltaEnFotos,
+  type SeccionesObligatorias,
+} from "@/lib/contratos/secciones-acta";
 import type { CatalogoInterno, CatalogoMotivo, CatalogoProblema, CatalogoTrabajo, Visita } from "@/lib/types";
 import { ahora } from "@/components/mobile/formulario/piezas";
 import { useVideosActa } from "@/components/mobile/formulario/useVideosActa";
@@ -87,6 +93,7 @@ export function useFormularioVisita({
   edicion = false,
   reservaPlazoSeg = PLAZO_RESERVA_SEG,
   porResolver = [],
+  seccionesObligatorias,
 }: {
   visita: Visita;
   motivos: CatalogoMotivo[];
@@ -108,6 +115,11 @@ export function useFormularioVisita({
    * desde «Problemas»). De cada uno el técnico dice si quedó solucionado.
    */
   porResolver?: ProblemaSinResolver[];
+  /**
+   * Las secciones que el panel marcó como obligatorias para cerrar el acta
+   * (migración 042). Sin la lista, o al corregir un acta ya cerrada, ninguna.
+   */
+  seccionesObligatorias?: SeccionesObligatorias;
 }) {
   const router = useRouter();
   // El borrador y la cola del equipo van a nombre del usuario (ver lib/ui/borrador).
@@ -115,6 +127,9 @@ export function useFormularioVisita({
   const { toast, aviso } = useToast();
   // Sin el permiso de celular «video» el formulario no ofrece grabar.
   const puedeVideo = puede(useReferencias(), "celular.video");
+  // Al corregir un acta cerrada no se exige nada nuevo: las viejas pueden no traer video.
+  const oblig: SeccionesObligatorias =
+    !edicion && seccionesObligatorias ? seccionesObligatorias : { problemas: false, interno: false, fotos: false };
 
   // Al editar, todo arranca de lo que quedó en el acta.
   const [inicial] = useState(() => {
@@ -144,6 +159,8 @@ export function useFormularioVisita({
     inicial?.respRut ?? fmtRut(visita.ejecucion?.responsableRut ?? visita.responsableRut ?? "")
   );
   const [respTel, setRespTel] = useState(inicial?.respTel ?? normalizarTel(visita.responsableTelefono));
+  // Opcional, como el teléfono (migración 041). Solo vive en el acta.
+  const [respEmail, setRespEmail] = useState(inicial?.respEmail ?? visita.ejecucion?.responsableEmail ?? "");
   // El cargo es opcional y no vive en la visita: sale de la lista de la tienda.
   const [respCargo, setRespCargo] = useState(visita.ejecucion?.responsableCargo ?? visita.responsableCargo ?? "");
   const personasLocal = usePersonasLocal(visita.sucursalId);
@@ -288,6 +305,7 @@ export function useFormularioVisita({
       respNombre,
       respRut,
       respTel,
+      respEmail,
       respCargo,
       motivosCodigos,
       obs,
@@ -301,13 +319,14 @@ export function useFormularioVisita({
       guardadas,
       horaInicio,
     }),
-    [visita.folio, respNombre, respRut, respTel, respCargo, motivosCodigos, obs, interno, internos, trabajos, problemas, resoluciones, fotos, firma, guardadas, horaInicio]
+    [visita.folio, respNombre, respRut, respTel, respEmail, respCargo, motivosCodigos, obs, interno, internos, trabajos, problemas, resoluciones, fotos, firma, guardadas, horaInicio]
   );
 
   const aplicarBorrador = useCallback((b: BorradorActa) => {
     setRespNombre(b.respNombre ?? "");
     setRespRut(b.respRut ?? "");
     setRespTel(b.respTel ?? "");
+    setRespEmail(b.respEmail ?? "");
     setRespCargo(b.respCargo ?? "");
     if (b.motivosCodigos?.length) setMotivosCodigos(confirmadosOAgendados(b.motivosCodigos));
     setObs(b.obs ?? "");
@@ -543,7 +562,8 @@ export function useFormularioVisita({
   const puedeRevisar =
     (!!guardadas.sucursal || !faltaEnSeccion("sucursal")) &&
     (!!guardadas.motivo || !faltaEnSeccion("motivo")) &&
-    sinResponder.length === 0;
+    sinResponder.length === 0 &&
+    !faltaObligatoria(guardadas);
   // Al editar la firma ya está en el acta y no se pide de nuevo; lo que sí se
   // pide es el porqué del cambio.
   const motivoEdicionListo = motivoEdicion.trim().length >= 5;
@@ -554,11 +574,16 @@ export function useFormularioVisita({
     if (!guardadas.sucursal) f.push("los datos del responsable");
     if (!guardadas.motivo) f.push("el motivo");
     if (sinResponder.length) f.push("responder si quedaron solucionados los problemas que venías a resolver");
+    if (oblig.problemas && !guardadas.problemas) f.push("revisar los problemas detectados");
+    if (oblig.interno && faltaEnSeccion("interno")) f.push("el comentario interno");
+    const enFotos = oblig.fotos ? queFaltaEnFotos(...cuentaFotos()) : null;
+    if (enFotos) f.push(enFotos);
     if (edicion) {
       if (!motivoEdicionListo) f.push("escribir por qué se edita el acta");
     } else if (!firma) f.push("la firma de la tienda");
     return f;
-  }, [guardadas.sucursal, guardadas.motivo, sinResponder.length, firma, edicion, motivoEdicionListo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guardadas.sucursal, guardadas.motivo, guardadas.problemas, sinResponder.length, firma, edicion, motivoEdicionListo, oblig, interno, internos, fotos, videos, puedeVideo]);
 
   const nombreMotivos = (codigos: string[]) =>
     codigos.map((c) => motivos.find((m) => m.codigo === c)?.nombre ?? c).join(" · ") || "Sin motivo";
@@ -571,6 +596,7 @@ export function useFormularioVisita({
       responsableNombre: respNombre.trim(),
       responsableRut: respRut.trim() || null,
       responsableTelefono: respTel.trim() || null,
+      responsableEmail: respEmail.trim() || null,
       responsableCargo: respCargo.trim() || null,
       motivosCodigos,
       observaciones: obs.trim() || null,
@@ -718,6 +744,7 @@ export function useFormularioVisita({
       responsableNombre: respNombre.trim(),
       responsableRut: respRut.trim() || null,
       responsableTelefono: respTel.trim() || null,
+      responsableEmail: respEmail.trim() || null,
       responsableCargo: cargos.length || respCargo ? respCargo.trim() || null : undefined,
       motivosCodigos,
       observaciones: obs.trim() || null,
@@ -830,7 +857,9 @@ export function useFormularioVisita({
         if (!respNombre.trim()) return "Falta el nombre del responsable de tienda";
         if (!rutCompleto(respRut)) return "El RUT del responsable está incompleto";
         if (!rutDvCorrecto(respRut)) return "Ese RUT no es válido: revisa el dígito verificador";
-        if (!telCompleto(respTel)) return "El teléfono del responsable está incompleto";
+        // Teléfono y correo son opcionales; si se escriben, tienen que servir.
+        if (mensajeTel(respTel)) return "El teléfono del responsable está incompleto";
+        if (mensajeCorreo(respEmail)) return "El correo del responsable no es válido";
         return null;
       case "motivo":
         if (motivosCodigos.length === 0) return "Marca al menos un motivo de la visita";
@@ -841,10 +870,48 @@ export function useFormularioVisita({
       // Los problemas nuevos son opcionales; los que venía a resolver necesitan respuesta.
       case "problemas":
         return sinResponder.length ? FALTA_RESOLUCION : null;
-      // Comentario interno y fotos son opcionales.
+      // Comentario interno y fotos son opcionales, salvo que el panel las exija.
+      case "interno":
+        return oblig.interno ? faltaEnInterno(interno, internos.length) : null;
+      case "fotos":
+        return oblig.fotos ? faltaEnFotos(...cuentaFotos()) : null;
       default:
         return null;
     }
+  }
+
+  /** Fotos y videos del trabajo (no internos) ya subidos, y si este rol puede grabar video. */
+  function cuentaFotos(): [number, number, boolean] {
+    return [
+      fotos.filter((f) => !f.interno).length,
+      videos.filter((v) => !v.interno && v.id > 0 && v.progreso === null && !v.error).length,
+      puedeVideo,
+    ];
+  }
+
+  /** ¿Esta sección tiene que llenarse sí o sí para cerrar el acta? */
+  const esObligatoria = (clave: Seccion): boolean =>
+    clave === "sucursal" || clave === "motivo" || clave === "firmas" ? !edicion : oblig[clave];
+
+  /**
+   * La primera sección obligatoria que sigue pendiente (sin contar responsable,
+   * motivo y firma, que ya tienen su propio control), con lo que le falta; null
+   * si ninguna. `listas` son las secciones ya marcadas, para poder preguntar
+   * con lo que se acaba de guardar.
+   */
+  function faltaObligatoria(listas: Partial<Record<Seccion, boolean>>): { seccion: Seccion; mensaje: string } | null {
+    if (oblig.problemas && !listas.problemas) {
+      return { seccion: "problemas", mensaje: "Revisa los problemas detectados: esa sección es obligatoria" };
+    }
+    if (oblig.interno) {
+      const m = faltaEnSeccion("interno");
+      if (m) return { seccion: "interno", mensaje: m };
+    }
+    if (oblig.fotos) {
+      const m = faltaEnSeccion("fotos");
+      if (m) return { seccion: "fotos", mensaje: m };
+    }
+    return null;
   }
 
   /**
@@ -920,7 +987,9 @@ export function useFormularioVisita({
   const probTieneOpciones = !!probSel && probSel.opciones.length > 0;
   const probListo = !!np.codigo && (probTieneOpciones ? np.items.length > 0 : !!np.desc.trim());
   const errorRut = mensajeRut(respRut);
-  const sucursalCompleta = !!respNombre.trim() && rutCompleto(respRut) && !errorRut && telCompleto(respTel);
+  const errorEmail = mensajeCorreo(respEmail);
+  const sucursalCompleta =
+    !!respNombre.trim() && rutCompleto(respRut) && !errorRut && !mensajeTel(respTel) && !errorEmail;
 
   function cambiarCantidad(etiqueta: string, delta: number) {
     setNp((p) => ({
@@ -1055,6 +1124,9 @@ export function useFormularioVisita({
     setRespRut,
     respTel,
     setRespTel,
+    respEmail,
+    setRespEmail,
+    errorEmail,
     respCargo,
     setRespCargo,
     personasLocal,
@@ -1129,6 +1201,8 @@ export function useFormularioVisita({
     guardarVisita,
     reintentarPendiente,
     faltaEnSeccion,
+    faltaObligatoria,
+    esObligatoria,
     guardarSeccion,
     toggleSeccion,
     nombreTrabajo,

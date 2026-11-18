@@ -8,7 +8,7 @@ vi.mock("@/lib/data/auditoria");
 vi.mock("@/lib/data/personas-local");
 vi.mock("@/lib/data/contactos", async (importar) => {
   const real = await importar<typeof import("@/lib/data/contactos")>();
-  return { ...real, guardarContacto: vi.fn() };
+  return { ...real, guardarContacto: vi.fn(), contactosPropiosDeSucursal: vi.fn(), quitarCargoDeContacto: vi.fn() };
 });
 
 import { revalidatePath } from "next/cache";
@@ -16,14 +16,14 @@ import { liberarReservaAction, renovarReservaAction } from "@/app/actions/reserv
 import { descartarBorradorAction, guardarBorradorAction, leerBorradorAction } from "@/app/actions/borradores";
 import { editarActaAdminAction, editarActaTecnicoAction, permitirEditarTecnicoAction } from "@/app/actions/ediciones";
 import { personasDelLocalAction } from "@/app/actions/personas-local";
-import { guardarContactoAction } from "@/app/actions/contactos";
+import { guardarContactoAction, quitarCargoContactoAction } from "@/app/actions/contactos";
 import { liberarReserva, tomarReserva } from "@/lib/data/reservas";
 import { borrarBorrador, guardarBorrador, leerBorrador } from "@/lib/data/borradores";
 import { getEquipoDeVisita, getVisitaCompletaPorFolio } from "@/lib/data/visitas";
 import { editarActa, habilitarEdicionTecnico } from "@/lib/data/ediciones";
 import { auditar } from "@/lib/data/auditoria";
 import { listarPersonasLocal, tecnicoTieneVisitaEn } from "@/lib/data/personas-local";
-import { AlcanceInexistente, guardarContacto } from "@/lib/data/contactos";
+import { AlcanceInexistente, contactosPropiosDeSucursal, guardarContacto, quitarCargoDeContacto } from "@/lib/data/contactos";
 import { TECNICO_PRUEBA, entrarComo, salir } from "../helpers/sesion";
 
 const MIO = TECNICO_PRUEBA.id;
@@ -243,10 +243,21 @@ describe("edición del acta ya cerrada", () => {
 });
 
 describe("personas del local (datos personales)", () => {
-  const personas = [{ nombre: "María Soto", cargo: "Jefa", rut: "11.111.111-1" }];
+  const personas = [{ id: 1, nombre: "María Soto", cargo: "Jefa", rut: "11.111.111-1" }];
+  // Lo que devuelve la acción: cada persona marcada con su origen (migración 041).
+  const sugeridas = personas.map((p) => ({ ...p, origen: "HISTORIAL" }));
+  const jefeDeTienda = {
+    id: 8,
+    nombre: "Jorge Contacto",
+    email: "jorge@tienda.cl",
+    telefono: null,
+    activo: true,
+    cargos: [{ id: 1, cargo: "Jefe de tienda", alcanceTipo: "SUCURSAL", alcanceId: 5, alcanceTexto: null }],
+  };
 
   beforeEach(() => {
     vi.mocked(listarPersonasLocal).mockResolvedValue(personas as never);
+    vi.mocked(contactosPropiosDeSucursal).mockResolvedValue([]);
   });
 
   it("sin sesión, nada", async () => {
@@ -262,9 +273,9 @@ describe("personas del local (datos personales)", () => {
 
   it("el panel puede con «ver» o «crear» visitas; sin ninguno de los dos, no", async () => {
     entrarComo("coordinador", { permisos: ["visitas.ver"] });
-    expect(await personasDelLocalAction(5)).toEqual(personas);
+    expect(await personasDelLocalAction(5)).toEqual(sugeridas);
     entrarComo("coordinador", { permisos: ["visitas.crear"] });
-    expect(await personasDelLocalAction(5)).toEqual(personas);
+    expect(await personasDelLocalAction(5)).toEqual(sugeridas);
     entrarComo("coordinador", { permisos: ["tecnicos.ver"] });
     expect(await personasDelLocalAction(5)).toEqual([]);
   });
@@ -272,7 +283,7 @@ describe("personas del local (datos personales)", () => {
   it("un técnico ve las personas de las tiendas donde tiene visita", async () => {
     entrarComo("tecnico", { permisos: ["celular.estado"] });
     vi.mocked(tecnicoTieneVisitaEn).mockResolvedValue(true);
-    expect(await personasDelLocalAction(5)).toEqual(personas);
+    expect(await personasDelLocalAction(5)).toEqual(sugeridas);
     expect(tecnicoTieneVisitaEn).toHaveBeenCalledWith(MIO, 5);
     vi.mocked(tecnicoTieneVisitaEn).mockResolvedValue(false);
     expect(await personasDelLocalAction(5)).toEqual([]);
@@ -280,8 +291,53 @@ describe("personas del local (datos personales)", () => {
 
   it("con «agregar visitas en terreno» el técnico ve las de la tienda que elige, aun sin visita previa", async () => {
     entrarComo("tecnico", { permisos: ["celular.crearVisita"] });
-    expect(await personasDelLocalAction(5)).toEqual(personas);
+    expect(await personasDelLocalAction(5)).toEqual(sugeridas);
     expect(tecnicoTieneVisitaEn).not.toHaveBeenCalled();
+  });
+
+  it("suma los contactos propios de la tienda: al técnico con visita sí, al panel solo con «contactos.ver»", async () => {
+    vi.mocked(contactosPropiosDeSucursal).mockResolvedValue([jefeDeTienda] as never);
+    entrarComo("tecnico", { permisos: ["celular.estado"] });
+    vi.mocked(tecnicoTieneVisitaEn).mockResolvedValue(true);
+    const delTecnico = await personasDelLocalAction(5);
+    expect(delTecnico.map((p) => [p.id, p.nombre, p.email])).toEqual([
+      [-8, "Jorge Contacto", "jorge@tienda.cl"],
+      [1, "María Soto", undefined],
+    ]);
+    expect(contactosPropiosDeSucursal).toHaveBeenCalledWith(5);
+
+    vi.mocked(contactosPropiosDeSucursal).mockClear();
+    entrarComo("coordinador", { permisos: ["visitas.ver"] });
+    expect(await personasDelLocalAction(5)).toEqual(sugeridas);
+    expect(contactosPropiosDeSucursal).not.toHaveBeenCalled();
+
+    entrarComo("coordinador", { permisos: ["visitas.ver", "contactos.ver"] });
+    expect((await personasDelLocalAction(5)).map((p) => p.id)).toEqual([-8, 1]);
+  });
+
+  it("si la lectura de contactos falla, quedan las personas", async () => {
+    vi.mocked(contactosPropiosDeSucursal).mockRejectedValue(new Error("caída"));
+    entrarComo("admin");
+    expect(await personasDelLocalAction(5)).toEqual(sugeridas);
+  });
+});
+
+describe("quitarCargoContactoAction", () => {
+  it("pide «contactos.editar» y valida los ids", async () => {
+    entrarComo("coordinador", { permisos: ["contactos.ver"] });
+    expect((await quitarCargoContactoAction(3, 4)).ok).toBe(false);
+    entrarComo("admin");
+    expect((await quitarCargoContactoAction(0, 4)).ok).toBe(false);
+    expect(quitarCargoDeContacto).not.toHaveBeenCalled();
+  });
+
+  it("quita el cargo y avisa si ya no estaba", async () => {
+    entrarComo("admin");
+    vi.mocked(quitarCargoDeContacto).mockResolvedValue(true);
+    expect(await quitarCargoContactoAction(3, 4)).toEqual({ ok: true, id: 3 });
+    expect(quitarCargoDeContacto).toHaveBeenCalledWith(3, 4);
+    vi.mocked(quitarCargoDeContacto).mockResolvedValue(false);
+    expect((await quitarCargoContactoAction(3, 4)).error).toMatch(/ya no estaba/);
   });
 });
 
@@ -302,12 +358,22 @@ describe("guardarContactoAction", () => {
 
   it("guarda recortando nombre, correo y teléfono", async () => {
     expect(await guardarContactoAction(null, contacto({ nombre: "  Pedro Gómez " }) as never)).toEqual({ ok: true, id: 30 });
-    expect(guardarContacto).toHaveBeenCalledWith(null, expect.objectContaining({ nombre: "Pedro Gómez", telefono: "+56 9 1111 1111" }));
+    expect(guardarContacto).toHaveBeenCalledWith(
+      null,
+      expect.objectContaining({ nombre: "Pedro Gómez", telefono: "+56 9 1111 1111" }),
+      expect.objectContaining({ id: expect.any(Number) })
+    );
+  });
+
+  it("no deja un contacto inactivo sin motivo (migración 039)", async () => {
+    const r = await guardarContactoAction(5, contacto({ activo: false, motivoInactivo: " " }) as never);
+    expect(r).toEqual({ ok: false, error: "Explica por qué se desactiva el contacto." });
+    expect(guardarContacto).not.toHaveBeenCalled();
   });
 
   it("el nombre es obligatorio y el correo debe tener @", async () => {
     expect((await guardarContactoAction(null, contacto({ nombre: "  " }) as never)).error).toBe("El nombre del contacto es obligatorio.");
-    expect((await guardarContactoAction(null, contacto({ email: "sin-arroba" }) as never)).error).toBe("Escribe un correo válido.");
+    expect((await guardarContactoAction(null, contacto({ email: "sin-arroba" }) as never)).error).toMatch(/^Escribe un correo válido/);
   });
 
   it("un alcance que ya no existe se explica", async () => {

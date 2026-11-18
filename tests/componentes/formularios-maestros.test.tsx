@@ -156,16 +156,48 @@ describe("formulario de cliente", () => {
     expect(aviso()).toBe("La garantía va en meses, entre 1 y 240");
   });
 
-  it("al editar, desactivar exige explicar por qué", async () => {
+  // Migración 039: pasar a «Inactivo» abre un diálogo que no deja seguir sin motivo.
+  it("al editar, desactivar pide el motivo en un diálogo y no deja seguir sin él", async () => {
     const u = userEvent.setup();
     pintar(<ClientesTable clientes={[cliente()] as never} sucursales={[]} />, { permisos: PERMISOS("clientes") });
     await u.click(screen.getByRole("button", { name: "Editar clientes" }));
-    expect(within(dialogo()).queryByLabelText("¿Por qué se desactiva?")).toBeNull();
-    await u.click(within(dialogo()).getByRole("button", { name: "Inactivo" }));
-    expect(await within(dialogo()).findByLabelText("¿Por qué se desactiva?")).toBeInTheDocument();
+    await u.click(within(dialogo()).getByRole("radio", { name: "Inactivo" }));
+    const motivo = screen.getByRole("dialog", { name: "¿Por qué se desactiva el cliente?" });
+    await u.click(within(motivo).getByRole("button", { name: "Desactivar" }));
+    expect(within(motivo).getByRole("alert")).toHaveTextContent("Explica por qué se desactiva el cliente.");
+    // Cancelar deja el cliente como estaba: activo.
+    await u.click(within(motivo).getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByRole("dialog", { name: "¿Por qué se desactiva el cliente?" })).toBeNull();
+    expect(within(dialogo()).getByRole("radio", { name: "Activo" })).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("con el motivo escrito, desactiva y lo manda al servidor", async () => {
+    const u = userEvent.setup();
+    pintar(<ClientesTable clientes={[cliente()] as never} sucursales={[]} />, { permisos: PERMISOS("clientes") });
+    await u.click(screen.getByRole("button", { name: "Editar clientes" }));
+    await u.click(within(dialogo()).getByRole("radio", { name: "Inactivo" }));
+    const motivo = screen.getByRole("dialog", { name: "¿Por qué se desactiva el cliente?" });
+    await u.type(within(motivo).getByLabelText(/Motivo/), "Término de contrato");
+    await u.click(within(motivo).getByRole("button", { name: "Desactivar" }));
+    expect(within(dialogo()).getByText("Término de contrato")).toBeInTheDocument();
     await u.click(within(dialogo()).getByRole("button", { name: "Guardar cambios" }));
-    expect(aviso()).toBe("Explica por qué se desactiva el cliente");
-    expect(acciones.guardarClienteAction).not.toHaveBeenCalled();
+    await waitFor(() => expect(acciones.guardarClienteAction).toHaveBeenCalledTimes(1));
+    expect(acciones.guardarClienteAction).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({ activo: false, motivoInactivo: "Término de contrato" })
+    );
+  });
+
+  it("un cliente inactivo muestra su motivo, y quién y cuándo al pasar el cursor", () => {
+    const baja = { motivo: "Cerró la empresa", por: "ana@example.com", en: "2026-11-12T10:30:00" };
+    pintar(<ClientesTable clientes={[cliente({ activo: false, motivoInactivo: baja.motivo, baja })] as never} sucursales={[]} />, {
+      permisos: PERMISOS("clientes"),
+    });
+    expect(screen.getAllByText("Cerró la empresa").length).toBeGreaterThan(0);
+    expect(screen.getByText("Inactivo")).toHaveAttribute(
+      "title",
+      "Desactivado por ana@example.com el 12-11-2026: Cerró la empresa"
+    );
   });
 
   it("si el servidor rechaza, muestra su mensaje y deja el diálogo abierto con lo escrito", async () => {
@@ -213,6 +245,7 @@ describe("formulario de mall", () => {
       comuna: "Maipú",
       region: "Arica y Parinacota",
       activo: true,
+      motivoInactivo: null,
     });
   });
 

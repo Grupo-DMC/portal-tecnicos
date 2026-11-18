@@ -42,13 +42,22 @@ vi.mock("next/headers", async () => {
 vi.mock("@/lib/session", async (importar) => {
   const real = await importar<typeof import("@/lib/session")>();
   const { estado } = await import("../helpers/sesion");
-  return { ...real, verificarToken: async () => estado.token, firmarToken: async () => "token-firmado-falso" };
+  return {
+    ...real,
+    verificarToken: async () => estado.token,
+    // El modo va en el valor para que los tests vean con qué modo se firmó.
+    firmarToken: async (_uid: number, _sv: number, _ahora?: number, modo?: string) =>
+      modo ? `token-firmado-falso:${modo}` : "token-firmado-falso",
+  };
 });
 
 vi.mock("@/lib/data/roles", async (importar) => {
   const real = await importar<typeof import("@/lib/data/roles")>();
   const { estado } = await import("../helpers/sesion");
-  return { ...real, accesoDeUsuario: async () => estado.acceso };
+  return {
+    ...real,
+    accesoDeUsuario: async (_usuario: unknown, modo: string) => (modo === "tecnico" ? estado.accesoTecnico : estado.acceso),
+  };
 });
 
 vi.mock("@/lib/data/usuarios", async (importar) => {

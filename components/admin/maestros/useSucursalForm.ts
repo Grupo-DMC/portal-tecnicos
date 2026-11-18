@@ -1,5 +1,6 @@
 "use client";
 
+import { problemaDeBaja } from "@/lib/ui/estado-activo";
 import { guardarSucursalAction } from "@/app/actions/maestros";
 import type { FieldConfig } from "@/components/admin/MaestroTable";
 import type { FormValores } from "@/components/admin/Dialogo";
@@ -110,16 +111,8 @@ export function useSucursalForm({
             ayuda: "Todas las tiendas de un cliente en plan de calibración lo están. Se cambia en el cliente.",
             visible: (f) => clienteEnPlan(f.clienteId),
           },
-          { k: "activo", label: "Estado", tipo: "toggle" },
-          {
-            k: "motivoInactivo",
-            label: "¿Por qué se desactiva?",
-            tipo: "area",
-            span: 2,
-            ph: "Cierre de la tienda, cambio de local, término de contrato…",
-            ayuda: "Obligatorio para dejar la sucursal inactiva. Se borra si se reactiva.",
-            visible: (f) => f.activo === false,
-          },
+          // Pasar a «Inactivo» pide el motivo en un diálogo (migración 039).
+          { k: "activo", label: "Estado", tipo: "toggle", desactiva: "la sucursal" },
           { k: "notas", label: "Notas", tipo: "area", span: 2, ph: "Lo que conviene saber de esta tienda" },
         ],
     validar: (f) => {
@@ -129,9 +122,8 @@ export function useSucursalForm({
           if (errorTel) return errorTel;
           if (mesesDeForm(f.garantiaMeses) === undefined) return "La garantía va en meses, entre 1 y 240";
           if (!f.mallId && !String(f.direccion).trim()) return "Sin mall, la sucursal necesita su dirección de calle";
-          if (f.activo === false && !String(f.motivoInactivo ?? "").trim()) {
-            return "Explica por qué se desactiva la sucursal";
-          }
+          const sinMotivo = problemaDeBaja(f.activo !== false, String(f.motivoInactivo ?? ""), "la sucursal");
+          if (sinMotivo) return sinMotivo;
           return null;
         },
     advertir: (f, id) => {

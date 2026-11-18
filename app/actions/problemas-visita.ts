@@ -57,7 +57,8 @@ export async function registrarProblemasVisitaAction(pedido: {
       detalle: { agregados: res.agregados, modificados: res.modificados, quitados: res.quitados },
     });
     await registrarActividad(sesion, {
-      tipo: "visita.cambio",
+      // Con problemas nuevos es su propio tipo: se puede pedir aparte (y por correo).
+      tipo: res.agregados ? "problema.alta" : "visita.cambio",
       texto: `registró problemas en la visita ${folio} (${partes.join(", ")})`,
       folio,
     });

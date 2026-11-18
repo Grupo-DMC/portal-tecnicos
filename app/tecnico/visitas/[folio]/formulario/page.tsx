@@ -10,6 +10,7 @@ import { participaEnVisita } from "@/lib/ui/estado";
 import { plazoReservaSeg, tomarReserva } from "@/lib/data/reservas";
 import ActaEnCurso from "@/components/mobile/ActaEnCurso";
 import { problemasPorResolver } from "@/lib/data/avisos-problema";
+import { leerSeccionesObligatorias } from "@/lib/data/secciones-acta";
 
 export const dynamic = "force-dynamic";
 
@@ -42,13 +43,14 @@ export default async function FormularioPage({ params }: { params: Promise<{ fol
   // El borrador respaldado en el servidor: sirve cuando el técnico entra desde
   // otro equipo, o cuando el celular perdió lo que tenía guardado. La copia del
   // propio celular manda si es más nueva; eso lo decide el formulario.
-  const [motivos, trabajos, problemas, internos, borrador, porResolver] = await Promise.all([
+  const [motivos, trabajos, problemas, internos, borrador, porResolver, obligatorias] = await Promise.all([
     listarMotivos(),
     listarTrabajos(),
     listarProblemas(),
     listarInternos(),
     leerBorrador(folio, sesion.usuario.id).catch(() => null),
     problemasPorResolver(visita.id),
+    leerSeccionesObligatorias(),
   ]);
 
   return (
@@ -62,6 +64,7 @@ export default async function FormularioPage({ params }: { params: Promise<{ fol
         borradorServidor={borrador}
         reservaPlazoSeg={plazoSeg}
         porResolver={porResolver}
+        seccionesObligatorias={obligatorias}
       />
     </MobileShell>
   );

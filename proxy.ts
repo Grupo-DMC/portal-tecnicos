@@ -56,11 +56,12 @@ export async function proxy(req: NextRequest) {
     // Sin la cookie de vencimiento (sesiones abiertas antes de que existiera)
     // también se renueva, para que el navegador sepa cuándo vence. Lo mismo un
     // token sin versión: se vuelve a firmar con la 0, que es con la que valía.
-    // La versión se copia tal cual; compararla con la base es cosa de getSesion.
+    // La versión y el modo se copian tal cual; compararlos con la base es cosa
+    // de getSesion.
     if (RUTAS_SIN_RENOVAR.has(pathname)) return respuesta;
     if (tocaRenovar(token) || !req.cookies.get(COOKIE_EXPIRA) || token.sinVersion) {
       try {
-        const nuevo = await firmarToken(token.uid, token.sv);
+        const nuevo = await firmarToken(token.uid, token.sv, Date.now(), token.modo);
         const exp = Math.floor(Date.now() / 1000) + VIGENCIA_SESION;
         respuesta.cookies.set(COOKIE_SESION, nuevo, opcionesCookie(VIGENCIA_SESION));
         respuesta.cookies.set(COOKIE_EXPIRA, String(exp), opcionesCookie(VIGENCIA_SESION, false));
@@ -93,8 +94,8 @@ export async function proxy(req: NextRequest) {
 
 export const config = {
   matcher: [
-    // Todo salvo estáticos de Next, imágenes y la ruta de diagnóstico
-    // (/api/salud tiene su propia autorización por token).
-    "/((?!_next/static|_next/image|api/salud|favicon.ico|sw\\.js|.*\\.(?:png|jpg|jpeg|svg|ico|webp)$).*)",
+    // Todo salvo estáticos de Next, imágenes, la ruta de diagnóstico y el
+    // cron (/api/salud y /api/cron/* tienen su propia autorización por token).
+    "/((?!_next/static|_next/image|api/salud|api/cron/|favicon.ico|sw\\.js|.*\\.(?:png|jpg|jpeg|svg|ico|webp)$).*)",
   ],
 };

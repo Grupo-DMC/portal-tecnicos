@@ -3,6 +3,7 @@ import { getSesion } from "@/lib/auth";
 import { TRAMO_MAXIMO, leerRango } from "@/lib/rango-http";
 import { cabecerasEvidencia, sinPermisoDeVer, mimeSeguro } from "@/lib/evidencia-http";
 import { getAdjuntoMeta, getAdjuntoTramo, getDuenosDeAdjunto } from "@/lib/data/adjuntos";
+import { enModoTecnico, esAdmin } from "@/lib/roles";
 
 // Sirve las fotos y los videos que explican el trabajo a realizar. Los bytes
 // viven en dmc.visita_adjunto.contenido.
@@ -27,10 +28,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   const duenos = await getDuenosDeAdjunto(id);
   if (!duenos) return new NextResponse("No encontrado", { status: 404 });
-  if (sesion.usuario.rol === "TECNICO" && (!sesion.tecnico || !duenos.tecnicos.includes(sesion.tecnico.id))) {
+  if (enModoTecnico(sesion) && (!sesion.tecnico || !duenos.tecnicos.includes(sesion.tecnico.id))) {
     return new NextResponse("No encontrado", { status: 404 });
   }
-  if (sesion.usuario.rol !== "ADMIN" && !duenos.visitaActiva) {
+  if (!esAdmin(sesion) && !duenos.visitaActiva) {
     return new NextResponse("No encontrado", { status: 404 });
   }
 

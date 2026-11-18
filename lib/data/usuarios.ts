@@ -4,7 +4,8 @@ import { log } from "@/lib/log";
 import sql from "mssql";
 import { getPool } from "@/lib/db/pool";
 import { hashearPassword, verificarPassword } from "@/lib/password";
-import type { RolUsuario, Tecnico, Usuario } from "@/lib/types";
+import { ordenarRoles } from "@/lib/roles";
+import type { Tecnico, Usuario } from "@/lib/types";
 
 // Consultas contra dmc.usuario / dmc.tecnico para el inicio de sesión.
 // El maestro de usuarios que edita el panel vive en lib/data/maestros.
@@ -23,7 +24,9 @@ interface FilaUsuario {
   id: number;
   email: string;
   password_hash: string;
-  rol: RolUsuario;
+  /** Los roles separados por coma (dmc.usuario_rol). */
+  roles: string | null;
+  rol_id: number | null;
   tecnico_id: number | null;
   activo: boolean;
   ultimo_acceso_en: Date | null;
@@ -41,7 +44,8 @@ interface FilaUsuario {
 }
 
 const SELECT_USUARIO = `
-  SELECT u.id, u.email, u.password_hash, u.rol, u.tecnico_id, u.activo, u.ultimo_acceso_en,
+  SELECT u.id, u.email, u.password_hash, u.rol_id, u.tecnico_id, u.activo, u.ultimo_acceso_en,
+         (SELECT STRING_AGG(r.rol, ',') FROM dmc.usuario_rol r WHERE r.usuario_id = u.id) AS roles,
          u.sesion_version, u.debe_cambiar_password,
          t.id               AS t_id,
          t.rut              AS t_rut,
@@ -60,7 +64,8 @@ function mapear(fila: FilaUsuario): UsuarioConHash {
   const usuario: Usuario = {
     id: Number(fila.id),
     email: fila.email,
-    rol: fila.rol,
+    roles: ordenarRoles((fila.roles ?? "").split(",")),
+    rolId: fila.rol_id === null ? null : Number(fila.rol_id),
     tecnicoId: fila.tecnico_id === null ? null : Number(fila.tecnico_id),
     activo: Boolean(fila.activo),
     ultimoAccesoEn: fila.ultimo_acceso_en ? fila.ultimo_acceso_en.toISOString() : null,

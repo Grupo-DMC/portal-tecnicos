@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
 import { editarActaAdminAction } from "@/app/actions/ediciones";
 import { faltaEnProblemas, formularioDesdeActa } from "@/lib/ui/edicion";
-import { mensajeRut, mensajeTel } from "@/lib/ui/formato";
+import { mensajeCorreo, mensajeRut, mensajeTel } from "@/lib/ui/formato";
 import { useReferencias } from "@/lib/ui/referencias";
 import { comprimirFoto } from "@/lib/ui/imagen";
 import { useGirarFotos } from "@/components/ui/useGirarFotos";
@@ -43,6 +43,7 @@ export function useEditarActa({
   const [respNombre, setRespNombre] = useState(inicial.respNombre);
   const [respRut, setRespRut] = useState(inicial.respRut);
   const [respTel, setRespTel] = useState(inicial.respTel);
+  const [respEmail, setRespEmail] = useState(visita.ejecucion?.responsableEmail ?? "");
   const cargos = useReferencias().cargos;
   const [respCargo, setRespCargo] = useState(visita.ejecucion?.responsableCargo ?? "");
   const [motivosCodigos, setMotivosCodigos] = useState(inicial.motivosCodigos);
@@ -264,6 +265,8 @@ export function useEditarActa({
     if (errorRut) return `RUT del responsable: ${errorRut}`;
     const errorTel = mensajeTel(respTel);
     if (errorTel) return `Teléfono del responsable: ${errorTel}`;
+    const errorEmail = mensajeCorreo(respEmail);
+    if (errorEmail) return `Correo del responsable: ${errorEmail}`;
     if (motivosCodigos.length === 0) return "Marca al menos un motivo de la visita.";
     const vigentes = trabajos.filter((t) => motivosCodigos.includes(motivoDe(t)));
     if (!vigentes.length) return "Agrega al menos un trabajo realizado.";
@@ -297,6 +300,7 @@ export function useEditarActa({
         responsableNombre: respNombre.trim(),
         responsableRut: respRut.trim() || null,
         responsableTelefono: respTel.trim() || null,
+        responsableEmail: respEmail.trim() || null,
         responsableCargo: respCargo.trim() || null,
         motivosCodigos: motivosMarcados,
         observaciones: obs.trim() || null,
@@ -339,7 +343,7 @@ export function useEditarActa({
   // Qué secciones llevan cambios, comparando contra lo que se cargó. Es solo
   // para orientar a quien edita: el registro de verdad lo arma el servidor.
   const huellas = {
-    responsable: JSON.stringify([respNombre.trim(), respRut, respTel, respCargo]),
+    responsable: JSON.stringify([respNombre.trim(), respRut, respTel, respEmail.trim(), respCargo]),
     trabajo: JSON.stringify([
       motivosMarcados,
       trabajos.map((t) => [t.codigo, motivoDe(t), t.subs.map((x) => [x.etiqueta, x.cantidad]).sort()]),
@@ -399,6 +403,8 @@ export function useEditarActa({
     setRespRut,
     respTel,
     setRespTel,
+    respEmail,
+    setRespEmail,
     cargos,
     respCargo,
     setRespCargo,

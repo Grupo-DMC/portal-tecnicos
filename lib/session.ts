@@ -9,6 +9,8 @@
 // runtime Edge y necesita verificar el token antes de dejar pasar la petición.
 // Por eso usa Web Crypto (disponible en Node y en Edge) y no node:crypto.
 
+import { esModo, type Modo } from "@/lib/roles";
+
 export const COOKIE_SESION = "dmc_session";
 
 /**
@@ -45,6 +47,12 @@ export interface TokenSesion {
    * clave, de rol, desactivación), el token deja de valer: ver lib/auth.getSesion.
    */
   sv: number;
+  /**
+   * En qué modo trabaja quien tiene más de un rol: el panel o el de técnico
+   * (ver lib/roles). Sin él, el que le toca por defecto. Va firmado, pero el
+   * servidor igual comprueba en cada petición que la cuenta tenga ese modo.
+   */
+  modo?: Modo;
   /**
    * El token se firmó antes de que existiera `sv`. Vale como versión 0 —la de
    * toda cuenta que nunca la subió— y el middleware lo vuelve a firmar con
@@ -94,9 +102,15 @@ function deBase64Url(texto: string) {
   return bytes;
 }
 
-/** Firma `{uid, exp, sv}` y devuelve el valor a guardar en la cookie. */
-export async function firmarToken(usuarioId: number, sesionVersion: number, ahora = Date.now()): Promise<string> {
+/** Firma `{uid, exp, sv, modo?}` y devuelve el valor a guardar en la cookie. */
+export async function firmarToken(
+  usuarioId: number,
+  sesionVersion: number,
+  ahora = Date.now(),
+  modo?: Modo
+): Promise<string> {
   const carga: TokenSesion = { uid: usuarioId, exp: Math.floor(ahora / 1000) + VIGENCIA_SESION, sv: sesionVersion };
+  if (modo) carga.modo = modo;
   const cuerpo = aBase64Url(codificador.encode(JSON.stringify(carga)));
   const firma = await crypto.subtle.sign("HMAC", await clave(), codificador.encode(cuerpo));
   return `${cuerpo}.${aBase64Url(new Uint8Array(firma))}`;
@@ -131,12 +145,15 @@ export async function verificarToken(token: string | undefined, ahora = Date.now
       return null;
     }
 
-    const { uid, exp, sv } = carga as Partial<TokenSesion> & { uid: number; exp: number };
+    const { uid, exp, sv, modo } = carga as Partial<TokenSesion> & { uid: number; exp: number };
     if (!Number.isInteger(uid) || uid <= 0) return null;
     if (exp * 1000 <= ahora) return null;
-    if (sv === undefined) return { uid, exp, sv: 0, sinVersion: true };
+    // Un modo que no existe solo puede salir de un token que no firmamos así.
+    if (modo !== undefined && !esModo(modo)) return null;
+    const conModo = modo === undefined ? {} : { modo };
+    if (sv === undefined) return { uid, exp, sv: 0, sinVersion: true, ...conModo };
     if (typeof sv !== "number" || !Number.isInteger(sv) || sv < 0) return null;
-    return { uid, exp, sv };
+    return { uid, exp, sv, ...conModo };
   } catch {
     // Base64 corrupto, JSON inválido o SESSION_SECRET sin definir.
     return null;

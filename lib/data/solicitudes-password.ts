@@ -4,6 +4,7 @@ import { hashearPassword, validarPasswordNueva } from "@/lib/password";
 import { leerCuenta, leerCuentas } from "@/lib/data/roles";
 import { motivoCuentaAjena, puedeAdministrarCuenta } from "@/lib/permisos";
 import type { EstadoSolicitudPassword, RolUsuario, SolicitudPassword } from "@/lib/types";
+import { ordenarRoles, type Modo } from "@/lib/roles";
 
 // "Olvidé mi contraseña" — dmc.solicitud_password.
 //
@@ -71,7 +72,8 @@ export async function crearSolicitudPassword(
 
 /** Quien atiende: lo justo para decidir sobre qué cuentas puede. */
 export interface ActorSolicitud {
-  usuario: { id: number; rol: RolUsuario };
+  modo: Modo;
+  usuario: { id: number; roles: readonly RolUsuario[] };
   permisos: readonly string[];
 }
 
@@ -84,7 +86,7 @@ interface FilaSolicitud {
   atendido_por: number | null;
   atendido_en: string | null;
   creado_en: string;
-  u_rol: RolUsuario | null;
+  u_roles: string | null;
   u_activo: boolean | null;
 }
 
@@ -94,7 +96,8 @@ export async function listarSolicitudesPassword(actor: ActorSolicitud): Promise<
     `SELECT s.id, s.email, s.usuario_id, s.mensaje, s.estado, s.atendido_por,
             ${F_TS("s.atendido_en")} AS atendido_en,
             ${F_TS("s.creado_en")}   AS creado_en,
-            u.rol AS u_rol, u.activo AS u_activo
+            (SELECT STRING_AGG(r.rol, ',') FROM dmc.usuario_rol r WHERE r.usuario_id = u.id) AS u_roles,
+            u.activo AS u_activo
        FROM dmc.solicitud_password s
        LEFT JOIN dmc.usuario u ON u.id = s.usuario_id
       ORDER BY CASE s.estado WHEN 'PENDIENTE' THEN 0 ELSE 1 END, s.creado_en DESC`
@@ -113,7 +116,7 @@ export async function listarSolicitudesPassword(actor: ActorSolicitud): Promise<
       atendidoPor: numONull(f.atendido_por),
       atendidoEn: f.atendido_en,
       creadoEn: f.creado_en,
-      usuarioRol: f.u_rol,
+      usuarioRoles: f.usuario_id === null || f.u_activo === null ? null : ordenarRoles((f.u_roles ?? "").split(",")),
       usuarioActivo: f.u_activo === null ? null : Boolean(f.u_activo),
       administrable: !!cuenta && cuenta.id !== actor.usuario.id && puedeAdministrarCuenta(actor, cuenta),
     };

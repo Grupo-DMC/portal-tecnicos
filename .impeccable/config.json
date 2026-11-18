@@ -1,0 +1,20 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font",
+        "value": "arial",
+        "createdAt": "2026-11-18T12:14:06.718Z",
+        "reason": "Claude: HTML email template (lib/correo/plantilla-acta.ts); mail clients don't load web fonts, so a web-safe stack is required"
+      },
+      {
+        "rule": "overused-font",
+        "value": "arial",
+        "createdAt": "2026-11-18T12:21:35.239Z",
+        "reason": "Claude: HTML email template (lib/correo/plantilla-acta.ts); mail clients don't load web fonts, so a web-safe stack is required"
+      }
+    ]
+  }
+}

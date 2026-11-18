@@ -1,5 +1,7 @@
 import { sinTildes } from "@/lib/ui/formato";
 import { REGIONES } from "@/lib/ui/regiones";
+import type { Baja } from "@/lib/ui/estado-activo";
+import type { PersonaLocal } from "@/lib/types";
 
 // Contactos con cargos y alcances (migración 029).
 //
@@ -38,6 +40,10 @@ export interface Contacto {
   email: string | null;
   telefono: string | null;
   activo: boolean;
+  /** Por qué se desactivó (migración 039). */
+  motivoInactivo?: string | null;
+  /** La última baja: por qué, quién y cuándo. Null = activo. */
+  baja?: Baja | null;
   cargos: CargoContacto[];
 }
 
@@ -154,4 +160,65 @@ export function problemaDeCargos(cargos: readonly Pick<CargoContacto, "cargo" | 
     vistos.add(clave);
   }
   return null;
+}
+
+/** Los cargos con que un contacto es propio de esa sucursal (alcance SUCURSAL). */
+export function cargosEnSucursal(contacto: Contacto, sucursalId: number): CargoContacto[] {
+  return contacto.cargos.filter((c) => c.alcanceTipo === "SUCURSAL" && c.alcanceId === sucursalId);
+}
+
+/** Los cargos que hacen de alguien un contacto del cliente: los del cliente y los de sus marcas. */
+export function cargosDeCliente(contacto: Contacto, clienteId: number, marcasDelCliente: ReadonlySet<number>): CargoContacto[] {
+  return contacto.cargos.filter(
+    (c) =>
+      (c.alcanceTipo === "CLIENTE" && c.alcanceId === clienteId) ||
+      (c.alcanceTipo === "MARCA" && c.alcanceId !== null && marcasDelCliente.has(c.alcanceId))
+  );
+}
+
+const claveNombre = (nombre: string) => sinTildes(nombre.trim().replace(/\s+/g, " "));
+
+/**
+ * Lo que se ofrece al técnico (y a coordinación) para no reescribir los datos
+ * de quien recibe en la tienda: los contactos propios de la sucursal, cargados
+ * en el panel, y las personas que ya firmaron ahí (dmc.persona_local).
+ *
+ * Si un contacto ya firmó antes (mismo nombre), sale una sola vez: la persona
+ * del historial, que trae el RUT, completada con el teléfono y el correo del
+ * contacto cuando le faltan. Los contactos van primero: son la lista que
+ * mantiene coordinación. Sus ids van en negativo para no chocar con los del
+ * historial en los selectores.
+ */
+export function sugerenciasDelLocal(
+  personas: readonly PersonaLocal[],
+  contactos: readonly Contacto[],
+  sucursalId: number
+): PersonaLocal[] {
+  const historial = personas.map((p) => ({ ...p, origen: "HISTORIAL" as const }));
+  const porNombre = new Map(historial.map((p) => [claveNombre(p.nombre), p]));
+  const propios: PersonaLocal[] = [];
+  for (const c of contactos) {
+    if (!c.activo) continue;
+    const [cargo] = cargosEnSucursal(c, sucursalId);
+    if (!cargo) continue;
+    const ya = porNombre.get(claveNombre(c.nombre));
+    if (ya) {
+      ya.telefono = ya.telefono || c.telefono;
+      ya.email = ya.email || c.email;
+      ya.cargo = ya.cargo || cargo.cargo;
+      continue;
+    }
+    propios.push({
+      id: -c.id,
+      nombre: c.nombre,
+      rut: null,
+      telefono: c.telefono,
+      email: c.email,
+      cargo: cargo.cargo,
+      ultimaVez: "",
+      origen: "CONTACTO",
+    });
+  }
+  propios.sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  return [...propios, ...historial];
 }

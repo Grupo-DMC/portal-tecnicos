@@ -124,11 +124,14 @@ describe("visitas", () => {
 });
 
 describe("maestros", () => {
-  const usuario = { email: "a@example.com", rol: "COORDINADOR", tecnicoId: null, activo: true, password: "" };
+  const usuario = { email: "a@example.com", roles: ["COORDINADOR"], tecnicoId: null, activo: true, password: "" };
 
-  it("usuario: rol dentro de la lista", () => {
+  it("usuario: roles dentro de la lista, al menos uno", () => {
     expect(ok(entradaUsuario, { id: null, datos: usuario })).toBe(true);
-    expect(ok(entradaUsuario, { id: 4, datos: { ...usuario, rol: "ROOT" } })).toBe(false);
+    expect(ok(entradaUsuario, { id: null, datos: { ...usuario, roles: ["ADMIN", "TECNICO"], tecnicoId: 3 } })).toBe(true);
+    expect(ok(entradaUsuario, { id: 4, datos: { ...usuario, roles: ["ROOT"] } })).toBe(false);
+    expect(ok(entradaUsuario, { id: 4, datos: { ...usuario, roles: [] } })).toBe(false);
+    expect(ok(entradaUsuario, { id: 4, datos: { ...usuario, roles: "ADMIN" } })).toBe(false);
     expect(ok(entradaUsuario, { id: 0, datos: usuario })).toBe(false);
     expect(ok(entradaUsuario, { id: null, datos: { ...usuario, password: "x".repeat(257) } })).toBe(false);
   });

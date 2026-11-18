@@ -9,6 +9,7 @@ import type {
   ResumenChecklist,
 } from "@/lib/contratos/checklist";
 import {
+  type TipoSeccion,
   listarCargos,
   listarEstadosProblema,
   listarGestionProblemas,
@@ -55,6 +56,7 @@ async function guardarChecklistEn(ej: Ejecutor, borrador: BorradorChecklist): Pr
   // ── Tipos de problema ──
   const padresProblema = await padresExistentes(ej, "dmc.catalogo_problema");
   const vivosProblema: number[] = [];
+  const problemaPorNombre = new Map<string, number>();
   for (const [i, p] of borrador.problemas.entries()) {
     const nombre = p.nombre.trim();
     if (!nombre) continue;
@@ -86,6 +88,7 @@ async function guardarChecklistEn(ej: Ejecutor, borrador: BorradorChecklist): Pr
       );
     }
     vivosProblema.push(id);
+    problemaPorNombre.set(nombre.toLowerCase(), id);
     desactivados += await guardarHijos(
       ej,
       "dmc.catalogo_problema_opcion",
@@ -146,8 +149,8 @@ async function guardarChecklistEn(ej: Ejecutor, borrador: BorradorChecklist): Pr
   // ── Qué trabajos van en cada motivo ──
   await guardarTrabajosPorMotivo(ej, borrador.motivos, motivos.idPorNombre, trabajoPorNombre);
 
-  // ── Secciones de motivos y de trabajos ──
-  await guardarSecciones(ej, borrador, motivos.idPorNombre, trabajoPorNombre);
+  // ── Secciones de motivos y de trabajos, y categorías de problema ──
+  await guardarSecciones(ej, borrador, motivos.idPorNombre, trabajoPorNombre, problemaPorNombre);
 
   // ── Checklist del comentario interno ──
   // Sin la lista en el borrador (un panel viejo todavía abierto) no se toca:
@@ -216,15 +219,17 @@ async function guardarChecklistEn(ej: Ejecutor, borrador: BorradorChecklist): Pr
 }
 
 /**
- * Escribe las secciones de motivos y de trabajos y deja a cada entrada en la
- * suya. La posición en la lista es el orden; una sección que no viene se
- * desactiva (sus entradas quedan «sin sección») y nada se borra.
+ * Escribe las secciones de motivos y de trabajos y las categorías de los tipos
+ * de problema, y deja a cada entrada en la suya. La posición en la lista es el
+ * orden; una sección que no viene se desactiva (sus entradas quedan «sin
+ * sección») y nada se borra.
  */
 async function guardarSecciones(
   ej: Ejecutor,
   borrador: BorradorChecklist,
   motivoPorNombre: Map<string, number>,
-  trabajoPorNombre: Map<string, number>
+  trabajoPorNombre: Map<string, number>,
+  problemaPorNombre: Map<string, number>
 ): Promise<void> {
   await guardarSeccionesDe(ej, "MOTIVO", "dmc.catalogo_motivo", borrador.seccionesMotivo, borrador.motivos, motivoPorNombre);
   await guardarSeccionesDe(
@@ -235,12 +240,20 @@ async function guardarSecciones(
     borrador.trabajos,
     trabajoPorNombre
   );
+  await guardarSeccionesDe(
+    ej,
+    "PROBLEMA",
+    "dmc.catalogo_problema",
+    borrador.seccionesProblema,
+    borrador.problemas,
+    problemaPorNombre
+  );
 }
 
 async function guardarSeccionesDe(
   ej: Ejecutor,
-  tipo: "MOTIVO" | "TRABAJO",
-  tabla: "dmc.catalogo_motivo" | "dmc.catalogo_trabajo",
+  tipo: TipoSeccion,
+  tabla: "dmc.catalogo_motivo" | "dmc.catalogo_trabajo" | "dmc.catalogo_problema",
   nombres: string[] | undefined,
   items: { nombre: string; seccion?: string | null }[],
   idPorNombre: Map<string, number>

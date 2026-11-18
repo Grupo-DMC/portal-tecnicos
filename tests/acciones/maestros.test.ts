@@ -21,7 +21,7 @@ vi.mock("@/lib/data/roles", async (importar) => {
   const { estado } = await import("../helpers/sesion");
   return {
     ...real,
-    accesoDeUsuario: async () => estado.acceso,
+    accesoDeUsuario: async (_usuario: unknown, modo: string) => (modo === "tecnico" ? estado.accesoTecnico : estado.acceso),
     eliminarRol: vi.fn(),
     guardarPermisosCelular: vi.fn(),
     guardarRol: vi.fn(),
@@ -100,7 +100,7 @@ const tecnico = (extra: Record<string, unknown> = {}) => ({
 
 const usuario = (extra: Record<string, unknown> = {}) => ({
   email: "nuevo@example.com",
-  rol: "COORDINADOR",
+  roles: ["COORDINADOR"],
   rolId: 5,
   tecnicoId: null,
   activo: true,
@@ -156,7 +156,12 @@ describe("alta y edición: son permisos distintos", () => {
 describe("clientes", () => {
   it("guarda y devuelve el id (para altas hechas desde otro formulario)", async () => {
     expect(await acc.guardarClienteAction(null, cliente() as never)).toEqual({ ok: true, id: 10 });
-    expect(guardarCliente).toHaveBeenCalledWith(null, expect.objectContaining({ razonSocial: "Empresa Uno SpA" }));
+    // El tercer argumento es quién guarda: va al historial de cambios de estado.
+    expect(guardarCliente).toHaveBeenCalledWith(
+      null,
+      expect.objectContaining({ razonSocial: "Empresa Uno SpA" }),
+      expect.objectContaining({ id: expect.any(Number), email: expect.any(String) })
+    );
     expect(revalidatePath).toHaveBeenCalledWith("/admin", "layout");
   });
 
@@ -165,6 +170,7 @@ describe("clientes", () => {
     ["sin RUT", { rut: "" }, /Razón social y RUT son obligatorios/],
     ["RUT incompleto", { rut: "123" }, /RUT está incompleto/],
     ["inactivo sin motivo", { activo: false, motivoInactivo: "  " }, /por qué se desactiva el cliente/],
+    ["inactivo con un motivo que no explica nada", { activo: false, motivoInactivo: "x" }, /muy corto/],
   ])("rechaza %s", async (_n, extra, mensaje) => {
     const r = await acc.guardarClienteAction(null, cliente(extra) as never);
     expect(r.ok).toBe(false);
@@ -189,6 +195,31 @@ describe("clientes", () => {
 });
 
 describe("marcas, malls y tiendas de un mall", () => {
+  // Migración 039: ningún maestro queda inactivo sin motivo, y el servidor no le cree al formulario.
+  it.each([
+    ["la marca", () => acc.guardarMarcaAction(7, { clienteId: 1, nombre: "Marca", activo: false })],
+    [
+      "el mall",
+      () => acc.guardarMallAction(7, { nombre: "Mall", direccion: "Av. 1", comuna: "Maipú", region: "Metropolitana", activo: false }),
+    ],
+  ])("desactivar %s sin motivo se rechaza", async (que, guardar) => {
+    const r = await guardar();
+    expect(r.ok).toBe(false);
+    expect(r.error).toBe(`Explica por qué se desactiva ${que}.`);
+    expect(guardarMarca).not.toHaveBeenCalled();
+    expect(guardarMall).not.toHaveBeenCalled();
+  });
+
+  it("desactivar una marca con motivo la guarda, con quién lo hizo", async () => {
+    const r = await acc.guardarMarcaAction(7, { clienteId: 1, nombre: "Marca", activo: false, motivoInactivo: "  Cerró la cadena  " });
+    expect(r.ok).toBe(true);
+    expect(guardarMarca).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({ activo: false, motivoInactivo: "  Cerró la cadena  " }),
+      expect.objectContaining({ id: expect.any(Number) })
+    );
+  });
+
   it("la marca necesita nombre", async () => {
     expect((await acc.guardarMarcaAction(null, { clienteId: 1, nombre: " ", activo: true })).error).toBe("El nombre de la marca es obligatorio.");
   });
@@ -341,8 +372,14 @@ describe("usuarios", () => {
 
   it("valida correo, técnico vinculado y la política de contraseñas (al crear siempre)", async () => {
     expect((await acc.guardarUsuarioAction(null, usuario({ email: "sin-arroba" }) as never)).error).toBe("Escribe un correo válido.");
-    expect((await acc.guardarUsuarioAction(null, usuario({ rol: "TECNICO", tecnicoId: 0 }) as never)).error).toBe(
-      "Un usuario TÉCNICO necesita técnico vinculado."
+    expect((await acc.guardarUsuarioAction(null, usuario({ roles: ["TECNICO"], tecnicoId: 0 }) as never)).error).toBe(
+      "Para el rol de técnico hay que vincular un técnico."
+    );
+    expect((await acc.guardarUsuarioAction(null, usuario({ roles: ["ADMIN", "TECNICO"], tecnicoId: null }) as never)).error).toBe(
+      "Para el rol de técnico hay que vincular un técnico."
+    );
+    expect((await acc.guardarUsuarioAction(null, usuario({ roles: ["ADMIN", "COORDINADOR"] }) as never)).error).toMatch(
+      /administradora y coordinadora a la vez/
     );
     for (const mala of ["", "corta", "nuevo@example.com"]) {
       expect((await acc.guardarUsuarioAction(null, usuario({ password: mala }) as never)).error, mala).toBeTruthy();
@@ -359,16 +396,35 @@ describe("usuarios", () => {
     vi.mocked(guardarUsuario).mockResolvedValue({ id: 1, sesionVersion: 4 });
     await acc.guardarUsuarioAction(1, usuario({ password: "" }) as never);
     expect(cookiesEscritas.map((c) => c.nombre)).toContain("dmc_session");
+    // Se re-firma en el modo en que estaba trabajando.
+    expect(cookiesEscritas.find((c) => c.nombre === "dmc_session")?.valor).toBe("token-firmado-falso:panel");
   });
 
   it("audita los cambios sensibles de una cuenta existente: baja, rol y contraseña", async () => {
     vi.mocked(guardarUsuario).mockImplementation((async (_id: unknown, _d: unknown, control: { autorizar: (a: unknown, n: unknown) => unknown }) => {
-      control.autorizar({ id: 99, email: "x", rol: "COORDINADOR", rolId: 5, activo: true, permisos: [] }, { rol: "ADMIN", rolId: null, permisos: TODOS_LOS_PERMISOS });
+      control.autorizar(
+        { id: 99, email: "x", roles: ["COORDINADOR"], rolId: 5, tecnicoId: null, activo: true, permisos: [] },
+        { roles: ["ADMIN", "TECNICO"], rolId: null, tecnicoId: 11, permisos: TODOS_LOS_PERMISOS }
+      );
       return { id: 99, sesionVersion: 2 };
     }) as never);
-    await acc.guardarUsuarioAction(99, usuario({ rol: "ADMIN", rolId: null, activo: false, password: "Otra-Clave-Larga-1" }) as never);
+    await acc.guardarUsuarioAction(
+      99,
+      usuario({
+        roles: ["ADMIN", "TECNICO"],
+        rolId: null,
+        tecnicoId: 11,
+        activo: false,
+        motivoInactivo: "Dejó la empresa",
+        password: "Otra-Clave-Larga-1",
+      }) as never
+    );
     const acciones = vi.mocked(auditar).mock.calls.map((c) => c[1].accion);
-    expect(acciones).toEqual(expect.arrayContaining(["usuario.desactivar", "usuario.rol", "password.reseteo"]));
+    expect(acciones).toEqual(
+      expect.arrayContaining(["usuario.desactivar", "usuario.rol", "usuario.tecnico", "password.reseteo"])
+    );
+    const rol = vi.mocked(auditar).mock.calls.find((c) => c[1].accion === "usuario.rol")![1];
+    expect(rol.detalle).toEqual({ de: { roles: ["COORDINADOR"], rolId: 5 }, a: { roles: ["ADMIN", "TECNICO"], rolId: null } });
   });
 
   describe("no se puede fabricar más acceso del que se tiene (autorizar)", () => {
@@ -383,20 +439,52 @@ describe("usuarios", () => {
       return resultado;
     }
 
-    const cuenta = (extra: Record<string, unknown> = {}) => ({ id: 99, email: "x@example.com", rol: "COORDINADOR", rolId: 5, activo: true, permisos: ["visitas.ver"], ...extra });
+    const cuenta = (extra: Record<string, unknown> = {}) => ({
+      id: 99,
+      email: "x@example.com",
+      roles: ["COORDINADOR"],
+      rolId: 5,
+      tecnicoId: null,
+      activo: true,
+      permisos: ["visitas.ver"],
+      ...extra,
+    });
 
     it("el administrador puede con todo", async () => {
-      expect(await autorizar(cuenta({ rol: "ADMIN", permisos: TODOS_LOS_PERMISOS }), cuenta({ rol: "ADMIN", permisos: TODOS_LOS_PERMISOS }))).toBeNull();
+      expect(await autorizar(cuenta({ roles: ["ADMIN"], permisos: TODOS_LOS_PERMISOS }), cuenta({ roles: ["ADMIN"], permisos: TODOS_LOS_PERMISOS }))).toBeNull();
+    });
+
+    it("el administrador puede hacer técnica a una cuenta del panel y vincularle un técnico", async () => {
+      expect(await autorizar(cuenta(), cuenta({ roles: ["COORDINADOR", "TECNICO"], tecnicoId: 11 }))).toBeNull();
+    });
+
+    it("un administrador trabajando como técnico no puede guardar cuentas", async () => {
+      entrarComo("admin+tecnico", { modo: "tecnico" });
+      expect(await acc.guardarUsuarioAction(99, usuario() as never)).toEqual({ ok: false, error: "No tienes permiso para editar usuarios." });
+      expect(guardarUsuario).not.toHaveBeenCalled();
     });
 
     it("un coordinador no puede tocar una cuenta de administrador", async () => {
       entrarComo("coordinador", { permisos: [...PERMISOS_COORDINADOR, "usuarios.crear", "usuarios.editar"] });
-      expect(await autorizar(cuenta({ rol: "ADMIN", permisos: TODOS_LOS_PERMISOS }), cuenta())).toMatch(/Solo un administrador puede modificar cuentas de administrador/);
+      expect(await autorizar(cuenta({ roles: ["ADMIN"], permisos: TODOS_LOS_PERMISOS }), cuenta())).toMatch(/Solo un administrador puede modificar cuentas de administrador/);
+    });
+
+    it("un coordinador no puede dar el rol de técnico a una cuenta del panel ni cambiarle el técnico", async () => {
+      entrarComo("coordinador", { permisos: [...PERMISOS_COORDINADOR, "usuarios.crear", "usuarios.editar"] });
+      const motivo = /Solo un administrador puede dar el rol de técnico a una cuenta del panel/;
+      expect(await autorizar(cuenta(), cuenta({ roles: ["COORDINADOR", "TECNICO"], tecnicoId: 11 }))).toMatch(motivo);
+      expect(await autorizar(null, cuenta({ roles: ["COORDINADOR", "TECNICO"], tecnicoId: 11 }), null)).toMatch(motivo);
+      const doble = cuenta({ roles: ["COORDINADOR", "TECNICO"], tecnicoId: 11 });
+      expect(await autorizar(doble, { ...doble, tecnicoId: 12 })).toMatch(motivo);
+      // Sin tocar el técnico, editar lo demás de esa cuenta sí puede.
+      expect(await autorizar(doble, doble)).toBeNull();
+      // Una cuenta de solo técnico la sigue pudiendo crear.
+      expect(await autorizar(null, cuenta({ roles: ["TECNICO"], tecnicoId: 11, rolId: null, permisos: [] }), null)).toBeNull();
     });
 
     it("un coordinador no puede crear un administrador", async () => {
       entrarComo("coordinador", { permisos: [...PERMISOS_COORDINADOR, "usuarios.crear"] });
-      expect(await autorizar(null, cuenta({ rol: "ADMIN", permisos: TODOS_LOS_PERMISOS }), null)).toBe(
+      expect(await autorizar(null, cuenta({ roles: ["ADMIN"], permisos: TODOS_LOS_PERMISOS }), null)).toBe(
         "Solo un administrador puede crear o editar cuentas de administrador."
       );
     });
@@ -426,8 +514,12 @@ describe("usuarios", () => {
     expect((await acc.guardarUsuarioAction(null, usuario() as never)).error).toBe("Ya existe un registro con ese correo.");
     vi.mocked(guardarUsuario).mockRejectedValueOnce(new CuentaNoPermitida("No puedes tocar esa cuenta."));
     expect((await acc.guardarUsuarioAction(null, usuario() as never)).error).toBe("No puedes tocar esa cuenta.");
-    vi.mocked(guardarUsuario).mockRejectedValueOnce(new Error("constraint ck_usuario_tecnico"));
-    expect((await acc.guardarUsuarioAction(null, usuario() as never)).error).toMatch(/necesita un técnico vinculado/);
+    vi.mocked(guardarUsuario).mockRejectedValueOnce(new Error("ck_usuario_roles_tecnico: el rol TECNICO necesita un técnico vinculado."));
+    expect((await acc.guardarUsuarioAction(null, usuario() as never)).error).toBe("Para el rol de técnico hay que vincular un técnico.");
+    vi.mocked(guardarUsuario).mockRejectedValueOnce(new Error("ck_usuario_roles_panel: no ADMIN y COORDINADOR"));
+    expect((await acc.guardarUsuarioAction(null, usuario() as never)).error).toMatch(/administradora y coordinadora/);
+    vi.mocked(guardarUsuario).mockRejectedValueOnce(new Error("Cannot insert duplicate key row ... uq_usuario_tecnico"));
+    expect((await acc.guardarUsuarioAction(null, usuario() as never)).error).toBe("Ese técnico ya está vinculado a otro usuario.");
   });
 });
 

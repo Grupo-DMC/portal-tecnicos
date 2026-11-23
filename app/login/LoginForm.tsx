@@ -1,102 +1,182 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import Image from "next/image";
+import { useActionState, useEffect, useRef, useState } from "react";
 import {
   loginAction,
   solicitarPasswordAction,
   type LoginState,
   type SolicitudState,
 } from "@/app/actions/auth";
+import Icono, { type NombreIcono } from "./Iconos";
 
 const initialState: LoginState = { error: null };
 const initialSolicitud: SolicitudState = { ok: false, error: null };
 
+/** Estilo de campo de la app. El login ya no lo usa (tiene el suyo en login.css); lo sigue usando /cambiar-password. */
 export const CAMPO =
   "w-full min-h-[54px] px-3.5 py-3 text-lead bg-[var(--color-surface)] border border-[var(--color-divider)] text-[var(--color-text)] caret-[var(--color-accent)] focus-visible:border-[var(--color-accent)] focus-visible:outline-none";
 
-export default function LoginForm({ version }: { version: string }) {
+/** Sacude el bloque del formulario cada vez que llega un error nuevo. */
+function useSacudida(señal: unknown) {
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !señal) return;
+    el.classList.remove("shake");
+    void el.offsetWidth; // reinicia la animación
+    el.classList.add("shake");
+  }, [señal]);
+  return ref;
+}
+
+function Campo({
+  id,
+  label,
+  icon,
+  conBoton = false,
+  children,
+}: {
+  id: string;
+  label: React.ReactNode;
+  icon: NombreIcono;
+  conBoton?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="field">
+      <label htmlFor={id}>{label}</label>
+      <div className={`control${conBoton ? " has-action" : ""}`}>
+        <Icono name={icon} className="ico" />
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Boton({
+  cargando,
+  children,
+  flecha = false,
+}: {
+  cargando: boolean;
+  children: React.ReactNode;
+  flecha?: boolean;
+}) {
+  return (
+    <button
+      className="btn"
+      type="submit"
+      disabled={cargando}
+      data-state={cargando ? "loading" : undefined}
+      aria-busy={cargando}
+    >
+      <span>{children}</span>
+      {flecha ? <Icono name="arrow" className="arrow" /> : null}
+      <span className="spinner" aria-hidden="true" />
+    </button>
+  );
+}
+
+function Aviso({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="alert" role="alert">
+      <Icono name="alert" />
+      <span>{children}</span>
+    </div>
+  );
+}
+
+export default function LoginForm({ version, expirada = false }: { version: string; expirada?: boolean }) {
   const [state, formAction, pending] = useActionState(loginAction, initialState);
   const [verPass, setVerPass] = useState(false);
   const [olvide, setOlvide] = useState(false);
-
-  if (olvide) return <OlvideMiPassword onVolver={() => setOlvide(false)} />;
+  const sacudida = useSacudida(state.error ? state : null);
 
   return (
-    <form action={formAction} className="flex flex-col gap-4" autoComplete="off">
-      <div>
-        <label htmlFor="lg-mail" className="block text-cap opacity-60 mb-1.5">
-          Correo
-        </label>
-        <input
-          id="lg-mail"
-          name="email"
-          type="email"
-          inputMode="email"
-          // Nada se autocompleta en el sistema: los equipos de terreno son
-          // compartidos y el navegador ofrecía el correo del turno anterior.
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="off"
-          spellCheck={false}
-          required
-          className={CAMPO}
-        />
-      </div>
-      <div>
-        <label htmlFor="lg-pass" className="block text-cap opacity-60 mb-1.5">
-          Contraseña
-        </label>
-        {/* El ojo va dentro del campo: un solo control, sin casilla aparte. */}
-        <div className="relative">
-          <input
-            id="lg-pass"
-            name="password"
-            type={verPass ? "text" : "password"}
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck={false}
-            placeholder="••••••••"
-            required
-            className={`${CAMPO} pr-[52px]`}
-          />
-          <button
-            type="button"
-            onClick={() => setVerPass((v) => !v)}
-            aria-label={verPass ? "Ocultar contraseña" : "Ver contraseña"}
-            aria-pressed={verPass}
-            title={verPass ? "Ocultar contraseña" : "Ver contraseña"}
-            className="absolute right-0 top-0 bottom-0 w-[46px] grid place-items-center bg-transparent border-0 cursor-pointer text-[var(--color-text)] opacity-60 hover:opacity-100"
-          >
-            {verPass ? <IconoOjoTachado /> : <IconoOjo />}
-          </button>
+    <section className="form-wrap" ref={sacudida}>
+      <Image
+        className="logo"
+        src="/login/logo-dmc.png"
+        alt="Grupo DMC, Ideas Tecnológicas de Seguridad"
+        width={561}
+        height={199}
+        priority
+      />
+      {expirada && !olvide ? (
+        <div className="notice" role="status">
+          <Icono name="alert" />
+          <span>Tu sesión venció por inactividad. Vuelve a entrar.</span>
         </div>
-      </div>
+      ) : null}
+      {olvide ? (
+        <OlvideMiPassword onVolver={() => setOlvide(false)} />
+      ) : (
+        <div>
+          <h1>Iniciar sesión</h1>
+          <p className="sub">
+            Ingresa tus credenciales para continuar. Funciona sin señal: lo que guardes se envía solo.
+          </p>
 
-      {state.error ? <Alerta>{state.error}</Alerta> : null}
+          {state.error ? <Aviso>{state.error}</Aviso> : null}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="w-full min-h-[58px] flex items-center justify-between gap-2.5 px-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-lead cursor-pointer text-left mt-1.5 hover:bg-[var(--color-accent-hover)] active:bg-[var(--color-accent-active)] disabled:opacity-60"
-      >
-        <span>{pending ? "Ingresando…" : "Iniciar sesión"}</span>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-          <path d="M5 12h14M13 6l6 6-6 6" />
-        </svg>
-      </button>
+          {/* Nada se autocompleta en el sistema: los equipos de terreno son
+              compartidos y el navegador ofrecía el correo del turno anterior. */}
+          <form action={formAction} autoComplete="off">
+            <Campo id="lg-mail" label="Correo" icon="mail">
+              <input
+                id="lg-mail"
+                name="email"
+                type="email"
+                inputMode="email"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                placeholder="nombre@empresa.cl"
+                required
+              />
+            </Campo>
 
-      <div className="flex justify-between items-center pt-1">
-        <button
-          type="button"
-          onClick={() => setOlvide(true)}
-          className="p-0 bg-transparent border-0 text-meta text-[var(--color-accent-active)] underline underline-offset-[3px] cursor-pointer"
-        >
-          Olvidé mi contraseña
-        </button>
-        <span className="text-cap opacity-60">v{version}</span>
-      </div>
-    </form>
+            <Campo id="lg-pass" label="Contraseña" icon="lock" conBoton>
+              <input
+                id="lg-pass"
+                name="password"
+                type={verPass ? "text" : "password"}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                placeholder="Tu contraseña"
+                required
+              />
+              <button
+                type="button"
+                className="reveal"
+                onClick={() => setVerPass((v) => !v)}
+                aria-label={verPass ? "Ocultar contraseña" : "Ver contraseña"}
+                aria-pressed={verPass}
+                title={verPass ? "Ocultar contraseña" : "Ver contraseña"}
+              >
+                <Icono name={verPass ? "eyeOff" : "eye"} />
+              </button>
+            </Campo>
+
+            <div className="row">
+              <button type="button" className="link" onClick={() => setOlvide(true)}>
+                Olvidé mi contraseña
+              </button>
+            </div>
+
+            <Boton cargando={pending} flecha>
+              {pending ? "Ingresando…" : "Iniciar sesión"}
+            </Boton>
+          </form>
+
+          <p className="help">¿Problemas para ingresar? Contacta al administrador del sistema. · v{version}</p>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -111,93 +191,78 @@ export default function LoginForm({ version }: { version: string }) {
 function OlvideMiPassword({ onVolver }: { onVolver: () => void }) {
   const [state, formAction, pending] = useActionState(solicitarPasswordAction, initialSolicitud);
 
+  const volver = (
+    <button className="btn-ghost" type="button" onClick={onVolver}>
+      <Icono name="arrowLeft" />
+      Volver a iniciar sesión
+    </button>
+  );
+
   if (state.ok) {
     return (
-      <div className="flex flex-col gap-4">
-        <div className="px-3.5 py-3 bg-[var(--color-surface)] border border-[var(--color-line-control)]">
-          <div className="font-extrabold text-body mb-1">Solicitud enviada</div>
-          <p className="m-0 text-meta leading-[1.5] opacity-75">
+      <div>
+        <h1>Solicitud enviada</h1>
+        <p className="sub">Ahora toca esperar al administrador.</p>
+        <div className="notice" role="status">
+          <Icono name="check" />
+          <span>
             Si ese correo tiene una cuenta, el administrador va a ver la solicitud en el panel y te va a entregar una
             contraseña temporal. No te llega ningún correo: te la pasan por el canal de siempre.
-          </p>
+          </span>
         </div>
-        <button
-          type="button"
-          onClick={onVolver}
-          className="w-full min-h-[54px] flex items-center justify-between px-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)]"
-        >
-          <span>Volver a iniciar sesión</span>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-            <path d="M5 12h14M13 6l6 6-6 6" />
-          </svg>
-        </button>
+        {volver}
       </div>
     );
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-4" autoComplete="off">
-      <div className="px-3.5 py-3 bg-[var(--color-surface)] border border-[var(--color-line-control)] text-meta leading-[1.5]">
+    <div>
+      <h1>Recuperar contraseña</h1>
+      <p className="sub">
         Déjanos tu correo y el administrador te asigna una contraseña temporal. No se envía ningún correo automático.
-      </div>
+      </p>
 
-      <div>
-        <label htmlFor="rec-mail" className="block text-cap opacity-60 mb-1.5">
-          Correo con el que entras
-        </label>
-        <input
-          id="rec-mail"
-          name="email"
-          type="email"
-          inputMode="email"
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="off"
-          spellCheck={false}
-          required
-          className={CAMPO}
-        />
-      </div>
+      {state.error ? <Aviso>{state.error}</Aviso> : null}
 
-      <div>
-        <label htmlFor="rec-msg" className="block text-cap opacity-60 mb-1.5">
-          Mensaje para el administrador <span className="opacity-70">(opcional)</span>
-        </label>
-        <textarea
-          id="rec-msg"
-          name="mensaje"
-          rows={3}
-          maxLength={400}
-          autoComplete="off"
-          placeholder="Por ejemplo: en qué turno estás o a qué número llamarte"
-          className={`${CAMPO} min-h-[90px] resize-y leading-[1.45]`}
-        />
-      </div>
+      <form action={formAction} autoComplete="off">
+        <Campo id="rec-mail" label="Correo con el que entras" icon="mail">
+          <input
+            id="rec-mail"
+            name="email"
+            type="email"
+            inputMode="email"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            required
+          />
+        </Campo>
 
-      {state.error ? <Alerta>{state.error}</Alerta> : null}
+        <div className="field">
+          <label htmlFor="rec-msg">
+            Mensaje para el administrador <span className="opt">(opcional)</span>
+          </label>
+          <textarea
+            id="rec-msg"
+            name="mensaje"
+            className="area"
+            rows={3}
+            maxLength={400}
+            autoComplete="off"
+            placeholder="Por ejemplo: en qué turno estás o a qué número llamarte"
+          />
+        </div>
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="w-full min-h-[58px] flex items-center justify-between gap-2.5 px-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)] disabled:opacity-60"
-      >
-        <span>{pending ? "Enviando…" : "Pedir contraseña nueva"}</span>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-          <path d="M5 12h14M13 6l6 6-6 6" />
-        </svg>
-      </button>
+        <Boton cargando={pending}>{pending ? "Enviando…" : "Pedir contraseña nueva"}</Boton>
+      </form>
 
-      <button
-        type="button"
-        onClick={onVolver}
-        className="w-full min-h-[50px] px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
-      >
-        Volver a iniciar sesión
-      </button>
-    </form>
+      {volver}
+    </div>
   );
 }
 
+/** Caja de error con el estilo de la app. La usa /cambiar-password. */
 export function Alerta({ children }: { children: React.ReactNode }) {
   return (
     <div
@@ -218,23 +283,5 @@ export function Alerta({ children }: { children: React.ReactNode }) {
       </svg>
       <span>{children}</span>
     </div>
-  );
-}
-
-function IconoOjo() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z" />
-      <circle cx="12" cy="12" r="2.6" />
-    </svg>
-  );
-}
-
-function IconoOjoTachado() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z" />
-      <path d="M4 4l16 16" />
-    </svg>
   );
 }

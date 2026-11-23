@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Fira_Sans } from "next/font/google";
 import localFont from "next/font/local";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 // Par «Dashboard Data» de ui-ux-pro-max: Fira Sans para el texto y los
@@ -33,7 +35,14 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   await connection();
   return (
     <html lang="es" className={`${firaSans.variable} ${firaCode.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        {/* Estadísticas y velocidad de Vercel: el script y el envío salen del
+            mismo origen (/_vercel/insights y /_vercel/speed-insights), así que
+            la CSP actual los permite. */}
+        <Analytics />
+        <SpeedInsights />
+      </body>
     </html>
   );
 }

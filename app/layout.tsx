@@ -25,7 +25,7 @@ const firaCode = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "DMC Contingencia",
+  title: { default: "Portal Técnicos", template: "%s | Portal Técnicos" },
   description: "Sistema de técnicos en terreno y panel de coordinación de Grupo DMC",
 };
 

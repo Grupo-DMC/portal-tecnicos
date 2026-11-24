@@ -25,6 +25,26 @@ en el panel antes de tocar nada, porque son los que hay que restaurar si se vuel
 
 ---
 
+## Estado verificado (2026-11-24)
+
+- Proyecto Vercel `dmc-359c/portal-tecnicos`; dominios `tecnicosdmc.cl`, `www.tecnicosdmc.cl` y
+  `portal-tecnicos.vercel.app`.
+- El PR #6 (soporte de `DB_SCHEMA`) está en `main`, pero **su despliegue de producción quedó
+  «Canceled»** («through the Vercel API»). El último despliegue `Ready` es del 2026-11-23: producción
+  **todavía corre el código anterior**, que consulta `dmc.*` con el esquema escrito a mano. Hay que
+  desplegar `main` antes del corte (paso 0.1).
+- Las variables `DB_*` están en Vercel como **Secret** y compartidas entre **Production y Preview**: sus
+  valores no se pueden leer desde Vercel, y un preview de cualquier rama usa hoy la base de producción.
+  Si se editan, hay que separar Production de Preview (en el panel: editar la variable, quitar «Preview»
+  y crear la nueva solo para Production).
+- Los valores actuales (los de vuelta atrás) solo están en `.env.production`, un `vercel env pull` del
+  2026-11-23. **Guarda una copia fuera del repositorio antes de tocar nada.**
+- `DB_SCHEMA`, `DB_SCHEMA_CLIENTES` y `DB_SCHEMA_SEGURIDAD` no existen todavía en Vercel (correcto: hasta el
+  corte la app usa `dmc`).
+- DMC_Core: login `dmc_app_tecnicos` verificado; los 94 objetos están en su esquema real; versión 45.
+
+---
+
 ## 0. Antes del día del corte
 
 1. **Desplegar este código en producción con las variables de hoy.** Funciona porque `DB_SCHEMA`

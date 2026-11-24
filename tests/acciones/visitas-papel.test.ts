@@ -31,7 +31,7 @@ const informe = (extra: Record<string, unknown> = {}) => ({
 
 /** La base simulada responde según el SQL: sucursales (id, cliente) o técnicos (id). */
 function baseSimulada(sucursales = [{ id: 2, cliente_id: 1 }], tecnicos = [{ id: 3 }, { id: 4 }]) {
-  vi.mocked(consultaCon).mockImplementation((async (texto: string) => (/dmc\.sucursal/.test(texto) ? sucursales : tecnicos)) as never);
+  vi.mocked(consultaCon).mockImplementation((async (texto: string) => (/\.sucursal\b/.test(texto) ? sucursales : tecnicos)) as never);
 }
 
 beforeEach(() => {

@@ -16,6 +16,7 @@ import {
   listarInternos,
   listarPendientes,
 } from "@/lib/data/catalogos-lectura";
+import { T } from "@/lib/db/esquema";
 
 // Las listas del checklist: el guardado en bloque. Dos reglas que valen para
 // todo este archivo:
@@ -49,12 +50,12 @@ async function guardarChecklistEn(ej: Ejecutor, borrador: BorradorChecklist): Pr
   let desactivados = 0;
 
   // ── Motivos ──
-  const motivos = await guardarListaSimple(ej, "dmc.catalogo_motivo", borrador.motivos, "MOTIVO");
+  const motivos = await guardarListaSimple(ej, "catalogo_motivo", borrador.motivos, "MOTIVO");
   const vivosMotivo = motivos.vivos;
   desactivados += motivos.desactivados;
 
   // ── Tipos de problema ──
-  const padresProblema = await padresExistentes(ej, "dmc.catalogo_problema");
+  const padresProblema = await padresExistentes(ej, T.catalogo_problema);
   const vivosProblema: number[] = [];
   const problemaPorNombre = new Map<string, number>();
   for (const [i, p] of borrador.problemas.entries()) {
@@ -64,7 +65,7 @@ async function guardarChecklistEn(ej: Ejecutor, borrador: BorradorChecklist): Pr
     let id = resuelto.id;
     if (resuelto.esNuevo) {
       const [fila] = await ej.consulta<{ id: number }>(
-        `INSERT INTO dmc.catalogo_problema (codigo, nombre, grupo_label, orden, activo)
+        `INSERT INTO ${T.catalogo_problema} (codigo, nombre, grupo_label, orden, activo)
          OUTPUT INSERTED.id AS id VALUES (@codigo, @nombre, @grupo, @orden, 1)`,
         [
           ["codigo", sql.VarChar(40), resuelto.codigo],
@@ -76,7 +77,7 @@ async function guardarChecklistEn(ej: Ejecutor, borrador: BorradorChecklist): Pr
       id = num(fila.id);
     } else {
       await ej.ejecutar(
-        `UPDATE dmc.catalogo_problema
+        `UPDATE ${T.catalogo_problema}
             SET nombre = @nombre, grupo_label = @grupo, orden = @orden, activo = 1
           WHERE id = @id`,
         [
@@ -91,16 +92,16 @@ async function guardarChecklistEn(ej: Ejecutor, borrador: BorradorChecklist): Pr
     problemaPorNombre.set(nombre.toLowerCase(), id);
     desactivados += await guardarHijos(
       ej,
-      "dmc.catalogo_problema_opcion",
+      "catalogo_problema_opcion",
       "problema_id",
       id,
       p.opciones
     );
   }
-  desactivados += await desactivarSobrantes(ej, "dmc.catalogo_problema", vivosProblema);
+  desactivados += await desactivarSobrantes(ej, T.catalogo_problema, vivosProblema);
 
   // ── Trabajos realizados ──
-  const padresTrabajo = await padresExistentes(ej, "dmc.catalogo_trabajo");
+  const padresTrabajo = await padresExistentes(ej, T.catalogo_trabajo);
   const vivosTrabajo: number[] = [];
   const trabajoPorNombre = new Map<string, number>();
   for (const [i, t] of borrador.trabajos.entries()) {
@@ -110,7 +111,7 @@ async function guardarChecklistEn(ej: Ejecutor, borrador: BorradorChecklist): Pr
     let id = resuelto.id;
     if (resuelto.esNuevo) {
       const [fila] = await ej.consulta<{ id: number }>(
-        `INSERT INTO dmc.catalogo_trabajo (codigo, nombre, grupo_label, orden, activo)
+        `INSERT INTO ${T.catalogo_trabajo} (codigo, nombre, grupo_label, orden, activo)
          OUTPUT INSERTED.id AS id VALUES (@codigo, @nombre, @grupo, @orden, 1)`,
         [
           ["codigo", sql.VarChar(40), resuelto.codigo],
@@ -122,7 +123,7 @@ async function guardarChecklistEn(ej: Ejecutor, borrador: BorradorChecklist): Pr
       id = num(fila.id);
     } else {
       await ej.ejecutar(
-        `UPDATE dmc.catalogo_trabajo
+        `UPDATE ${T.catalogo_trabajo}
             SET nombre = @nombre, grupo_label = @grupo, orden = @orden, activo = 1
           WHERE id = @id`,
         [
@@ -137,14 +138,14 @@ async function guardarChecklistEn(ej: Ejecutor, borrador: BorradorChecklist): Pr
     trabajoPorNombre.set(nombre.toLowerCase(), id);
     desactivados += await guardarHijos(
       ej,
-      "dmc.catalogo_trabajo_subtrabajo",
+      "catalogo_trabajo_subtrabajo",
       "trabajo_id",
       id,
       t.subtrabajos,
       true
     );
   }
-  desactivados += await desactivarSobrantes(ej, "dmc.catalogo_trabajo", vivosTrabajo);
+  desactivados += await desactivarSobrantes(ej, T.catalogo_trabajo, vivosTrabajo);
 
   // ── Qué trabajos van en cada motivo ──
   await guardarTrabajosPorMotivo(ej, borrador.motivos, motivos.idPorNombre, trabajoPorNombre);
@@ -157,7 +158,7 @@ async function guardarChecklistEn(ej: Ejecutor, borrador: BorradorChecklist): Pr
   // si no, guardar los motivos vaciaría el checklist interno.
   let vivosInterno: number;
   if (borrador.internos) {
-    const internos = await guardarListaSimple(ej, "dmc.catalogo_interno", borrador.internos, "INTERNO");
+    const internos = await guardarListaSimple(ej, "catalogo_interno", borrador.internos, "INTERNO");
     vivosInterno = internos.vivos.length;
     desactivados += internos.desactivados;
   } else {
@@ -168,7 +169,7 @@ async function guardarChecklistEn(ej: Ejecutor, borrador: BorradorChecklist): Pr
   // Igual que el interno: sin la lista en el borrador no se toca.
   let vivosPendiente: number;
   if (borrador.pendientes) {
-    const pendientes = await guardarListaSimple(ej, "dmc.catalogo_pendiente", borrador.pendientes, "PENDIENTE");
+    const pendientes = await guardarListaSimple(ej, "catalogo_pendiente", borrador.pendientes, "PENDIENTE");
     vivosPendiente = pendientes.vivos.length;
     desactivados += pendientes.desactivados;
   } else {
@@ -178,7 +179,7 @@ async function guardarChecklistEn(ej: Ejecutor, borrador: BorradorChecklist): Pr
   // ── Cargos del responsable ── (misma regla)
   let vivosCargo: number;
   if (borrador.cargos) {
-    const cargos = await guardarListaSimple(ej, "dmc.catalogo_cargo", borrador.cargos, "CARGO");
+    const cargos = await guardarListaSimple(ej, "catalogo_cargo", borrador.cargos, "CARGO");
     vivosCargo = cargos.vivos.length;
     desactivados += cargos.desactivados;
   } else {
@@ -188,7 +189,7 @@ async function guardarChecklistEn(ej: Ejecutor, borrador: BorradorChecklist): Pr
   // ── Checklist de gestión de problemas ── (misma regla)
   let vivosGestionProblema: number;
   if (borrador.gestionProblemas) {
-    const gestion = await guardarListaSimple(ej, "dmc.catalogo_problema_gestion", borrador.gestionProblemas, "GESTION");
+    const gestion = await guardarListaSimple(ej, "catalogo_problema_gestion", borrador.gestionProblemas, "GESTION");
     vivosGestionProblema = gestion.vivos.length;
     desactivados += gestion.desactivados;
   } else {
@@ -231,11 +232,11 @@ async function guardarSecciones(
   trabajoPorNombre: Map<string, number>,
   problemaPorNombre: Map<string, number>
 ): Promise<void> {
-  await guardarSeccionesDe(ej, "MOTIVO", "dmc.catalogo_motivo", borrador.seccionesMotivo, borrador.motivos, motivoPorNombre);
+  await guardarSeccionesDe(ej, "MOTIVO", "catalogo_motivo", borrador.seccionesMotivo, borrador.motivos, motivoPorNombre);
   await guardarSeccionesDe(
     ej,
     "TRABAJO",
-    "dmc.catalogo_trabajo",
+    "catalogo_trabajo",
     borrador.seccionesTrabajo,
     borrador.trabajos,
     trabajoPorNombre
@@ -243,7 +244,7 @@ async function guardarSecciones(
   await guardarSeccionesDe(
     ej,
     "PROBLEMA",
-    "dmc.catalogo_problema",
+    "catalogo_problema",
     borrador.seccionesProblema,
     borrador.problemas,
     problemaPorNombre
@@ -253,16 +254,17 @@ async function guardarSecciones(
 async function guardarSeccionesDe(
   ej: Ejecutor,
   tipo: TipoSeccion,
-  tabla: "dmc.catalogo_motivo" | "dmc.catalogo_trabajo" | "dmc.catalogo_problema",
+  objeto: "catalogo_motivo" | "catalogo_trabajo" | "catalogo_problema",
   nombres: string[] | undefined,
   items: { nombre: string; seccion?: string | null }[],
   idPorNombre: Map<string, number>
 ): Promise<void> {
+  const tabla = T[objeto];
   // Sin la lista en el borrador (un panel viejo todavía abierto) no se toca.
   if (!nombres) return;
 
   const existentes = await ej.consulta<{ id: number; nombre: string }>(
-    `SELECT id, nombre FROM dmc.catalogo_seccion WHERE tipo = @tipo`,
+    `SELECT id, nombre FROM ${T.catalogo_seccion} WHERE tipo = @tipo`,
     [["tipo", sql.VarChar(10), tipo]]
   );
   const previas = new Map(existentes.map((f) => [f.nombre.trim().toLowerCase(), num(f.id)]));
@@ -276,7 +278,7 @@ async function guardarSeccionesDe(
     const previa = previas.get(clave);
     let id: number;
     if (previa !== undefined) {
-      await ej.ejecutar(`UPDATE dmc.catalogo_seccion SET nombre = @nombre, orden = @orden, activo = 1 WHERE id = @id`, [
+      await ej.ejecutar(`UPDATE ${T.catalogo_seccion} SET nombre = @nombre, orden = @orden, activo = 1 WHERE id = @id`, [
         ["nombre", sql.NVarChar(80), nombre],
         ["orden", sql.SmallInt, i + 1],
         ["id", sql.BigInt, previa],
@@ -284,7 +286,7 @@ async function guardarSeccionesDe(
       id = previa;
     } else {
       const [fila] = await ej.consulta<{ id: number }>(
-        `INSERT INTO dmc.catalogo_seccion (tipo, nombre, orden, activo)
+        `INSERT INTO ${T.catalogo_seccion} (tipo, nombre, orden, activo)
          OUTPUT INSERTED.id AS id VALUES (@tipo, @nombre, @orden, 1)`,
         [
           ["tipo", sql.VarChar(10), tipo],
@@ -297,7 +299,7 @@ async function guardarSeccionesDe(
     idPorSeccion.set(clave, id);
     vivas.push(id);
   }
-  await desactivarSobrantes(ej, "dmc.catalogo_seccion", vivas, {
+  await desactivarSobrantes(ej, T.catalogo_seccion, vivas, {
     sql: "tipo = @tipo",
     params: [["tipo", sql.VarChar(10), tipo]],
   });
@@ -352,12 +354,12 @@ async function guardarTrabajosPorMotivo(
   }
   if (!tocados.length) return;
 
-  await ej.ejecutar(`DELETE FROM dmc.catalogo_motivo_trabajo WHERE motivo_id IN ${subIds("tocados")}`, [
+  await ej.ejecutar(`DELETE FROM ${T.catalogo_motivo_trabajo} WHERE motivo_id IN ${subIds("tocados")}`, [
     paramIds("tocados", tocados),
   ]);
   if (!enlaces.length) return;
   await ej.ejecutar(
-    `INSERT INTO dmc.catalogo_motivo_trabajo (motivo_id, trabajo_id, orden)
+    `INSERT INTO ${T.catalogo_motivo_trabajo} (motivo_id, trabajo_id, orden)
      SELECT m, t, o
        FROM OPENJSON(@enlaces) WITH (m bigint '$.m', t bigint '$.t', o smallint '$.o')`,
     [["enlaces", sql.NVarChar(sql.MAX), JSON.stringify(enlaces)]]
@@ -370,16 +372,17 @@ async function guardarTrabajosPorMotivo(
  */
 async function guardarListaSimple(
   ej: Ejecutor,
-  // `tabla` se interpola en el texto: por eso es una unión cerrada de literales.
-  tabla:
-    | "dmc.catalogo_motivo"
-    | "dmc.catalogo_interno"
-    | "dmc.catalogo_pendiente"
-    | "dmc.catalogo_cargo"
-    | "dmc.catalogo_problema_gestion",
+  // La tabla se interpola en el texto: por eso es una unión cerrada de nombres.
+  objeto:
+    | "catalogo_motivo"
+    | "catalogo_interno"
+    | "catalogo_pendiente"
+    | "catalogo_cargo"
+    | "catalogo_problema_gestion",
   items: MotivoBorrador[],
   respaldo: string
 ): Promise<{ vivos: number[]; idPorNombre: Map<string, number>; desactivados: number }> {
+  const tabla = T[objeto];
   const padres = await padresExistentes(ej, tabla);
   const vivos: number[] = [];
   const idPorNombre = new Map<string, number>();
@@ -425,13 +428,14 @@ async function guardarHijos(
   ej: Ejecutor,
   // Nombres de tabla y de columna interpolados: solo los dos pares de literales
   // con que lo llama guardarChecklist, nunca algo que venga del navegador.
-  tabla: "dmc.catalogo_problema_opcion" | "dmc.catalogo_trabajo_subtrabajo",
+  objeto: "catalogo_problema_opcion" | "catalogo_trabajo_subtrabajo",
   columnaPadre: "problema_id" | "trabajo_id",
   padreId: number,
   items: ItemBorrador[],
   /** Solo subtrabajos: guarda también el grupo adicional de cada uno. */
   conGrupo = false
 ): Promise<number> {
+  const tabla = T[objeto];
   // La columna `grupo` solo existe en la tabla de subtrabajos (migración 031).
   const setGrupo = conGrupo ? ", grupo = @grupo" : "";
   const colGrupo = conGrupo ? ", grupo" : "";
@@ -516,7 +520,7 @@ async function desactivarSobrantes(
   ]);
 }
 
-/** "En cotización" → EN_COTIZAC: el código cabe en dmc.problema.estado, que mide 10. */
+/** "En cotización" → EN_COTIZAC: el código cabe en tecnico.problema.estado, que mide 10. */
 function codigoDeEstado(nombre: string, usados: Set<string>): string {
   const base =
     nombre
@@ -548,7 +552,7 @@ async function guardarEstadosProblema(
   items: MotivoBorrador[]
 ): Promise<{ vivos: number; desactivados: number }> {
   const filas = await ej.consulta<{ id: number; codigo: string; nombre: string }>(
-    `SELECT id, codigo, nombre FROM dmc.catalogo_problema_estado`
+    `SELECT id, codigo, nombre FROM ${T.catalogo_problema_estado}`
   );
   const ids = new Set(filas.map((f) => num(f.id)));
   const porNombre = new Map(filas.map((f) => [f.nombre.trim().toLowerCase(), num(f.id)]));
@@ -563,7 +567,7 @@ async function guardarEstadosProblema(
     const previo = item.id !== null && ids.has(item.id) ? item.id : porNombre.get(nombre.toLowerCase());
     if (previo !== undefined && !vivos.includes(previo)) {
       await ej.ejecutar(
-        `UPDATE dmc.catalogo_problema_estado SET nombre = @nombre, orden = @orden, activo = 1 WHERE id = @id`,
+        `UPDATE ${T.catalogo_problema_estado} SET nombre = @nombre, orden = @orden, activo = 1 WHERE id = @id`,
         [
           ["nombre", sql.NVarChar(80), nombre],
           ["orden", sql.SmallInt, i + 1],
@@ -574,7 +578,7 @@ async function guardarEstadosProblema(
       continue;
     }
     const [fila] = await ej.consulta<{ id: number }>(
-      `INSERT INTO dmc.catalogo_problema_estado (codigo, nombre, orden, activo)
+      `INSERT INTO ${T.catalogo_problema_estado} (codigo, nombre, orden, activo)
        OUTPUT INSERTED.id AS id VALUES (@codigo, @nombre, @orden, 1)`,
       [
         ["codigo", sql.VarChar(10), codigoDeEstado(nombre, codigos)],
@@ -586,7 +590,7 @@ async function guardarEstadosProblema(
   }
 
   const desactivados = await ej.ejecutar(
-    `UPDATE dmc.catalogo_problema_estado SET activo = 0
+    `UPDATE ${T.catalogo_problema_estado} SET activo = 0
       WHERE activo = 1 AND id NOT IN ${subIds("vivos")}
         AND codigo NOT IN (@inicial, @agendado, @cierre)`,
     [
@@ -597,7 +601,7 @@ async function guardarEstadosProblema(
     ]
   );
   const [cuenta] = await ej.consulta<{ n: number }>(
-    `SELECT COUNT(*) AS n FROM dmc.catalogo_problema_estado WHERE activo = 1`
+    `SELECT COUNT(*) AS n FROM ${T.catalogo_problema_estado} WHERE activo = 1`
   );
   return { vivos: num(cuenta?.n ?? 0), desactivados };
 }
@@ -606,8 +610,8 @@ async function guardarEstadosProblema(
 
 /**
  * El `codigo` de las tres tablas de catálogo es la llave estable con la que las
- * visitas y las actas apuntan a la entrada: dmc.visita.motivo_codigo,
- * dmc.visita_trabajo.trabajo_codigo y dmc.problema.tipo_codigo son claves
+ * visitas y las actas apuntan a la entrada: tecnico.visita.motivo_codigo,
+ * tecnico.visita_trabajo.trabajo_codigo y tecnico.problema.tipo_codigo son claves
  * foráneas contra él. Por eso se genera solo a partir del nombre y NUNCA se
  * cambia al renombrar: si mutara, un acta firmada hace un año dejaría de poder
  * decir qué trabajo se hizo.

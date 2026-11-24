@@ -8,7 +8,7 @@ export interface DatosVisita {
   tecnicoId: number;
   /** El segundo técnico, si van dos. Nunca el mismo que `tecnicoId`. */
   tecnicoAyudanteId?: number | null;
-  /** El motivo principal: el que queda en dmc.visita.motivo_codigo. */
+  /** El motivo principal: el que queda en tecnico.visita.motivo_codigo. */
   motivoCodigo: string;
   /** Todos los motivos marcados. Si va vacio se asume solo el principal. */
   motivosCodigos?: string[];

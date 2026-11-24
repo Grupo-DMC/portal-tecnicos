@@ -20,7 +20,7 @@ import type { EstadoProblema } from "@/lib/types";
  *    parado esperando señal.
  *
  * Se usa localStorage y no la base porque justamente el caso de uso es no tener
- * cómo hablar con la base. La copia en el servidor (dmc.visita_borrador) es un
+ * cómo hablar con la base. La copia en el servidor (tecnico.visita_borrador) es un
  * respaldo aparte, para cuando sí hay señal.
  */
 
@@ -51,7 +51,7 @@ export interface ProblemaItemForm {
 
 export interface ProblemaForm {
   id: number;
-  /** Id en dmc.problema cuando se edita un acta ya cerrada: el problema se corrige en su misma fila. */
+  /** Id en tecnico.problema cuando se edita un acta ya cerrada: el problema se corrige en su misma fila. */
   dbId?: number;
   codigo: string;
   items: ProblemaItemForm[];
@@ -62,7 +62,7 @@ export interface ProblemaForm {
 
 export interface FotoForm {
   id: number;
-  /** Id en dmc.visita_foto cuando la foto ya estaba en el acta que se edita. */
+  /** Id en tecnico.visita_foto cuando la foto ya estaba en el acta que se edita. */
   dbId?: number;
   src: string;
   /** Foto del comentario interno: no la ve el cliente. */
@@ -78,13 +78,13 @@ export interface FotoForm {
  * Un clip del trabajo, tal como lo lleva el formulario.
  *
  * No entra en el borrador y por una razón de fondo: el video no es algo que el
- * técnico tenga "a medio escribir". Se sube a dmc.visita_video en cuanto se
+ * técnico tenga "a medio escribir". Se sube a tecnico.visita_video en cuanto se
  * termina de grabar y se desactiva allá mismo en cuanto se borra, así que la
  * base ya sabe cuáles hay. El formulario los vuelve a leer de la visita al
  * entrar, y no de una copia en el celular que podría contradecirla.
  */
 export interface VideoForm {
-  /** Id en dmc.visita_video. 0 mientras todavía se está subiendo. */
+  /** Id en tecnico.visita_video. 0 mientras todavía se está subiendo. */
   id: number;
   /** /api/visita/video/<id> una vez subido; object URL mientras sube. */
   src: string;

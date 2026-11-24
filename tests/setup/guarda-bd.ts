@@ -4,6 +4,13 @@
 // (el que le pone el propio global setup). Cualquier otra cosa aborta antes de
 // abrir una conexión.
 
+/**
+ * Esquema en el que se crea la base de pruebas. Es `tecnico`, como DMC_Core: así
+ * los tests ejercitan la app con el esquema real y no con el viejo `dmc`.
+ * TEST_DB_SCHEMA=dmc lo devuelve al de DMC_Contingencia.
+ */
+export const ESQUEMA_DE_PRUEBA = process.env.TEST_DB_SCHEMA?.trim() || "tecnico";
+
 const SERVIDORES_LOCALES = new Set(["localhost", "127.0.0.1", "::1", "(local)", "."]);
 const PATRON_BASE_DE_PRUEBA = /^dmc_test_[a-z0-9]{6,32}$/;
 

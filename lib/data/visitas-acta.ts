@@ -23,6 +23,7 @@ import type { EstadoVisita } from "@/lib/types";
 import type { ActaEntrada, ProblemaActa, ResultadoActa, SubtrabajoActa, TrabajoActa } from "@/lib/contratos/acta";
 import { CERRADA_POR, TOMADA_POR } from "@/lib/data/visitas-lectura";
 import { leerCorreos, type ActaEnviada, type CorreoConocido } from "@/lib/ui/correo";
+import { T } from "@/lib/db/esquema";
 
 // Visitas: el acta. El envío al cliente, el cierre desde el celular y las
 // escrituras de sus partes, que también usan la edición del acta y las
@@ -32,14 +33,14 @@ import { leerCorreos, type ActaEnviada, type CorreoConocido } from "@/lib/ui/cor
 
 export type { ActaEnviada };
 
-/** Un archivo adjunto del envío, tal como se anota en dmc.acta_envio_adjunto. */
+/** Un archivo adjunto del envío, tal como se anota en tecnico.acta_envio_adjunto. */
 export type AdjuntoRegistrado =
   | { tipo: "PDF_ACTA"; nombre: string }
   | { tipo: "FOTO"; fotoId: number; nombre: string }
   | { tipo: "VIDEO"; videoId: number; nombre: string };
 
 /**
- * Anota el envío en dmc.acta_envio, ENCOLADO, con sus adjuntos, antes de
+ * Anota el envío en tecnico.acta_envio, ENCOLADO, con sus adjuntos, antes de
  * llamar al proveedor: si el proceso se corta a mitad, queda constancia de que
  * se intentó. Cada foto y video del zip queda como su propia fila, con el
  * nombre que lleva dentro del zip. Devuelve el id del envío.
@@ -56,7 +57,7 @@ export async function crearEnvioActa(input: {
 }): Promise<number> {
   return enTransaccion(async (ej) => {
     const [fila] = await ej.consulta<{ id: number }>(
-      `INSERT INTO dmc.acta_envio (visita_id, para, cc, cco, asunto, cuerpo, enviado_por)
+      `INSERT INTO ${T.acta_envio} (visita_id, para, cc, cco, asunto, cuerpo, enviado_por)
        OUTPUT INSERTED.id AS id
        VALUES (@visita, @para, @cc, @cco, @asunto, @cuerpo, @usuario)`,
       [
@@ -72,7 +73,7 @@ export async function crearEnvioActa(input: {
     const envioId = num(fila.id);
     for (const a of input.adjuntos) {
       await ej.ejecutar(
-        `INSERT INTO dmc.acta_envio_adjunto (envio_id, tipo, visita_foto_id, visita_video_id, nombre_archivo)
+        `INSERT INTO ${T.acta_envio_adjunto} (envio_id, tipo, visita_foto_id, visita_video_id, nombre_archivo)
          VALUES (@envio, @tipo, @foto, @video, @nombre)`,
         [
           ["envio", sql.BigInt, envioId],
@@ -90,7 +91,7 @@ export async function crearEnvioActa(input: {
 /** Deja el envío ENVIADO (con la hora en que salió) o en ERROR con el motivo. */
 export async function cerrarEnvioActa(envioId: number, resultado: { ok: true } | { ok: false; error: string }): Promise<void> {
   await ejecutar(
-    `UPDATE dmc.acta_envio
+    `UPDATE ${T.acta_envio}
         SET estado = @estado,
             enviado_en = CASE WHEN @estado = 'ENVIADO' THEN SYSDATETIME() ELSE enviado_en END,
             error_detalle = @error
@@ -117,10 +118,10 @@ export async function getActaEnviada(folio: string): Promise<ActaEnviada | null>
   }>(
     `SELECT TOP 1 e.para, e.cc, e.cco, e.estado, e.error_detalle, u.email AS enviado_por,
             ${F_TS("COALESCE(e.enviado_en, e.creado_en)")} AS en,
-            (SELECT COUNT(*) FROM dmc.acta_envio_adjunto a WHERE a.envio_id = e.id) AS adjuntos
-       FROM dmc.acta_envio e
-       JOIN dmc.visita v ON v.id = e.visita_id
-       LEFT JOIN dmc.usuario u ON u.id = e.enviado_por
+            (SELECT COUNT(*) FROM ${T.acta_envio_adjunto} a WHERE a.envio_id = e.id) AS adjuntos
+       FROM ${T.acta_envio} e
+       JOIN ${T.visita} v ON v.id = e.visita_id
+       LEFT JOIN ${T.usuario} u ON u.id = e.enviado_por
       WHERE v.folio = @folio
       ORDER BY e.creado_en DESC, e.id DESC`,
     [["folio", sql.VarChar(16), folio]]
@@ -141,7 +142,7 @@ export async function getActaEnviada(folio: string): Promise<ActaEnviada | null>
 
 /**
  * Los correos que ya se usaron con esta tienda o su cliente, para sugerirlos:
- *   - quienes recibieron y firmaron en la tienda (dmc.persona_local y las actas);
+ *   - quienes recibieron y firmaron en la tienda (tecnico.persona_local y las actas);
  *   - a quienes ya se les mandó un acta de la tienda y, después, del cliente.
  * Los más recientes primero. El orden final y los repetidos los resuelve
  * `sugerenciasDeCorreo`.
@@ -155,12 +156,12 @@ export async function correosConocidos(sucursalId: number, clienteId: number): P
     consultaCon<{ nombre: string; email: string; cargo: string | null }>(
       `SELECT TOP 40 nombre, email, cargo FROM (
          SELECT pl.nombre, pl.email, pl.cargo, pl.ultima_vez AS cuando
-           FROM dmc.persona_local pl
+           FROM ${T.persona_local} pl
           WHERE pl.sucursal_id = @sucursal AND pl.email IS NOT NULL
          UNION ALL
          SELECT ve.responsable_nombre, ve.responsable_email, ve.responsable_cargo, ve.hora_termino
-           FROM dmc.visita_ejecucion ve
-           JOIN dmc.visita v ON v.id = ve.visita_id
+           FROM ${T.visita_ejecucion} ve
+           JOIN ${T.visita} v ON v.id = ve.visita_id
           WHERE v.sucursal_id = @sucursal AND v.activo = 1 AND ve.responsable_email IS NOT NULL
        ) t
        ORDER BY cuando DESC`,
@@ -168,8 +169,8 @@ export async function correosConocidos(sucursalId: number, clienteId: number): P
     ),
     consultaCon<{ para: string; cc: string | null; cco: string | null; misma: number }>(
       `SELECT TOP 40 e.para, e.cc, e.cco, CASE WHEN v.sucursal_id = @sucursal THEN 1 ELSE 0 END AS misma
-         FROM dmc.acta_envio e
-         JOIN dmc.visita v ON v.id = e.visita_id
+         FROM ${T.acta_envio} e
+         JOIN ${T.visita} v ON v.id = e.visita_id
         WHERE e.estado = 'ENVIADO' AND (v.sucursal_id = @sucursal OR v.cliente_id = @cliente)
         ORDER BY misma DESC, e.creado_en DESC`,
       params
@@ -238,7 +239,7 @@ export async function guardarActa(
       tomada_por: number | null;
     }>(
       `SELECT v.id, v.estado, v.tecnico_id, v.tecnico_ayudante_id, ${TOMADA_POR} AS tomada_por
-         FROM dmc.visita v WITH (UPDLOCK, ROWLOCK) WHERE v.folio = @folio AND v.activo = 1`,
+         FROM ${T.visita} v WITH (UPDLOCK, ROWLOCK) WHERE v.folio = @folio AND v.activo = 1`,
       [["folio", sql.VarChar(16), entrada.folio]]
     );
     if (!visita) return { ok: false, error: "No encontramos esa visita." };
@@ -260,7 +261,7 @@ export async function guardarActa(
       // aparte para que lo escrito aquí no se dé por enviado ni se pierda.
       if (equipo.estado === "COMPLETADA") {
         const [cierre] = await ej.consulta<{ cerrada_por: number | null }>(
-          `SELECT ${CERRADA_POR} AS cerrada_por FROM dmc.visita v WHERE v.id = @id`,
+          `SELECT ${CERRADA_POR} AS cerrada_por FROM ${T.visita} v WHERE v.id = @id`,
           [["id", sql.BigInt, id]]
         );
         const quien = numONull(cierre?.cerrada_por);
@@ -291,8 +292,8 @@ export async function guardarActa(
 
     // 1 · Ejecución: hora de llegada si no estaba, y la de término ahora.
     await ej.ejecutar(
-      `IF NOT EXISTS (SELECT 1 FROM dmc.visita_ejecucion WHERE visita_id = @id)
-         INSERT INTO dmc.visita_ejecucion (visita_id, hora_inicio, responsable_nombre)
+      `IF NOT EXISTS (SELECT 1 FROM ${T.visita_ejecucion} WHERE visita_id = @id)
+         INSERT INTO ${T.visita_ejecucion} (visita_id, hora_inicio, responsable_nombre)
          VALUES (@id, SYSDATETIME(), @nombre);
 
        -- La hora del celular llega en UTC (el driver manda los Date en UTC) y
@@ -304,9 +305,9 @@ export async function guardarActa(
          ELSE DATEADD(second, DATEDIFF(second, SYSUTCDATETIME(), SYSDATETIME()), @capturada)
        END;
 
-       UPDATE dmc.visita_ejecucion SET responsable_cargo = @cargo WHERE visita_id = @id;
+       UPDATE ${T.visita_ejecucion} SET responsable_cargo = @cargo WHERE visita_id = @id;
 
-       UPDATE dmc.visita_ejecucion
+       UPDATE ${T.visita_ejecucion}
           SET responsable_nombre   = @nombre,
               responsable_rut      = @rut,
               responsable_telefono = @telefono,
@@ -356,12 +357,12 @@ export async function guardarActa(
     //     coordinación anotó desde el panel antes del cierre no son de este
     //     intento: se quedan, y los que el técnico levantó se suman a ellos.
     await ej.ejecutar(
-      `DELETE FROM dmc.problema
+      `DELETE FROM ${T.problema}
         WHERE visita_id = @id
           AND registrado_en_panel = 0
-          AND NOT EXISTS (SELECT 1 FROM dmc.problema_visita_resolucion r WHERE r.problema_id = dmc.problema.id)
-          AND NOT EXISTS (SELECT 1 FROM dmc.visita v2 WHERE v2.problema_origen_id = dmc.problema.id)
-          AND NOT EXISTS (SELECT 1 FROM dmc.visita_foto f WHERE f.problema_id = dmc.problema.id)`,
+          AND NOT EXISTS (SELECT 1 FROM ${T.problema_visita_resolucion} r WHERE r.problema_id = ${T.problema}.id)
+          AND NOT EXISTS (SELECT 1 FROM ${T.visita} v2 WHERE v2.problema_origen_id = ${T.problema}.id)
+          AND NOT EXISTS (SELECT 1 FROM ${T.visita_foto} f WHERE f.problema_id = ${T.problema}.id)`,
       [["id", sql.BigInt, id]]
     );
     for (const [i, pr] of entrada.problemas.entries()) {
@@ -372,7 +373,7 @@ export async function guardarActa(
     await resoluciones.aplicar(entrada.folio, ctx.usuarioId);
 
     // 5 · Fotos. Las anteriores no se borran: se dejan inactivas.
-    await ej.ejecutar(`UPDATE dmc.visita_foto SET activo = 0 WHERE visita_id = @id AND activo = 1`, [
+    await ej.ejecutar(`UPDATE ${T.visita_foto} SET activo = 0 WHERE visita_id = @id AND activo = 1`, [
       ["id", sql.BigInt, id],
     ]);
     for (const [i, f] of fotos.entries()) {
@@ -384,7 +385,7 @@ export async function guardarActa(
     //      formulario se dejan inactivos, igual que las fotos.
     const videosIds = [...new Set((entrada.videosIds ?? []).filter((n) => Number.isInteger(n) && n > 0))];
     await ej.ejecutar(
-      `UPDATE dmc.visita_video
+      `UPDATE ${T.visita_video}
           SET activo = 0
         WHERE visita_id = @id AND activo = 1 AND id NOT IN ${subIds("vivos")}`,
       [["id", sql.BigInt, id], paramIds("vivos", videosIds)]
@@ -392,7 +393,7 @@ export async function guardarActa(
     const internosVideo = new Set(entrada.videosInternosIds ?? []);
     for (const [i, videoId] of videosIds.entries()) {
       await ej.ejecutar(
-        `UPDATE dmc.visita_video SET orden = @orden, interno = @interno
+        `UPDATE ${T.visita_video} SET orden = @orden, interno = @interno
           WHERE id = @video AND visita_id = @id AND subida_completa = 1`,
         [
           ["video", sql.BigInt, videoId],
@@ -410,18 +411,18 @@ export async function guardarActa(
     await ej.ejecutar(
       `DECLARE @firma TABLE (id bigint);
 
-       UPDATE dmc.visita_firma
+       UPDATE ${T.visita_firma}
           SET nombre = @nombre, rut = @rut, contenido = @contenido,
               firmado_en = SYSDATETIME(), actualizado_en = SYSDATETIME()
        OUTPUT INSERTED.id INTO @firma
         WHERE visita_id = @visita AND rol = 'TIENDA';
 
        IF NOT EXISTS (SELECT 1 FROM @firma)
-         INSERT INTO dmc.visita_firma (visita_id, rol, nombre, rut, imagen_url, contenido)
+         INSERT INTO ${T.visita_firma} (visita_id, rol, nombre, rut, imagen_url, contenido)
          OUTPUT INSERTED.id INTO @firma
          VALUES (@visita, 'TIENDA', @nombre, @rut, '', @contenido);
 
-       UPDATE dmc.visita_firma
+       UPDATE ${T.visita_firma}
           SET imagen_url = CONCAT('/api/visita/firma/', CAST(id AS varchar(20)))
         WHERE id IN (SELECT id FROM @firma);`,
       [
@@ -436,16 +437,16 @@ export async function guardarActa(
     //     técnico deja de aparecerle en curso, sin esperar ninguna sincronización.
     await ej.ejecutar(
       `DECLARE @antes bigint =
-         (SELECT ISNULL(MAX(id), 0) FROM dmc.visita_estado_historial WHERE visita_id = @id);
+         (SELECT ISNULL(MAX(id), 0) FROM ${T.visita_estado_historial} WHERE visita_id = @id);
 
-       UPDATE dmc.visita SET estado = 'COMPLETADA' WHERE id = @id;
+       UPDATE ${T.visita} SET estado = 'COMPLETADA' WHERE id = @id;
 
-       IF EXISTS (SELECT 1 FROM dmc.visita_estado_historial WHERE visita_id = @id AND id > @antes)
-         UPDATE dmc.visita_estado_historial
+       IF EXISTS (SELECT 1 FROM ${T.visita_estado_historial} WHERE visita_id = @id AND id > @antes)
+         UPDATE ${T.visita_estado_historial}
             SET motivo = @motivo, origen = 'MOVIL', usuario_id = @usuario, tecnico_id = @tecnico
           WHERE visita_id = @id AND id > @antes;
        ELSE
-         INSERT INTO dmc.visita_estado_historial (visita_id, estado, motivo, origen, usuario_id, tecnico_id)
+         INSERT INTO ${T.visita_estado_historial} (visita_id, estado, motivo, origen, usuario_id, tecnico_id)
          VALUES (@id, 'COMPLETADA', @motivo, 'MOVIL', @usuario, @tecnico);`,
       [
         ["id", sql.BigInt, id],
@@ -459,7 +460,7 @@ export async function guardarActa(
     await soltarReservaEn(ej, id);
 
     const [cierre] = await ej.consulta<{ hora: string }>(
-      `SELECT ${F_HORA("hora_termino")} AS hora FROM dmc.visita_ejecucion WHERE visita_id = @id`,
+      `SELECT ${F_HORA("hora_termino")} AS hora FROM ${T.visita_ejecucion} WHERE visita_id = @id`,
       [["id", sql.BigInt, id]]
     );
 
@@ -488,7 +489,7 @@ export async function escribirTrabajos(
   trabajos: TrabajoActa[],
   motivosCodigos: string[]
 ): Promise<void> {
-  await ej.ejecutar(`UPDATE dmc.visita_trabajo SET activo = 0 WHERE visita_id = @id AND activo = 1`, [
+  await ej.ejecutar(`UPDATE ${T.visita_trabajo} SET activo = 0 WHERE visita_id = @id AND activo = 1`, [
     ["id", sql.BigInt, visitaId],
   ]);
   for (const [i, t] of trabajos.entries()) {
@@ -496,7 +497,7 @@ export async function escribirTrabajos(
     // borrador viejo podría traer uno que el técnico desmarcó después.
     const motivoDelTrabajo = t.motivoCodigo && motivosCodigos.includes(t.motivoCodigo) ? t.motivoCodigo : null;
     const [fila] = await ej.consulta<{ id: number }>(
-      `INSERT INTO dmc.visita_trabajo (visita_id, trabajo_codigo, motivo_codigo, detalle, orden)
+      `INSERT INTO ${T.visita_trabajo} (visita_id, trabajo_codigo, motivo_codigo, detalle, orden)
        OUTPUT INSERTED.id AS id VALUES (@visita, @codigo, @motivo, @detalle, @orden)`,
       [
         ["visita", sql.BigInt, visitaId],
@@ -513,7 +514,7 @@ export async function escribirTrabajos(
       if (!etiqueta || vistas.has(etiqueta)) continue;
       vistas.add(etiqueta);
       await ej.ejecutar(
-        `INSERT INTO dmc.visita_trabajo_subtrabajo (visita_trabajo_id, etiqueta, cantidad, orden)
+        `INSERT INTO ${T.visita_trabajo_subtrabajo} (visita_trabajo_id, etiqueta, cantidad, orden)
          VALUES (@trabajo, @etiqueta, @cantidad, @orden)`,
         [
           ["trabajo", sql.BigInt, trabajoId],
@@ -535,12 +536,12 @@ export async function insertarProblema(
   /** true = lo anota coordinación desde el panel en una visita sin cerrar: el cierre del acta no lo borra. */
   desdePanel = false
 ): Promise<number> {
-  // dmc.problema tiene el trigger tg_problema_cambio (AFTER INSERT), y SQL
+  // tecnico.problema tiene el trigger tg_problema_cambio (AFTER INSERT), y SQL
   // Server rechaza OUTPUT sin INTO sobre una tabla con triggers para esa
   // acción: el id se recoge en una tabla de paso.
   const [fila] = await ej.consulta<{ id: number }>(
     `DECLARE @nuevo TABLE (id bigint);
-     INSERT INTO dmc.problema (visita_id, tipo_codigo, estado, descripcion, solucion, orden, resuelto_en, registrado_en_panel)
+     INSERT INTO ${T.problema} (visita_id, tipo_codigo, estado, descripcion, solucion, orden, resuelto_en, registrado_en_panel)
      OUTPUT INSERTED.id INTO @nuevo
      VALUES (@visita, @tipo, @estado, @desc, @sol, @orden,
              CASE WHEN @estado = 'RESUELTO' THEN SYSDATETIME() ELSE NULL END, @panel);
@@ -572,7 +573,7 @@ export async function insertarItemsDeProblema(
     if (!etiqueta || vistas.has(etiqueta)) continue;
     vistas.add(etiqueta);
     await ej.ejecutar(
-      `INSERT INTO dmc.problema_item (problema_id, etiqueta, cantidad) VALUES (@p, @etiqueta, @cantidad)`,
+      `INSERT INTO ${T.problema_item} (problema_id, etiqueta, cantidad) VALUES (@p, @etiqueta, @cantidad)`,
       [
         ["p", sql.BigInt, problemaId],
         ["etiqueta", sql.NVarChar(80), etiqueta],
@@ -586,11 +587,11 @@ export async function insertarItemsDeProblema(
 export async function insertarFoto(ej: Ejecutor, visitaId: number, f: FotoLista, orden: number): Promise<void> {
   await ej.ejecutar(
     `DECLARE @nueva TABLE (id bigint);
-     INSERT INTO dmc.visita_foto (visita_id, etiqueta, archivo_url, contenido, mime, bytes, orden, interno, tomada_en)
+     INSERT INTO ${T.visita_foto} (visita_id, etiqueta, archivo_url, contenido, mime, bytes, orden, interno, tomada_en)
      OUTPUT INSERTED.id INTO @nueva
      VALUES (@visita, @etiqueta, '', @contenido, @mime, @bytes, @orden, @interno, SYSDATETIME());
 
-     UPDATE dmc.visita_foto
+     UPDATE ${T.visita_foto}
         SET archivo_url = CONCAT('/api/visita/foto/', CAST(id AS varchar(20)))
       WHERE id IN (SELECT id FROM @nueva);`,
     [
@@ -607,11 +608,11 @@ export async function insertarFoto(ej: Ejecutor, visitaId: number, f: FotoLista,
 
 /** Reescribe entero lo marcado del checklist del comentario interno. */
 export async function escribirInternos(ej: Ejecutor, visitaId: number, codigos: string[]): Promise<void> {
-  await ej.ejecutar(`DELETE FROM dmc.visita_interno WHERE visita_id = @id`, [["id", sql.BigInt, visitaId]]);
+  await ej.ejecutar(`DELETE FROM ${T.visita_interno} WHERE visita_id = @id`, [["id", sql.BigInt, visitaId]]);
   for (const [i, codigo] of [...new Set(codigos.filter(Boolean))].entries()) {
     await ej.ejecutar(
-      `INSERT INTO dmc.visita_interno (visita_id, interno_codigo, orden)
-       SELECT @id, codigo, @orden FROM dmc.catalogo_interno WHERE codigo = @codigo`,
+      `INSERT INTO ${T.visita_interno} (visita_id, interno_codigo, orden)
+       SELECT @id, codigo, @orden FROM ${T.catalogo_interno} WHERE codigo = @codigo`,
       [
         ["id", sql.BigInt, visitaId],
         ["codigo", sql.VarChar(40), codigo],
@@ -630,14 +631,14 @@ export async function sincronizarMotivosCon(
 ): Promise<void> {
   const lista = [...new Set(codigos.filter(Boolean))];
 
-  await ej.ejecutar(`DELETE FROM dmc.visita_motivo WHERE visita_id = @visita AND ambito = @ambito`, [
+  await ej.ejecutar(`DELETE FROM ${T.visita_motivo} WHERE visita_id = @visita AND ambito = @ambito`, [
     ["visita", sql.BigInt, visitaId],
     ["ambito", sql.VarChar(4), ambito],
   ]);
 
   for (const [i, codigo] of lista.entries()) {
     await ej.ejecutar(
-      `INSERT INTO dmc.visita_motivo (visita_id, motivo_codigo, ambito, orden)
+      `INSERT INTO ${T.visita_motivo} (visita_id, motivo_codigo, ambito, orden)
        VALUES (@visita, @codigo, @ambito, @orden)`,
       [
         ["visita", sql.BigInt, visitaId],

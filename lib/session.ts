@@ -38,12 +38,12 @@ export const VIGENCIA_SESION = 60 * 45;
 export const RENOVAR_CADA = 60;
 
 export interface TokenSesion {
-  /** id de dmc.usuario */
+  /** id de tecnico.usuario */
   uid: number;
   /** epoch en segundos */
   exp: number;
   /**
-   * dmc.usuario.sesion_version al firmar. Si la cuenta la sube (cambio de
+   * tecnico.usuario.sesion_version al firmar. Si la cuenta la sube (cambio de
    * clave, de rol, desactivación), el token deja de valer: ver lib/auth.getSesion.
    */
   sv: number;

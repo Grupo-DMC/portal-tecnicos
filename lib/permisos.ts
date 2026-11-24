@@ -3,7 +3,7 @@
 // Un permiso es "<módulo>.<acción>". La lista vive acá, en el código, porque
 // cada permiso es una comprobación escrita en una acción del servidor: agregar
 // uno a mano en la base no haría nada. Lo que sí vive en la base es qué
-// permisos tiene cada rol (dmc.rol_permiso).
+// permisos tiene cada rol (tecnico.rol_permiso).
 //
 // Este archivo lo importan el servidor y los componentes de cliente.
 

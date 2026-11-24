@@ -8,7 +8,7 @@
 type Nivel = "info" | "warn" | "error";
 
 export interface DatosLog {
-  /** id de dmc.usuario de quien disparó la acción, si se conoce. */
+  /** id de tecnico.usuario de quien disparó la acción, si se conoce. */
   usuarioId?: number | null;
   [clave: string]: unknown;
 }

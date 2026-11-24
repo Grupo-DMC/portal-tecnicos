@@ -1,6 +1,6 @@
 // Contrato compartido entre el servidor y el navegador: solo tipos y reglas
 // puras, nada que toque la base. Qué secciones del acta del técnico el panel
-// marcó como obligatorias (dmc.acta_seccion_config, migración 042) y qué le
+// marcó como obligatorias (tecnico.acta_seccion_config, migración 042) y qué le
 // exige cada una al acta.
 //
 // Responsable, motivo y trabajo, y firma son obligatorias siempre y no se

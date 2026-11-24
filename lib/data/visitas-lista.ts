@@ -11,12 +11,13 @@ import {
 } from "@/lib/ui/filtros-visitas";
 import { ESTADO_PROBLEMA_CIERRE } from "@/lib/ui/estado";
 import type { FilaFicha } from "@/lib/types";
+import { T } from "@/lib/db/esquema";
 
 // Listas de visitas del panel: la tabla de Visitas, filtrada y paginada en el
 // servidor, y las fichas de cliente, tienda y mall.
 //
 // La tabla va en dos pasos: primero los ids de la página (una consulta liviana
-// sobre dmc.visita con OFFSET/FETCH) y después esas visitas completas, con sus
+// sobre tecnico.visita con OFFSET/FETCH) y después esas visitas completas, con sus
 // hijas. Así las fotos, firmas y trabajos que se leen son solo los de la página.
 
 /** Comparación sin mayúsculas ni tildes, como la búsqueda del navegador. */
@@ -61,7 +62,7 @@ function condiciones(f: FiltrosVisitas): Condiciones {
     // La marca de hoy de la tienda, igual que el mall.
     if (f.marcaIds.length) {
       partes.push(
-        `v.sucursal_id IN (SELECT bs.id FROM dmc.sucursal bs WHERE ${enLista("bs.marca_id", "marca", sql.BigInt, f.marcaIds.map(Number), params)})`
+        `v.sucursal_id IN (SELECT bs.id FROM ${T.sucursal} bs WHERE ${enLista("bs.marca_id", "marca", sql.BigInt, f.marcaIds.map(Number), params)})`
       );
     }
     if (f.sucursalIds.length) {
@@ -71,13 +72,13 @@ function condiciones(f: FiltrosVisitas): Condiciones {
   // La región de hoy de la tienda, igual que el mall.
   if (f.regiones.length) {
     partes.push(
-      `v.sucursal_id IN (SELECT rs.id FROM dmc.sucursal rs WHERE ${enLista("rs.region", "region", sql.NVarChar(80), f.regiones, params)})`
+      `v.sucursal_id IN (SELECT rs.id FROM ${T.sucursal} rs WHERE ${enLista("rs.region", "region", sql.NVarChar(80), f.regiones, params)})`
     );
   }
   // El mall de hoy de la tienda, no el que tenía el día de la visita.
   if (f.mallIds.length) {
     partes.push(
-      `v.sucursal_id IN (SELECT ms.id FROM dmc.sucursal ms WHERE ${enLista("ms.mall_id", "mall", sql.BigInt, f.mallIds.map(Number), params)})`
+      `v.sucursal_id IN (SELECT ms.id FROM ${T.sucursal} ms WHERE ${enLista("ms.mall_id", "mall", sql.BigInt, f.mallIds.map(Number), params)})`
     );
   }
   // Filtrar por técnico trae también las visitas en las que va de ayudante; con
@@ -95,10 +96,10 @@ function condiciones(f: FiltrosVisitas): Condiciones {
        OR s.nombre ${CI_AI} LIKE @q
        OR t.nombre_completo ${CI_AI} LIKE @q
        OR ta.nombre_completo ${CI_AI} LIKE @q
-       OR EXISTS (SELECT 1 FROM dmc.catalogo_motivo cm
+       OR EXISTS (SELECT 1 FROM ${T.catalogo_motivo} cm
                    WHERE cm.codigo = v.motivo_codigo AND cm.nombre ${CI_AI} LIKE @q)
-       OR EXISTS (SELECT 1 FROM dmc.visita_motivo vm
-                    JOIN dmc.catalogo_motivo cm ON cm.codigo = vm.motivo_codigo
+       OR EXISTS (SELECT 1 FROM ${T.visita_motivo} vm
+                    JOIN ${T.catalogo_motivo} cm ON cm.codigo = vm.motivo_codigo
                    WHERE vm.visita_id = v.id AND vm.ambito = 'PLAN' AND cm.nombre ${CI_AI} LIKE @q))`);
     params.push(["q", sql.NVarChar(310), patronBusqueda(q)]);
   }
@@ -107,12 +108,12 @@ function condiciones(f: FiltrosVisitas): Condiciones {
 
 const desde = (c: Condiciones) =>
   c.conNombres
-    ? `FROM dmc.visita v
-       JOIN dmc.cliente  c ON c.id = v.cliente_id
-       JOIN dmc.sucursal s ON s.id = v.sucursal_id
-       JOIN dmc.tecnico  t ON t.id = v.tecnico_id
-       LEFT JOIN dmc.tecnico ta ON ta.id = v.tecnico_ayudante_id`
-    : "FROM dmc.visita v";
+    ? `FROM ${T.visita} v
+       JOIN ${T.cliente}  c ON c.id = v.cliente_id
+       JOIN ${T.sucursal} s ON s.id = v.sucursal_id
+       JOIN ${T.tecnico}  t ON t.id = v.tecnico_id
+       LEFT JOIN ${T.tecnico} ta ON ta.id = v.tecnico_ayudante_id`
+    : `FROM ${T.visita} v`;
 
 /**
  * Una página de la lista de Visitas. Las eliminadas (estado ELIMINADAS) solo
@@ -161,11 +162,11 @@ export async function lugaresConVisitas(eliminadas: boolean): Promise<LugarConVi
   }>(
     `SELECT s.region, s.mall_id, ml.nombre AS mall, c.id AS cliente_id, c.nombre_fantasia AS cliente,
             mc.id AS marca_id, mc.nombre AS marca, s.id AS sucursal_id, s.nombre AS sucursal
-       FROM dmc.sucursal s
-       JOIN dmc.cliente c ON c.id = s.cliente_id
-       JOIN dmc.marca  mc ON mc.id = s.marca_id
-       LEFT JOIN dmc.mall ml ON ml.id = s.mall_id
-      WHERE EXISTS (SELECT 1 FROM dmc.visita v WHERE v.sucursal_id = s.id AND v.activo = @activo)`,
+       FROM ${T.sucursal} s
+       JOIN ${T.cliente} c ON c.id = s.cliente_id
+       JOIN ${T.marca}  mc ON mc.id = s.marca_id
+       LEFT JOIN ${T.mall} ml ON ml.id = s.mall_id
+      WHERE EXISTS (SELECT 1 FROM ${T.visita} v WHERE v.sucursal_id = s.id AND v.activo = @activo)`,
     [["activo", sql.Bit, eliminadas ? 0 : 1]]
   );
   return filas.map((x) => ({
@@ -183,7 +184,7 @@ export async function lugaresConVisitas(eliminadas: boolean): Promise<LugarConVi
 
 /** Cuántas visitas eliminadas hay. Solo para el administrador. */
 export async function contarVisitasEliminadas(): Promise<number> {
-  const [fila] = await consulta<{ n: number }>(`SELECT COUNT(*) AS n FROM dmc.visita WHERE activo = 0`);
+  const [fila] = await consulta<{ n: number }>(`SELECT COUNT(*) AS n FROM ${T.visita} WHERE activo = 0`);
   return num(fila?.n ?? 0);
 }
 
@@ -233,16 +234,16 @@ export async function getFilasFicha(de: { clienteId: number } | { sucursalId: nu
               t.nombre_completo AS tecnico, ta.nombre_completo AS ayudante,
               v.sucursal_id, s.nombre AS tienda, c.nombre_fantasia AS cliente, m.nombre AS mall,
               ${F_TS("e.hora_inicio")} AS hora_inicio, ${F_TS("e.hora_termino")} AS hora_termino,
-              (SELECT COUNT(*) FROM dmc.problema p WHERE p.visita_id = v.id) AS problemas,
-              (SELECT COUNT(*) FROM dmc.problema p WHERE p.visita_id = v.id AND p.estado <> @cierre) AS abiertos
-         FROM dmc.visita v
-         JOIN dmc.cliente  c ON c.id = v.cliente_id
-         JOIN dmc.sucursal s ON s.id = v.sucursal_id
-         LEFT JOIN dmc.mall m ON m.id = s.mall_id
-         JOIN dmc.tecnico  t ON t.id = v.tecnico_id
-         LEFT JOIN dmc.tecnico ta ON ta.id = v.tecnico_ayudante_id
-         LEFT JOIN dmc.visita_ejecucion e ON e.visita_id = v.id
-         LEFT JOIN dmc.catalogo_motivo cm ON cm.codigo = v.motivo_codigo
+              (SELECT COUNT(*) FROM ${T.problema} p WHERE p.visita_id = v.id) AS problemas,
+              (SELECT COUNT(*) FROM ${T.problema} p WHERE p.visita_id = v.id AND p.estado <> @cierre) AS abiertos
+         FROM ${T.visita} v
+         JOIN ${T.cliente}  c ON c.id = v.cliente_id
+         JOIN ${T.sucursal} s ON s.id = v.sucursal_id
+         LEFT JOIN ${T.mall} m ON m.id = s.mall_id
+         JOIN ${T.tecnico}  t ON t.id = v.tecnico_id
+         LEFT JOIN ${T.tecnico} ta ON ta.id = v.tecnico_ayudante_id
+         LEFT JOIN ${T.visita_ejecucion} e ON e.visita_id = v.id
+         LEFT JOIN ${T.catalogo_motivo} cm ON cm.codigo = v.motivo_codigo
         WHERE v.activo = 1 AND ${donde}
         ORDER BY ${ORDEN}`,
       [param, ["cierre", sql.VarChar(10), ESTADO_PROBLEMA_CIERRE]]
@@ -250,10 +251,10 @@ export async function getFilasFicha(de: { clienteId: number } | { sucursalId: nu
     // Los motivos agendados de esas mismas visitas, en su orden.
     consultaCon<{ visita_id: number; motivo_codigo: string; nombre: string | null }>(
       `SELECT vm.visita_id, vm.motivo_codigo, cm.nombre
-         FROM dmc.visita_motivo vm
-         JOIN dmc.visita v   ON v.id = vm.visita_id
-         JOIN dmc.sucursal s ON s.id = v.sucursal_id
-         LEFT JOIN dmc.catalogo_motivo cm ON cm.codigo = vm.motivo_codigo
+         FROM ${T.visita_motivo} vm
+         JOIN ${T.visita} v   ON v.id = vm.visita_id
+         JOIN ${T.sucursal} s ON s.id = v.sucursal_id
+         LEFT JOIN ${T.catalogo_motivo} cm ON cm.codigo = vm.motivo_codigo
         WHERE vm.ambito = 'PLAN' AND v.activo = 1 AND ${donde}
         ORDER BY vm.orden, vm.id`,
       [param]

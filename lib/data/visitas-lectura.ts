@@ -31,6 +31,7 @@ import type {
   VisitaTrabajo,
   VisitaTrabajoSubtrabajo,
 } from "@/lib/types";
+import { T } from "@/lib/db/esquema";
 
 // Visitas y todo lo que cuelga de ellas: la lectura.
 //
@@ -81,14 +82,14 @@ function porIds(ids: number[], eliminadas: boolean): Filtro {
 /** Todas las de los locales que hoy tienen una visita reagendada o pendiente. */
 const DE_LOCALES_CON_PENDIENTES: Filtro = {
   where: `v.activo = 1 AND v.sucursal_id IN
-            (SELECT p.sucursal_id FROM dmc.visita p
+            (SELECT p.sucursal_id FROM ${T.visita} p
               WHERE p.estado IN ('REAGENDADA', 'PENDIENTE') AND p.activo = 1)`,
   params: [],
 };
 
 /** `WHERE <hija>.visita_id IN (…)` con el mismo criterio que la consulta madre. */
 function subconsultaIds(filtro: Filtro): string {
-  return `SELECT v.id FROM dmc.visita v WHERE ${filtro.where}`;
+  return `SELECT v.id FROM ${T.visita} v WHERE ${filtro.where}`;
 }
 
 // ── Filas crudas ────────────────────────────────────────────────────────────
@@ -160,12 +161,12 @@ interface FilaVisita {
   m_activo: boolean | null;
 }
 
-// El motivo de una visita PENDIENTE o CANCELADA no vive en dmc.visita: lo deja
-// el técnico en dmc.visita_estado_historial al cambiarle el estado. Se recupera
+// El motivo de una visita PENDIENTE o CANCELADA no vive en tecnico.visita: lo deja
+// el técnico en tecnico.visita_estado_historial al cambiarle el estado. Se recupera
 // el último registro que coincide con el estado actual.
 export const MOTIVO_PENDIENTE = `
   (SELECT TOP 1 h.motivo
-     FROM dmc.visita_estado_historial h
+     FROM ${T.visita_estado_historial} h
     WHERE h.visita_id = v.id AND h.estado = v.estado AND h.motivo IS NOT NULL
     ORDER BY h.ocurrido_en DESC, h.id DESC)`;
 
@@ -181,7 +182,7 @@ export const TOMADA_POR = `
   CASE WHEN v.estado = 'EN_CURSO' THEN
     CASE WHEN v.tecnico_ayudante_id IS NOT NULL AND v.tecnico_ayudante_id =
               (SELECT TOP 1 h.tecnico_id
-                 FROM dmc.visita_estado_historial h
+                 FROM ${T.visita_estado_historial} h
                 WHERE h.visita_id = v.id AND h.estado = 'EN_CURSO'
                 ORDER BY h.id DESC)
          THEN v.tecnico_ayudante_id
@@ -192,7 +193,7 @@ export const TOMADA_POR = `
 export const CERRADA_POR = `
   CASE WHEN v.estado = 'COMPLETADA' THEN
     (SELECT TOP 1 h.tecnico_id
-       FROM dmc.visita_estado_historial h
+       FROM ${T.visita_estado_historial} h
       WHERE h.visita_id = v.id AND h.estado = 'COMPLETADA'
       ORDER BY h.id DESC)
   END`;
@@ -230,15 +231,15 @@ const SELECT_VISITA = `
          ta.nombre_completo AS ta_nombre_completo, ta.telefono AS ta_telefono,
 
          cm.id AS m_id, cm.nombre AS m_nombre, cm.orden AS m_orden, cm.activo AS m_activo
-    FROM dmc.visita   v
-    JOIN dmc.cliente  c ON c.id = v.cliente_id
-    JOIN dmc.sucursal s ON s.id = v.sucursal_id
-    JOIN dmc.marca    mk ON mk.id = s.marca_id
-    LEFT JOIN dmc.mall ml ON ml.id = s.mall_id
-    JOIN dmc.tecnico  t ON t.id = v.tecnico_id
-    LEFT JOIN dmc.tecnico ta ON ta.id = v.tecnico_ayudante_id
-    LEFT JOIN dmc.usuario uc ON uc.id = v.creada_por
-    LEFT JOIN dmc.catalogo_motivo cm ON cm.codigo = v.motivo_codigo`;
+    FROM ${T.visita}   v
+    JOIN ${T.cliente}  c ON c.id = v.cliente_id
+    JOIN ${T.sucursal} s ON s.id = v.sucursal_id
+    JOIN ${T.marca}    mk ON mk.id = s.marca_id
+    LEFT JOIN ${T.mall} ml ON ml.id = s.mall_id
+    JOIN ${T.tecnico}  t ON t.id = v.tecnico_id
+    LEFT JOIN ${T.tecnico} ta ON ta.id = v.tecnico_ayudante_id
+    LEFT JOIN ${T.usuario} uc ON uc.id = v.creada_por
+    LEFT JOIN ${T.catalogo_motivo} cm ON cm.codigo = v.motivo_codigo`;
 
 interface FilaEjecucion {
   visita_id: number;
@@ -274,7 +275,7 @@ export const MINUTOS_EDICION_HABILITADA = 5;
 /**
  * Hasta cuándo puede el técnico corregir el acta: un día después de cerrarla o,
  * si coordinación le abrió la edición, hasta esa hora si es más tarde. `ejec` es
- * el alias de dmc.visita_ejecucion en la consulta ("" si va sin alias).
+ * el alias de tecnico.visita_ejecucion en la consulta ("" si va sin alias).
  */
 export const editableHastaSql = (ejec = "") => {
   const c = ejec ? `${ejec}.` : "";
@@ -422,8 +423,8 @@ async function cargar(filtro: Filtro): Promise<Visita[]> {
       ),
       consultaCon<FilaMotivoVisita>(
         `SELECT vm.visita_id, vm.motivo_codigo, cm.nombre, vm.ambito
-           FROM dmc.visita_motivo vm
-           LEFT JOIN dmc.catalogo_motivo cm ON cm.codigo = vm.motivo_codigo
+           FROM ${T.visita_motivo} vm
+           LEFT JOIN ${T.catalogo_motivo} cm ON cm.codigo = vm.motivo_codigo
           WHERE vm.visita_id IN (${ids}) ORDER BY vm.ambito, vm.orden, vm.id`,
         p()
       ),
@@ -436,39 +437,39 @@ async function cargar(filtro: Filtro): Promise<Visita[]> {
                 CAST(CASE WHEN hora_termino IS NOT NULL AND ${EDITABLE_HASTA} >= SYSDATETIME()
                           THEN 1 ELSE 0 END AS bit) AS editable_tecnico,
                 ${F_TS("edicion_solicitada_en")} AS edicion_solicitada_en, edicion_solicitada_motivo
-           FROM dmc.visita_ejecucion WHERE visita_id IN (${ids})`,
+           FROM ${T.visita_ejecucion} WHERE visita_id IN (${ids})`,
         p()
       ),
       consultaCon<FilaTrabajo>(
         `SELECT id, visita_id, trabajo_codigo, motivo_codigo, detalle, orden
-           FROM dmc.visita_trabajo
+           FROM ${T.visita_trabajo}
           WHERE visita_id IN (${ids}) AND activo = 1 ORDER BY orden, id`,
         p()
       ),
       consultaCon<FilaSubtrabajo>(
         `SELECT s.id, s.visita_trabajo_id, s.etiqueta, s.cantidad, s.orden
-           FROM dmc.visita_trabajo_subtrabajo s
-           JOIN dmc.visita_trabajo w ON w.id = s.visita_trabajo_id
+           FROM ${T.visita_trabajo_subtrabajo} s
+           JOIN ${T.visita_trabajo} w ON w.id = s.visita_trabajo_id
           WHERE w.visita_id IN (${ids}) AND w.activo = 1 ORDER BY s.orden, s.id`,
         p()
       ),
       consultaCon<FilaProblema>(
         `SELECT id, visita_id, tipo_codigo, estado, descripcion, solucion, orden,
                 ${F_TS("resuelto_en")} AS resuelto_en, ${F_TS("creado_en")} AS creado_en
-           FROM dmc.problema WHERE visita_id IN (${ids}) ORDER BY orden, id`,
+           FROM ${T.problema} WHERE visita_id IN (${ids}) ORDER BY orden, id`,
         p()
       ),
       consultaCon<FilaItem>(
         `SELECT i.id, i.problema_id, i.etiqueta, i.cantidad
-           FROM dmc.problema_item i
-           JOIN dmc.problema p ON p.id = i.problema_id
+           FROM ${T.problema_item} i
+           JOIN ${T.problema} p ON p.id = i.problema_id
           WHERE p.visita_id IN (${ids}) ORDER BY i.id`,
         p()
       ),
       consultaCon<FilaFoto>(
         `SELECT id, visita_id, problema_id, etiqueta, archivo_url, interno, orden,
                 ${F_TS("tomada_en")} AS tomada_en
-           FROM dmc.visita_foto
+           FROM ${T.visita_foto}
           WHERE visita_id IN (${ids}) AND activo = 1 ORDER BY orden, id`,
         p()
       ),
@@ -477,27 +478,27 @@ async function cargar(filtro: Filtro): Promise<Visita[]> {
       consultaCon<FilaVideo>(
         `SELECT id, visita_id, problema_id, etiqueta, archivo_url, interno, mime, bytes,
                 duracion_seg, ancho, alto, orden, ${F_TS("grabado_en")} AS grabado_en
-           FROM dmc.visita_video
+           FROM ${T.visita_video}
           WHERE visita_id IN (${ids}) AND activo = 1 AND subida_completa = 1
           ORDER BY orden, id`,
         p()
       ),
       consultaCon<FilaFirma>(
         `SELECT id, visita_id, rol, nombre, rut, imagen_url, ${F_TS("firmado_en")} AS firmado_en
-           FROM dmc.visita_firma WHERE visita_id IN (${ids}) ORDER BY id`,
+           FROM ${T.visita_firma} WHERE visita_id IN (${ids}) ORDER BY id`,
         p()
       ),
       consultaCon<FilaReagendamiento>(
         `SELECT id, visita_id, ${F_FECHA("fecha_anterior")} AS fecha_anterior,
                 ${F_HORA("hora_anterior")} AS hora_anterior, ${F_FECHA("fecha_nueva")} AS fecha_nueva,
                 ${F_HORA("hora_nueva")} AS hora_nueva, motivo, origen
-           FROM dmc.reagendamiento WHERE visita_id IN (${ids}) ORDER BY creado_en DESC, id DESC`,
+           FROM ${T.reagendamiento} WHERE visita_id IN (${ids}) ORDER BY creado_en DESC, id DESC`,
         p()
       ),
       consultaCon<FilaInterno>(
         `SELECT vi.visita_id, vi.interno_codigo, ci.nombre
-           FROM dmc.visita_interno vi
-           LEFT JOIN dmc.catalogo_interno ci ON ci.codigo = vi.interno_codigo
+           FROM ${T.visita_interno} vi
+           LEFT JOIN ${T.catalogo_interno} ci ON ci.codigo = vi.interno_codigo
           WHERE vi.visita_id IN (${ids}) ORDER BY vi.orden, vi.id`,
         p()
       ),
@@ -506,14 +507,14 @@ async function cargar(filtro: Filtro): Promise<Visita[]> {
       consultaCon<FilaEdicion>(
         `SELECT e.id, e.visita_id, e.origen, COALESCE(t.nombre_completo, u.email) AS por,
                 e.motivo, e.secciones, e.detalle, ${F_TS("e.editado_en")} AS editado_en
-           FROM dmc.visita_edicion e
-           LEFT JOIN dmc.usuario u ON u.id = e.usuario_id
-           LEFT JOIN dmc.tecnico t ON t.id = e.tecnico_id
+           FROM ${T.visita_edicion} e
+           LEFT JOIN ${T.usuario} u ON u.id = e.usuario_id
+           LEFT JOIN ${T.tecnico} t ON t.id = e.tecnico_id
           WHERE e.visita_id IN (${ids}) ORDER BY e.editado_en DESC, e.id DESC`,
         p()
       ),
       consultaCon<FilaAdjunto>(
-        `SELECT ${COLUMNAS_ADJUNTO} FROM dmc.visita_adjunto
+        `SELECT ${COLUMNAS_ADJUNTO} FROM ${T.visita_adjunto}
           WHERE visita_id IN (${ids}) AND activo = 1 AND subida_completa = 1 ORDER BY id`,
         p()
       ),
@@ -538,8 +539,8 @@ async function cargar(filtro: Filtro): Promise<Visita[]> {
     const ejec = ejecucionPorVisita.get(id);
     const susMotivos = motivosPorVisita.get(id) ?? [];
 
-    // El motivo principal encabeza siempre la lista, aunque dmc.visita_motivo
-    // todavia no tenga fila (visita anterior a dmc.visita_motivo).
+    // El motivo principal encabeza siempre la lista, aunque tecnico.visita_motivo
+    // todavia no tenga fila (visita anterior a tecnico.visita_motivo).
     const codigosDe = (ambito: "PLAN" | "REAL", principal: string | null) => {
       const codigos = susMotivos.filter((m) => m.ambito === ambito).map((m) => m.motivo_codigo);
       if (principal && !codigos.includes(principal)) codigos.unshift(principal);
@@ -569,7 +570,7 @@ async function cargar(filtro: Filtro): Promise<Visita[]> {
       motivoPendiente: v.motivo_pendiente,
       problemaOrigenId: numONull(v.problema_origen_id),
       creadaEnTerreno: Boolean(v.creada_en_terreno),
-      // Quién agendó o registró la visita (dmc.visita.creada_por). Null en las
+      // Quién agendó o registró la visita (tecnico.visita.creada_por). Null en las
       // anteriores a que se guardara.
       creadaPor:
         v.creada_por === null ? null : { id: num(v.creada_por), nombre: v.uc_nombre?.trim() || v.uc_email || null },
@@ -828,7 +829,7 @@ export async function getEquipoDeVisita(folio: string): Promise<EquipoVisita | u
     tomada_por: number | null;
   }>(
     `SELECT v.estado, v.tecnico_id, v.tecnico_ayudante_id, ${TOMADA_POR} AS tomada_por
-       FROM dmc.visita v WHERE v.folio = @folio AND v.activo = 1`,
+       FROM ${T.visita} v WHERE v.folio = @folio AND v.activo = 1`,
     [["folio", sql.VarChar(16), folio]]
   );
   if (!v) return undefined;
@@ -850,8 +851,8 @@ async function conEliminacion(visitas: Visita[]): Promise<Visita[]> {
   if (visitas.length === 0) return visitas;
   const filas = await consultaCon<{ visita_id: number; por: string | null; en: string }>(
     `SELECT e.visita_id, u.email AS por, ${F_TS("e.eliminado_en")} AS en
-       FROM dmc.visita_eliminacion e
-       LEFT JOIN dmc.usuario u ON u.id = e.usuario_id
+       FROM ${T.visita_eliminacion} e
+       LEFT JOIN ${T.usuario} u ON u.id = e.usuario_id
       WHERE e.visita_id IN ${subIds("ids")}
       ORDER BY e.id`,
     [paramIds("ids", visitas.map((v) => v.id))]
@@ -867,13 +868,13 @@ export async function getTodosLosProblemas(): Promise<Problema[]> {
     consultaCon<FilaProblema>(
       `SELECT p.id, p.visita_id, p.tipo_codigo, p.estado, p.descripcion, p.solucion, p.orden,
               ${F_TS("p.resuelto_en")} AS resuelto_en, ${F_TS("p.creado_en")} AS creado_en
-         FROM dmc.problema p
-         JOIN dmc.visita v ON v.id = p.visita_id
+         FROM ${T.problema} p
+         JOIN ${T.visita} v ON v.id = p.visita_id
         WHERE v.activo = 1
         ORDER BY p.creado_en DESC, p.id DESC`,
       []
     ),
-    consultaCon<FilaItem>(`SELECT id, problema_id, etiqueta, cantidad FROM dmc.problema_item ORDER BY id`, []),
+    consultaCon<FilaItem>(`SELECT id, problema_id, etiqueta, cantidad FROM ${T.problema_item} ORDER BY id`, []),
   ]);
   const itemsPorProblema = agrupar(items, (i) => num(i.problema_id));
   return problemas.map((p) => mapearProblema(p, itemsPorProblema));

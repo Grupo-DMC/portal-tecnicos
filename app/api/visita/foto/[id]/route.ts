@@ -5,7 +5,7 @@ import { esEvidenciaDeEliminada, getDuenosDeImagen, getFotoBinaria } from "@/lib
 import { enModoTecnico, esAdmin } from "@/lib/roles";
 
 // Sirve la foto que el técnico tomó en terreno. Los bytes viven en
-// dmc.visita_foto.contenido: no hay almacenamiento de archivos contratado.
+// tecnico.visita_foto.contenido: no hay almacenamiento de archivos contratado.
 //
 // Requiere sesión. Coordinación y administración ven cualquier foto; el técnico
 // solo las de sus propias visitas.

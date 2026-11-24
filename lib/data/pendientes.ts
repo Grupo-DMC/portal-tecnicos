@@ -5,6 +5,7 @@ import { getVisitasDeLocalesConPendientes } from "@/lib/data/visitas";
 import { hoyISO } from "@/lib/ui/fecha";
 import type { EstadoVisita, OrigenRegistro } from "@/lib/types";
 import type { DatosPendientes, HistorialLocal, Pendiente } from "@/lib/contratos/panel";
+import { T } from "@/lib/db/esquema";
 
 // "Reagendas y pendientes" del panel: las visitas que no se pudieron hacer, con
 // lo que coordinación necesita para destrabarlas sin abrir cada ficha — desde
@@ -22,23 +23,23 @@ export async function getPendientes(): Promise<DatosPendientes> {
     consulta<{ visita_id: number; en: string; origen: OrigenRegistro; por: string | null }>(
       `SELECT v.id AS visita_id, ${F_TS("h.ocurrido_en")} AS en, h.origen,
               COALESCE(tu.nombre_completo, u.email, th.nombre_completo) AS por
-         FROM dmc.visita v
+         FROM ${T.visita} v
         CROSS APPLY (SELECT TOP 1 x.ocurrido_en, x.origen, x.usuario_id, x.tecnico_id
-                       FROM dmc.visita_estado_historial x
+                       FROM ${T.visita_estado_historial} x
                       WHERE x.visita_id = v.id AND x.estado = v.estado
                       ORDER BY x.ocurrido_en DESC, x.id DESC) h
-         LEFT JOIN dmc.usuario u  ON u.id  = h.usuario_id
-         LEFT JOIN dmc.tecnico tu ON tu.id = u.tecnico_id
-         LEFT JOIN dmc.tecnico th ON th.id = h.tecnico_id
+         LEFT JOIN ${T.usuario} u  ON u.id  = h.usuario_id
+         LEFT JOIN ${T.tecnico} tu ON tu.id = u.tecnico_id
+         LEFT JOIN ${T.tecnico} th ON th.id = h.tecnico_id
         WHERE v.estado IN ('REAGENDADA', 'PENDIENTE') AND v.activo = 1`
     ),
     consulta<{ visita_id: number; codigo: string; en: string; por: string | null }>(
       `SELECT g.visita_id, g.pendiente_codigo AS codigo, ${F_TS("g.marcado_en")} AS en,
               COALESCE(tu.nombre_completo, u.email) AS por
-         FROM dmc.visita_pendiente_gestion g
-         JOIN dmc.visita v ON v.id = g.visita_id
-         LEFT JOIN dmc.usuario u  ON u.id  = g.usuario_id
-         LEFT JOIN dmc.tecnico tu ON tu.id = u.tecnico_id
+         FROM ${T.visita_pendiente_gestion} g
+         JOIN ${T.visita} v ON v.id = g.visita_id
+         LEFT JOIN ${T.usuario} u  ON u.id  = g.usuario_id
+         LEFT JOIN ${T.tecnico} tu ON tu.id = u.tecnico_id
         WHERE v.estado IN ('REAGENDADA', 'PENDIENTE') AND v.activo = 1
         ORDER BY g.marcado_en, g.id`
     ),
@@ -123,7 +124,7 @@ export async function marcarGestionPendiente(input: {
   usuarioId: number;
 }): Promise<{ error: string } | null> {
   const [visita] = await consultaCon<{ id: number; estado: EstadoVisita }>(
-    `SELECT id, estado FROM dmc.visita WHERE folio = @folio AND activo = 1`,
+    `SELECT id, estado FROM ${T.visita} WHERE folio = @folio AND activo = 1`,
     [["folio", sql.VarChar(16), input.folio]]
   );
   if (!visita) return { error: "No encontramos esa visita." };
@@ -139,14 +140,14 @@ export async function marcarGestionPendiente(input: {
 
   if (!input.marcado) {
     await ejecutar(
-      `DELETE FROM dmc.visita_pendiente_gestion WHERE visita_id = @visita AND pendiente_codigo = @codigo`,
+      `DELETE FROM ${T.visita_pendiente_gestion} WHERE visita_id = @visita AND pendiente_codigo = @codigo`,
       params
     );
     return null;
   }
 
   const [paso] = await consultaCon<{ id: number }>(
-    `SELECT id FROM dmc.catalogo_pendiente WHERE codigo = @codigo AND activo = 1`,
+    `SELECT id FROM ${T.catalogo_pendiente} WHERE codigo = @codigo AND activo = 1`,
     [["codigo", sql.VarChar(40), input.codigo]]
   );
   if (!paso) return { error: "Ese paso ya no está en el checklist: recarga la página." };
@@ -154,12 +155,12 @@ export async function marcarGestionPendiente(input: {
   // Una marca vieja (de una vuelta anterior como pendiente) se renueva en vez
   // de chocar con la unicidad: pasa a contar desde ahora.
   await ejecutar(
-    `UPDATE dmc.visita_pendiente_gestion
+    `UPDATE ${T.visita_pendiente_gestion}
         SET usuario_id = @usuario, marcado_en = SYSDATETIME()
       WHERE visita_id = @visita AND pendiente_codigo = @codigo;
 
      IF @@ROWCOUNT = 0
-       INSERT INTO dmc.visita_pendiente_gestion (visita_id, pendiente_codigo, usuario_id)
+       INSERT INTO ${T.visita_pendiente_gestion} (visita_id, pendiente_codigo, usuario_id)
        VALUES (@visita, @codigo, @usuario);`,
     params
   );

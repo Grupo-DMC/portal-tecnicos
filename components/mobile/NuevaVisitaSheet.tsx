@@ -51,7 +51,7 @@ export default function NuevaVisitaSheet({
     String(sucursales.find((s) => String(s.clienteId) === String(clientes[0]?.id))?.id ?? "")
   );
   // El motivo dejo de ser uno solo: se marcan todos los que correspondan.
-  // El primero marcado es el principal (el que va a dmc.visita.motivo_codigo).
+  // El primero marcado es el principal (el que va a tecnico.visita.motivo_codigo).
   const [motivos, setMotivos] = useState<string[]>(() =>
     catalogoMotivo[0] ? [catalogoMotivo[0].codigo] : []
   );

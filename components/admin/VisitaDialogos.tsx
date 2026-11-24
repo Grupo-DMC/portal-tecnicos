@@ -226,7 +226,7 @@ export default function VisitaDialogo({
   });
 
   // Una visita puede venir por varias cosas a la vez. El primero marcado es el
-  // principal: es el que va a dmc.visita.motivo_codigo. La hora es obligatoria
+  // principal: es el que va a tecnico.visita.motivo_codigo. La hora es obligatoria
   // si cualquiera de los marcados es una instalación.
   const motivosMarcados = leerChecks(form.motivoCodigo);
   const esInstalacion = algunoPideHora(motivosMarcados, ref.motivos);
@@ -706,7 +706,7 @@ export function CancelarAdminDialogo({
  *
  * A propósito pide escribir el folio de nuevo: cerrarlo de un clic de más se
  * arregla reabriendo el diálogo, esto no. La visita no se borra —queda
- * inactiva y en dmc.visita_eliminacion con el usuario y la fecha— pero deja
+ * inactiva y en tecnico.visita_eliminacion con el usuario y la fecha— pero deja
  * de aparecer en el panel, en el celular del técnico y en los gráficos.
  */
 export function EliminarVisitaDialogo({

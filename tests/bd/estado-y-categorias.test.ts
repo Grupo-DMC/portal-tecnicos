@@ -3,6 +3,7 @@ import { consulta } from "@/lib/data/sql";
 import { guardarMarca, guardarTecnico, listarMarcas } from "@/lib/data/maestros";
 import { guardarChecklist, listarProblemas, listarSecciones } from "@/lib/data/catalogos";
 import { hayBd, limpiarDatos, mensajeDeError, sembrarMundo, type Mundo } from "./_ayuda";
+import { T } from "@/lib/db/esquema";
 
 // Migración 039 (motivo obligatorio al desactivar, con su historial) y 040
 // (categorías de los tipos de problema), contra una base real.
@@ -18,22 +19,22 @@ describe.skipIf(!hayBd)("BD · motivo al desactivar y categorías de problema", 
 
   describe("la base no deja nada inactivo sin motivo", () => {
     it("en las siete tablas, al actualizar y al insertar", async () => {
-      expect(await mensajeDeError(`UPDATE dmc.cliente SET activo = 0 WHERE id = ${m.clienteId}`)).toMatch(/ck_cliente_motivo_inactivo/);
-      expect(await mensajeDeError(`UPDATE dmc.marca SET activo = 0, motivo_inactivo = N'   ' WHERE id = ${m.marcaId}`)).toMatch(
+      expect(await mensajeDeError(`UPDATE ${T.cliente} SET activo = 0 WHERE id = ${m.clienteId}`)).toMatch(/ck_cliente_motivo_inactivo/);
+      expect(await mensajeDeError(`UPDATE ${T.marca} SET activo = 0, motivo_inactivo = N'   ' WHERE id = ${m.marcaId}`)).toMatch(
         /ck_marca_motivo_inactivo/
       );
-      expect(await mensajeDeError(`UPDATE dmc.sucursal SET activo = 0 WHERE id = ${m.sucursalId}`)).toMatch(/ck_sucursal_motivo_inactivo/);
-      expect(await mensajeDeError(`UPDATE dmc.tecnico SET activo = 0 WHERE id = ${m.tecnicoId}`)).toMatch(/ck_tecnico_motivo_inactivo/);
-      expect(await mensajeDeError(`UPDATE dmc.usuario SET activo = 0 WHERE id = ${m.adminId}`)).toMatch(/ck_usuario_motivo_inactivo/);
-      expect(await mensajeDeError(`INSERT INTO dmc.mall (nombre, direccion, activo) VALUES (N'Mall X', N'Calle 1', 0)`)).toMatch(
+      expect(await mensajeDeError(`UPDATE ${T.sucursal} SET activo = 0 WHERE id = ${m.sucursalId}`)).toMatch(/ck_sucursal_motivo_inactivo/);
+      expect(await mensajeDeError(`UPDATE ${T.tecnico} SET activo = 0 WHERE id = ${m.tecnicoId}`)).toMatch(/ck_tecnico_motivo_inactivo/);
+      expect(await mensajeDeError(`UPDATE ${T.usuario} SET activo = 0 WHERE id = ${m.adminId}`)).toMatch(/ck_usuario_motivo_inactivo/);
+      expect(await mensajeDeError(`INSERT INTO ${T.mall} (nombre, direccion, activo) VALUES (N'Mall X', N'Calle 1', 0)`)).toMatch(
         /ck_mall_motivo_inactivo/
       );
-      expect(await mensajeDeError(`INSERT INTO dmc.contacto (nombre, activo) VALUES (N'Pedro', 0)`)).toMatch(/ck_contacto_motivo_inactivo/);
+      expect(await mensajeDeError(`INSERT INTO ${T.contacto} (nombre, activo) VALUES (N'Pedro', 0)`)).toMatch(/ck_contacto_motivo_inactivo/);
     });
 
     it("el historial tampoco acepta una baja sin motivo", async () => {
       expect(
-        await mensajeDeError(`INSERT INTO dmc.cambio_estado (entidad, entidad_id, activo) VALUES ('marca', ${m.marcaId}, 0)`)
+        await mensajeDeError(`INSERT INTO ${T.cambio_estado} (entidad, entidad_id, activo) VALUES ('marca', ${m.marcaId}, 0)`)
       ).toMatch(/ck_cambio_estado_motivo/);
     });
   });
@@ -54,7 +55,7 @@ describe.skipIf(!hayBd)("BD · motivo al desactivar y categorías de problema", 
       expect(activa).toMatchObject({ activo: true, motivoInactivo: null, baja: null });
 
       const historial = await consulta<{ activo: boolean; motivo: string | null; usuario_email: string }>(
-        `SELECT activo, motivo, usuario_email FROM dmc.cambio_estado WHERE entidad = 'marca' AND entidad_id = ${m.marcaId} ORDER BY id`
+        `SELECT activo, motivo, usuario_email FROM ${T.cambio_estado} WHERE entidad = 'marca' AND entidad_id = ${m.marcaId} ORDER BY id`
       );
       expect(historial).toEqual([
         { activo: false, motivo: "Cerró la cadena", usuario_email: actor.email },
@@ -71,7 +72,7 @@ describe.skipIf(!hayBd)("BD · motivo al desactivar y categorías de problema", 
         )
       ).rejects.toThrow(/ck_tecnico_motivo_inactivo/);
       const [fila] = await consulta<{ activo: boolean; n: number }>(
-        `SELECT t.activo, (SELECT COUNT(*) FROM dmc.cambio_estado WHERE entidad = 'tecnico') AS n FROM dmc.tecnico t WHERE t.id = ${m.tecnicoId}`
+        `SELECT t.activo, (SELECT COUNT(*) FROM ${T.cambio_estado} WHERE entidad = 'tecnico') AS n FROM ${T.tecnico} t WHERE t.id = ${m.tecnicoId}`
       );
       expect(fila).toEqual({ activo: true, n: 0 });
     });
@@ -108,7 +109,7 @@ describe.skipIf(!hayBd)("BD · motivo al desactivar y categorías de problema", 
     });
 
     it("una sección de tipo desconocido sigue sin entrar", async () => {
-      expect(await mensajeDeError(`INSERT INTO dmc.catalogo_seccion (tipo, nombre) VALUES ('OTRA_COSA', N'X')`)).toMatch(
+      expect(await mensajeDeError(`INSERT INTO ${T.catalogo_seccion} (tipo, nombre) VALUES ('OTRA_COSA', N'X')`)).toMatch(
         /ck_catalogo_seccion_tipo/
       );
     });

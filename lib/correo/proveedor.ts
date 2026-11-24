@@ -31,7 +31,7 @@ export interface Correo {
   adjuntos: AdjuntoCorreo[];
   /**
    * Si la misma clave llega dos veces (un reintento tras un corte de red),
-   * Resend no manda el correo de nuevo. Se usa el id de dmc.acta_envio.
+   * Resend no manda el correo de nuevo. Se usa el id de tecnico.acta_envio.
    */
   idempotencia: string;
 }

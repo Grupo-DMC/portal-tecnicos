@@ -3,12 +3,19 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import bcrypt from "bcryptjs";
 import sql from "mssql";
-import { leerEnv, validarDestinoDePrueba } from "../setup/guarda-bd";
+import { adaptarEsquema } from "../../scripts/adaptar-esquema.mjs";
+import { ESQUEMA_DE_PRUEBA, leerEnv, validarDestinoDePrueba } from "../setup/guarda-bd";
+import { entornoDeEsquemas, repartirEsquemas } from "../setup/multiesquema";
 import { dividirLotes } from "../setup/bd-global";
+import { T } from "@/lib/db/esquema";
 
 // Base desechable de los tests E2E. A diferencia de los tests de BD, el nombre
 // es fijo (la app que se levanta necesita conocerlo de antemano), pero pasa por
 // la misma guarda: solo localhost y solo `dmc_test_*`.
+
+// Las consultas de este archivo arman sus tablas con T (lib/db/esquema), que lee DB_SCHEMA.
+process.env.DB_SCHEMA = ESQUEMA_DE_PRUEBA;
+Object.assign(process.env, entornoDeEsquemas());
 
 export const BASE_E2E = "dmc_test_e2e0001";
 export const CLAVE_E2E = "E2e-Clave-Segura-123";
@@ -69,40 +76,41 @@ export async function crearBaseE2E() {
 
   const pool = await new sql.ConnectionPool(opciones(cfg, BASE_E2E)).connect();
   try {
-    const ddl = readFileSync(resolve(RAIZ, "sql/dmc_contingencia_sqlserver.sql"), "utf8");
+    const ddl = adaptarEsquema(readFileSync(resolve(RAIZ, "sql/dmc_contingencia_sqlserver.sql"), "utf8"), ESQUEMA_DE_PRUEBA);
     for (const lote of dividirLotes(ddl)) await pool.request().batch(lote);
+    await repartirEsquemas(pool, ESQUEMA_DE_PRUEBA);
 
     const hash = await bcrypt.hash(CLAVE_E2E, 6);
     await pool.request().batch(`
-      INSERT INTO dmc.catalogo_motivo (codigo, nombre, orden) VALUES
+      INSERT INTO ${T.catalogo_motivo} (codigo, nombre, orden) VALUES
         ('VISITA', N'Visita preventiva', 1), ('CALIBRACION', N'Calibración de las antenas', 2);
-      INSERT INTO dmc.catalogo_problema (codigo, nombre, grupo_label, singular, orden) VALUES
+      INSERT INTO ${T.catalogo_problema} (codigo, nombre, grupo_label, singular, orden) VALUES
         ('ANTENA_NO_DETECTA', N'Antena no detecta etiquetas', N'Antena afectada', N'antena', 1), ('OTRO', N'Otro', NULL, NULL, 2);
-      INSERT INTO dmc.catalogo_trabajo (codigo, nombre, orden) VALUES ('REVISION_ANTENAS', N'Revisión de antenas', 1);
-      INSERT INTO dmc.catalogo_motivo_trabajo (motivo_id, trabajo_id, orden)
-        SELECT m.id, t.id, 1 FROM dmc.catalogo_motivo m CROSS JOIN dmc.catalogo_trabajo t WHERE m.codigo = 'VISITA';
+      INSERT INTO ${T.catalogo_trabajo} (codigo, nombre, orden) VALUES ('REVISION_ANTENAS', N'Revisión de antenas', 1);
+      INSERT INTO ${T.catalogo_motivo_trabajo} (motivo_id, trabajo_id, orden)
+        SELECT m.id, t.id, 1 FROM ${T.catalogo_motivo} m CROSS JOIN ${T.catalogo_trabajo} t WHERE m.codigo = 'VISITA';
       -- Chromium sin cabeza no graba video: el flujo cierra el acta sin fotos ni video del trabajo.
       -- La regla de fotos y video obligatorios se prueba en los tests de acciones y de componentes.
-      UPDATE dmc.acta_seccion_config SET obligatoria = 0;
-      INSERT INTO dmc.cliente (rut, razon_social, nombre_fantasia) VALUES ('76.000.001-0', N'Cliente E2E SpA', N'Cliente E2E');
-      INSERT INTO dmc.marca (cliente_id, nombre) SELECT id, N'Marca E2E' FROM dmc.cliente;
-      INSERT INTO dmc.sucursal (cliente_id, marca_id, nombre, direccion, comuna, region)
+      UPDATE ${T.acta_seccion_config} SET obligatoria = 0;
+      INSERT INTO ${T.cliente} (rut, razon_social, nombre_fantasia) VALUES ('76.000.001-0', N'Cliente E2E SpA', N'Cliente E2E');
+      INSERT INTO ${T.marca} (cliente_id, nombre) SELECT id, N'Marca E2E' FROM ${T.cliente};
+      INSERT INTO ${T.sucursal} (cliente_id, marca_id, nombre, direccion, comuna, region)
         SELECT c.id, m.id, N'Tienda E2E Centro', N'Av. Ficticia 100', N'Santiago', N'Metropolitana'
-          FROM dmc.cliente c JOIN dmc.marca m ON m.cliente_id = c.id;
-      INSERT INTO dmc.tecnico (rut, nombres, apellido_paterno, email) VALUES
+          FROM ${T.cliente} c JOIN ${T.marca} m ON m.cliente_id = c.id;
+      INSERT INTO ${T.tecnico} (rut, nombres, apellido_paterno, email) VALUES
         ('11.111.111-1', N'Tecnica', N'Ficticia', '${CUENTAS.tecnico.email}'),
         -- «Zoe» para que quede después de la técnica del flujo completo en las listas.
         ('22.222.222-2', N'Zoe', N'Doble', '${CUENTAS.doble.email}');
-      INSERT INTO dmc.usuario (email, password_hash) VALUES ('${CUENTAS.admin.email}', N'${hash}');
-      INSERT INTO dmc.usuario (email, password_hash, tecnico_id)
-        SELECT '${CUENTAS.tecnico.email}', N'${hash}', id FROM dmc.tecnico WHERE email = '${CUENTAS.tecnico.email}';
-      INSERT INTO dmc.usuario (email, password_hash, rol_id)
-        SELECT '${CUENTAS.coordinador.email}', N'${hash}', id FROM dmc.rol WHERE nombre = N'Coordinador';
-      INSERT INTO dmc.usuario (email, password_hash, tecnico_id)
-        SELECT '${CUENTAS.doble.email}', N'${hash}', id FROM dmc.tecnico WHERE email = '${CUENTAS.doble.email}';
-      INSERT INTO dmc.usuario_rol (usuario_id, rol)
+      INSERT INTO ${T.usuario} (email, password_hash) VALUES ('${CUENTAS.admin.email}', N'${hash}');
+      INSERT INTO ${T.usuario} (email, password_hash, tecnico_id)
+        SELECT '${CUENTAS.tecnico.email}', N'${hash}', id FROM ${T.tecnico} WHERE email = '${CUENTAS.tecnico.email}';
+      INSERT INTO ${T.usuario} (email, password_hash, rol_id)
+        SELECT '${CUENTAS.coordinador.email}', N'${hash}', id FROM ${T.rol} WHERE nombre = N'Coordinador';
+      INSERT INTO ${T.usuario} (email, password_hash, tecnico_id)
+        SELECT '${CUENTAS.doble.email}', N'${hash}', id FROM ${T.tecnico} WHERE email = '${CUENTAS.doble.email}';
+      INSERT INTO ${T.usuario_rol} (usuario_id, rol)
         SELECT u.id, x.rol
-          FROM dmc.usuario u
+          FROM ${T.usuario} u
           JOIN (VALUES ('${CUENTAS.admin.email}', 'ADMIN'),
                        ('${CUENTAS.tecnico.email}', 'TECNICO'),
                        ('${CUENTAS.coordinador.email}', 'COORDINADOR'),
@@ -122,6 +130,8 @@ export function entornoDeLaApp(): Record<string, string> {
     DB_SERVER: cfg.server,
     DB_PORT: String(cfg.port),
     DB_NAME: BASE_E2E,
+    DB_SCHEMA: ESQUEMA_DE_PRUEBA,
+    ...entornoDeEsquemas(),
     DB_USER: cfg.user,
     DB_PASSWORD: cfg.password,
     DB_ENCRYPT: "true",

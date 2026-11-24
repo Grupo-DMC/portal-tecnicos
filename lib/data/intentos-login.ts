@@ -1,8 +1,9 @@
 import "server-only";
 import { log } from "@/lib/log";
 import { consultaCon, ejecutar, num, sql } from "@/lib/data/sql";
+import { T } from "@/lib/db/esquema";
 
-// Freno de intentos de entrar — dmc.intento_login (migración 023).
+// Freno de intentos de entrar — tecnico.intento_login (migración 023).
 //
 // Dos topes, y basta con que salte uno:
 //
@@ -37,10 +38,10 @@ export async function intentoBloqueado(email: string, ip: string | null): Promis
   const [fila] = await consultaCon<{ cuenta: number; fallos_ip: number }>(
     `WITH fallos AS (
        SELECT TOP (${MAX_FALLOS_CUENTA}) creado_en
-         FROM dmc.intento_login
+         FROM ${T.intento_login}
         WHERE email = @email AND exito = 0
           AND creado_en > DATEADD(minute, -${2 * VENTANA_MIN}, SYSDATETIME())
-          AND creado_en > ISNULL((SELECT MAX(creado_en) FROM dmc.intento_login
+          AND creado_en > ISNULL((SELECT MAX(creado_en) FROM ${T.intento_login}
                                    WHERE email = @email AND exito = 1), '19000101')
         ORDER BY creado_en DESC
      )
@@ -49,7 +50,7 @@ export async function intentoBloqueado(email: string, ip: string | null): Promis
                           AND MAX(creado_en) > DATEADD(minute, -${VENTANA_MIN}, SYSDATETIME())
                          THEN 1 ELSE 0 END
                FROM fallos) AS cuenta,
-            (SELECT COUNT(*) FROM dmc.intento_login
+            (SELECT COUNT(*) FROM ${T.intento_login}
               WHERE @ip IS NOT NULL AND ip = @ip AND exito = 0
                 AND creado_en > DATEADD(minute, -${VENTANA_MIN}, SYSDATETIME())) AS fallos_ip`,
     [
@@ -62,7 +63,7 @@ export async function intentoBloqueado(email: string, ip: string | null): Promis
 
 /** Anota el intento. De vez en cuando aprovecha de barrer los muy viejos. */
 export async function registrarIntento(email: string, ip: string | null, exito: boolean): Promise<void> {
-  await ejecutar(`INSERT INTO dmc.intento_login (email, ip, exito) VALUES (@email, @ip, @exito)`, [
+  await ejecutar(`INSERT INTO ${T.intento_login} (email, ip, exito) VALUES (@email, @ip, @exito)`, [
     ["email", sql.NVarChar(160), correoDeIntento(email)],
     ["ip", sql.VarChar(45), ip],
     ["exito", sql.Bit, exito],
@@ -70,7 +71,7 @@ export async function registrarIntento(email: string, ip: string | null, exito: 
 
   if (Math.random() < 0.02) {
     await ejecutar(
-      `DELETE TOP (1000) FROM dmc.intento_login WHERE creado_en < DATEADD(day, -${RETENCION_DIAS}, SYSDATETIME())`
+      `DELETE TOP (1000) FROM ${T.intento_login} WHERE creado_en < DATEADD(day, -${RETENCION_DIAS}, SYSDATETIME())`
     ).catch((err) => log.error("intento_login.barrido", { err }));
   }
 }

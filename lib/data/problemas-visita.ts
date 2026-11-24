@@ -3,6 +3,7 @@ import { enTransaccion, num, sql, type Ejecutor, type Parametro } from "@/lib/da
 import { insertarItemsDeProblema, insertarProblema } from "@/lib/data/visitas-acta";
 import { listarProblemas } from "@/lib/data/catalogos";
 import type { ProblemaEdicion, SubtrabajoActa } from "@/lib/contratos/acta";
+import { T } from "@/lib/db/esquema";
 
 // Problemas de una visita que todavía no tiene el acta cerrada.
 //
@@ -57,14 +58,14 @@ const huella = (items: SubtrabajoActa[]) =>
  */
 export async function problemaGestionado(ej: Ejecutor, visitaId: number, problemaId: number): Promise<boolean> {
   const [fila] = await ej.consulta<{ id: number }>(
-    `SELECT p.id FROM dmc.problema p
+    `SELECT p.id FROM ${T.problema} p
       WHERE p.id = @p AND p.visita_id = @id
         AND (p.estado <> 'ABIERTO'
-             OR EXISTS (SELECT 1 FROM dmc.problema_visita_resolucion r WHERE r.problema_id = p.id)
-             OR EXISTS (SELECT 1 FROM dmc.visita v2 WHERE v2.problema_origen_id = p.id)
-             OR EXISTS (SELECT 1 FROM dmc.problema_historial h WHERE h.problema_id = p.id)
-             OR EXISTS (SELECT 1 FROM dmc.visita_foto f WHERE f.problema_id = p.id)
-             OR EXISTS (SELECT 1 FROM dmc.visita_video w WHERE w.problema_id = p.id))`,
+             OR EXISTS (SELECT 1 FROM ${T.problema_visita_resolucion} r WHERE r.problema_id = p.id)
+             OR EXISTS (SELECT 1 FROM ${T.visita} v2 WHERE v2.problema_origen_id = p.id)
+             OR EXISTS (SELECT 1 FROM ${T.problema_historial} h WHERE h.problema_id = p.id)
+             OR EXISTS (SELECT 1 FROM ${T.visita_foto} f WHERE f.problema_id = p.id)
+             OR EXISTS (SELECT 1 FROM ${T.visita_video} w WHERE w.problema_id = p.id))`,
     [
       ["p", sql.BigInt, problemaId],
       ["id", sql.BigInt, visitaId],
@@ -101,7 +102,7 @@ export async function guardarProblemasDeVisita(
   try {
     return await enTransaccion(async (ej) => {
       const [visita] = await ej.consulta<{ id: number; estado: string }>(
-        `SELECT id, estado FROM dmc.visita WITH (UPDLOCK, ROWLOCK) WHERE folio = @folio AND activo = 1`,
+        `SELECT id, estado FROM ${T.visita} WITH (UPDLOCK, ROWLOCK) WHERE folio = @folio AND activo = 1`,
         [["folio", sql.VarChar(16), folio]]
       );
       if (!visita) throw new Rechazo("No encontramos esa visita.");
@@ -112,12 +113,12 @@ export async function guardarProblemasDeVisita(
       const p = (extra: Parametro[] = []): Parametro[] => [["id", sql.BigInt, id], ...extra];
 
       const filas = await ej.consulta<FilaProblema>(
-        `SELECT id, tipo_codigo, descripcion FROM dmc.problema WHERE visita_id = @id ORDER BY orden, id`,
+        `SELECT id, tipo_codigo, descripcion FROM ${T.problema} WHERE visita_id = @id ORDER BY orden, id`,
         p()
       );
       const itemsAntes = await ej.consulta<{ problema_id: number; etiqueta: string; cantidad: number }>(
         `SELECT i.problema_id, i.etiqueta, i.cantidad
-           FROM dmc.problema_item i JOIN dmc.problema pr ON pr.id = i.problema_id
+           FROM ${T.problema_item} i JOIN ${T.problema} pr ON pr.id = i.problema_id
           WHERE pr.visita_id = @id`,
         p()
       );
@@ -153,8 +154,8 @@ export async function guardarProblemasDeVisita(
         if (previo.tipo !== ahora.tipo || previo.desc !== ahora.desc || huella(previo.items) !== huella(ahora.items)) {
           modificados += 1;
           await ej.ejecutar(
-            `UPDATE dmc.problema SET tipo_codigo = @tipo, descripcion = @desc WHERE id = @pr AND visita_id = @id;
-             DELETE FROM dmc.problema_item WHERE problema_id = @pr;`,
+            `UPDATE ${T.problema} SET tipo_codigo = @tipo, descripcion = @desc WHERE id = @pr AND visita_id = @id;
+             DELETE FROM ${T.problema_item} WHERE problema_id = @pr;`,
             p([
               ["pr", sql.BigInt, existente],
               ["tipo", sql.VarChar(40), ahora.tipo],
@@ -170,7 +171,7 @@ export async function guardarProblemasDeVisita(
         if (await problemaGestionado(ej, id, quitado)) {
           throw new Rechazo(textoGestionado(nombre(antes.get(quitado)!.tipo), "de la visita"));
         }
-        await ej.ejecutar(`DELETE FROM dmc.problema WHERE id = @pr AND visita_id = @id`, p([["pr", sql.BigInt, quitado]]));
+        await ej.ejecutar(`DELETE FROM ${T.problema} WHERE id = @pr AND visita_id = @id`, p([["pr", sql.BigInt, quitado]]));
       }
 
       if (!agregados && !modificados && !quitados.length) {
@@ -189,7 +190,7 @@ export async function guardarProblemasDeVisita(
           );
         } else {
           await ej.ejecutar(
-            `UPDATE dmc.problema SET orden = @orden WHERE id = @pr AND visita_id = @id AND orden <> @orden`,
+            `UPDATE ${T.problema} SET orden = @orden WHERE id = @pr AND visita_id = @id AND orden <> @orden`,
             p([
               ["pr", sql.BigInt, pr.id],
               ["orden", sql.SmallInt, i + 1],

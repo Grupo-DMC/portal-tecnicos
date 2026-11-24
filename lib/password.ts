@@ -1,8 +1,9 @@
 import "server-only";
 import { log } from "@/lib/log";
 import bcrypt from "bcryptjs";
+import { T } from "@/lib/db/esquema";
 
-// Verificación de contraseñas contra dmc.usuario.password_hash.
+// Verificación de contraseñas contra tecnico.usuario.password_hash.
 //
 // Formato: bcrypt ($2a$/$2b$/$2y$). Es el que genera la app.
 // Solo se acepta bcrypt.
@@ -25,7 +26,7 @@ export async function verificarPassword(password: string, hash: string): Promise
     return bcrypt.compare(password, hash);
   }
 
-  log.error("password_hash con formato desconocido en dmc.usuario: solo se acepta bcrypt");
+  log.error(`password_hash con formato desconocido en ${T.usuario}: solo se acepta bcrypt`);
   return false;
 }
 

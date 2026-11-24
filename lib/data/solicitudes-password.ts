@@ -5,8 +5,9 @@ import { leerCuenta, leerCuentas } from "@/lib/data/roles";
 import { motivoCuentaAjena, puedeAdministrarCuenta } from "@/lib/permisos";
 import type { EstadoSolicitudPassword, RolUsuario, SolicitudPassword } from "@/lib/types";
 import { ordenarRoles, type Modo } from "@/lib/roles";
+import { T } from "@/lib/db/esquema";
 
-// "Olvidé mi contraseña" — dmc.solicitud_password.
+// "Olvidé mi contraseña" — tecnico.solicitud_password.
 //
 // No hay servidor de correo contratado, así que el flujo no manda ningún enlace:
 // la persona deja la solicitud desde el login y el administrador la ve en el
@@ -40,11 +41,11 @@ export async function crearSolicitudPassword(
   const normalizado = email.trim().toLowerCase().slice(0, 160);
 
   const [conteo] = await consultaCon<{ por_correo: number; por_ip: number; pendientes: number }>(
-    `SELECT (SELECT COUNT(*) FROM dmc.solicitud_password
+    `SELECT (SELECT COUNT(*) FROM ${T.solicitud_password}
               WHERE email = @email AND creado_en > DATEADD(hour, -1, SYSDATETIME())) AS por_correo,
-            (SELECT COUNT(*) FROM dmc.solicitud_password
+            (SELECT COUNT(*) FROM ${T.solicitud_password}
               WHERE @ip IS NOT NULL AND ip = @ip AND creado_en > DATEADD(hour, -1, SYSDATETIME())) AS por_ip,
-            (SELECT COUNT(*) FROM dmc.solicitud_password WHERE estado = 'PENDIENTE') AS pendientes`,
+            (SELECT COUNT(*) FROM ${T.solicitud_password} WHERE estado = 'PENDIENTE') AS pendientes`,
     [
       ["email", sql.NVarChar(160), normalizado],
       ["ip", sql.VarChar(45), ip],
@@ -59,8 +60,8 @@ export async function crearSolicitudPassword(
   }
 
   await ejecutar(
-    `INSERT INTO dmc.solicitud_password (email, usuario_id, mensaje, ip)
-     VALUES (@email, (SELECT TOP 1 id FROM dmc.usuario WHERE email = @email), @mensaje, @ip)`,
+    `INSERT INTO ${T.solicitud_password} (email, usuario_id, mensaje, ip)
+     VALUES (@email, (SELECT TOP 1 id FROM ${T.usuario} WHERE email = @email), @mensaje, @ip)`,
     [
       ["email", sql.NVarChar(160), normalizado],
       ["mensaje", sql.NVarChar(400), mensaje?.trim().slice(0, 400) || null],
@@ -96,10 +97,10 @@ export async function listarSolicitudesPassword(actor: ActorSolicitud): Promise<
     `SELECT s.id, s.email, s.usuario_id, s.mensaje, s.estado, s.atendido_por,
             ${F_TS("s.atendido_en")} AS atendido_en,
             ${F_TS("s.creado_en")}   AS creado_en,
-            (SELECT STRING_AGG(r.rol, ',') FROM dmc.usuario_rol r WHERE r.usuario_id = u.id) AS u_roles,
+            (SELECT STRING_AGG(r.rol, ',') FROM ${T.usuario_rol} r WHERE r.usuario_id = u.id) AS u_roles,
             u.activo AS u_activo
-       FROM dmc.solicitud_password s
-       LEFT JOIN dmc.usuario u ON u.id = s.usuario_id
+       FROM ${T.solicitud_password} s
+       LEFT JOIN ${T.usuario} u ON u.id = s.usuario_id
       ORDER BY CASE s.estado WHEN 'PENDIENTE' THEN 0 ELSE 1 END, s.creado_en DESC`
   );
 
@@ -144,7 +145,7 @@ export async function atenderSolicitudPassword(
 
   return enTransaccion(async (ej) => {
     const [solicitud] = await ej.consulta<{ usuario_id: number | null; estado: EstadoSolicitudPassword }>(
-      `SELECT usuario_id, estado FROM dmc.solicitud_password WITH (UPDLOCK, HOLDLOCK) WHERE id = @id`,
+      `SELECT usuario_id, estado FROM ${T.solicitud_password} WITH (UPDLOCK, HOLDLOCK) WHERE id = @id`,
       [["id", sql.BigInt, id]]
     );
     if (!solicitud) return { error: "Esa solicitud ya no existe. Recarga la página." };
@@ -161,7 +162,7 @@ export async function atenderSolicitudPassword(
     if (fallo) return { error: fallo };
 
     await ej.ejecutar(
-      `UPDATE dmc.usuario
+      `UPDATE ${T.usuario}
           SET password_hash = @hash, debe_cambiar_password = 1, sesion_version = sesion_version + 1
         WHERE id = @usuario`,
       [
@@ -169,9 +170,9 @@ export async function atenderSolicitudPassword(
         ["usuario", sql.BigInt, cuenta.id],
       ]
     );
-    await ej.ejecutar(`DELETE FROM dmc.push_suscripcion WHERE usuario_id = @usuario`, [["usuario", sql.BigInt, cuenta.id]]);
+    await ej.ejecutar(`DELETE FROM ${T.push_suscripcion} WHERE usuario_id = @usuario`, [["usuario", sql.BigInt, cuenta.id]]);
     await ej.ejecutar(
-      `UPDATE dmc.solicitud_password
+      `UPDATE ${T.solicitud_password}
           SET estado = 'ATENDIDA', atendido_por = @admin, atendido_en = SYSDATETIME()
         WHERE id = @id AND estado = 'PENDIENTE'`,
       [
@@ -186,7 +187,7 @@ export async function atenderSolicitudPassword(
 /** Cierra la solicitud sin tocar ninguna clave. */
 export async function descartarSolicitudPassword(id: number, usuarioAdminId: number): Promise<boolean> {
   const filas = await ejecutar(
-    `UPDATE dmc.solicitud_password
+    `UPDATE ${T.solicitud_password}
         SET estado = 'DESCARTADA', atendido_por = @admin, atendido_en = SYSDATETIME()
       WHERE id = @id AND estado = 'PENDIENTE'`,
     [

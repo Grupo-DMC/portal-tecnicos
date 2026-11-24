@@ -1,6 +1,6 @@
 // Catálogo de la campanita de notificaciones.
 //
-// Cada cosa que se hace en el sistema deja una fila en dmc.actividad con uno de
+// Cada cosa que se hace en el sistema deja una fila en tecnico.actividad con uno de
 // estos tipos (ver lib/data/actividad.ts). Cada usuario decide, por tipo, qué
 // hacer con lo que hacen los demás:
 //

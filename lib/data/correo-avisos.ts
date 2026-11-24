@@ -13,8 +13,9 @@ import { armarCorreoAvisos, type NovedadCorreo } from "@/lib/correo/plantilla-av
 import { enviarCorreo } from "@/lib/correo/proveedor";
 import { log } from "@/lib/log";
 import { modoCorreoPara, type ModoCorreo } from "@/lib/notificaciones";
+import { T } from "@/lib/db/esquema";
 
-// Avisos por correo: la cola dmc.correo_aviso y los lotes dmc.correo_aviso_lote
+// Avisos por correo: la cola tecnico.correo_aviso y los lotes tecnico.correo_aviso_lote
 // (migración 043). Se alimenta del mismo origen que la campanita y el push:
 // registrarActividad (lib/data/actividad.ts) llama a avisarPorCorreo después de
 // responder.
@@ -67,9 +68,9 @@ export async function avisarPorCorreo(aviso: AvisoCorreo): Promise<void> {
 export async function encolarCorreos(aviso: AvisoCorreo): Promise<number> {
   const cuentas = await consultaCon<{ id: unknown }>(
     // Las cuentas con un rol del panel, aunque además sean técnicas.
-    `SELECT u.id FROM dmc.usuario u
+    `SELECT u.id FROM ${T.usuario} u
       WHERE u.activo = 1 AND u.id <> COALESCE(@actor, 0)
-        AND EXISTS (SELECT 1 FROM dmc.usuario_rol r WHERE r.usuario_id = u.id AND r.rol IN ('ADMIN', 'COORDINADOR'))`,
+        AND EXISTS (SELECT 1 FROM ${T.usuario_rol} r WHERE r.usuario_id = u.id AND r.rol IN ('ADMIN', 'COORDINADOR'))`,
     [["actor", sql.BigInt, aviso.actorId]]
   );
   const perfil = cachePerfiles(true);
@@ -84,22 +85,22 @@ export async function encolarCorreos(aviso: AvisoCorreo): Promise<number> {
       const insertadas = await consultaCon<{ id: unknown }>(
         `DECLARE @ahora datetime2(0) = SYSDATETIME();
          DECLARE @ultimo datetime2(0) = (
-           SELECT MAX(creado_en) FROM dmc.correo_aviso_lote
+           SELECT MAX(creado_en) FROM ${T.correo_aviso_lote}
             WHERE usuario_id = @u AND modo = 'MOMENTO' AND estado IN ('ENVIANDO', 'ENVIADO'));
          DECLARE @enHora int = (
-           SELECT COUNT(*) FROM dmc.correo_aviso_lote
+           SELECT COUNT(*) FROM ${T.correo_aviso_lote}
             WHERE usuario_id = @u AND modo = 'MOMENTO' AND estado IN ('ENVIANDO', 'ENVIADO')
               AND creado_en > DATEADD(hour, -1, @ahora));
          DECLARE @modo varchar(8) = CASE WHEN @pedido = 'MOMENTO' AND @enHora >= @tope THEN 'RESUMEN' ELSE @pedido END;
          DECLARE @resumen datetime2(0) = DATEADD(hour, @hora, CAST(CAST(@ahora AS date) AS datetime2(0)));
          IF @resumen <= @ahora SET @resumen = DATEADD(day, 1, @resumen);
-         INSERT INTO dmc.correo_aviso (usuario_id, actividad_id, modo, enviar_desde)
+         INSERT INTO ${T.correo_aviso} (usuario_id, actividad_id, modo, enviar_desde)
          OUTPUT INSERTED.id AS id
          SELECT @u, @actividad, @modo,
                 CASE WHEN @modo = 'RESUMEN' THEN @resumen
                      WHEN @ultimo IS NOT NULL AND DATEADD(minute, @ventana, @ultimo) > @ahora THEN DATEADD(minute, @ventana, @ultimo)
                      ELSE @ahora END
-          WHERE NOT EXISTS (SELECT 1 FROM dmc.correo_aviso WHERE usuario_id = @u AND actividad_id = @actividad);`,
+          WHERE NOT EXISTS (SELECT 1 FROM ${T.correo_aviso} WHERE usuario_id = @u AND actividad_id = @actividad);`,
         [
           ["u", sql.BigInt, uid],
           ["actividad", sql.BigInt, aviso.id],
@@ -135,7 +136,7 @@ export async function despacharCorreos(config: ConfigAvisosCorreo): Promise<Resu
 
   const pendientes = await consultaCon<{ usuarioId: unknown; modo: ModoCorreo }>(
     `SELECT DISTINCT TOP (${CUENTAS_POR_PASADA}) usuario_id AS usuarioId, modo
-       FROM dmc.correo_aviso
+       FROM ${T.correo_aviso}
       WHERE lote_id IS NULL AND enviar_desde <= SYSDATETIME()`,
     []
   );
@@ -166,13 +167,13 @@ async function tomarLote(usuarioId: number, modo: ModoCorreo): Promise<number | 
       `DECLARE @r int;
        EXEC @r = sp_getapplock @Resource = @recurso, @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 0;
        SELECT @r AS r;`,
-      [["recurso", sql.NVarChar(255), `dmc.correo_aviso.${usuarioId}`]]
+      [["recurso", sql.NVarChar(255), `${T.correo_aviso}.${usuarioId}`]]
     );
     if (!candado || num(candado.r) < 0) return null;
 
     if (modo === "MOMENTO") {
       const reciente = await ej.consulta(
-        `SELECT TOP (1) 1 AS x FROM dmc.correo_aviso_lote
+        `SELECT TOP (1) 1 AS x FROM ${T.correo_aviso_lote}
           WHERE usuario_id = @u AND modo = 'MOMENTO' AND estado IN ('ENVIANDO', 'ENVIADO')
             AND creado_en > DATEADD(minute, -@ventana, SYSDATETIME())`,
         [
@@ -184,7 +185,7 @@ async function tomarLote(usuarioId: number, modo: ModoCorreo): Promise<number | 
     }
 
     const [lote] = await ej.consulta<{ id: unknown }>(
-      `INSERT INTO dmc.correo_aviso_lote (usuario_id, modo) OUTPUT INSERTED.id AS id VALUES (@u, @modo)`,
+      `INSERT INTO ${T.correo_aviso_lote} (usuario_id, modo) OUTPUT INSERTED.id AS id VALUES (@u, @modo)`,
       [
         ["u", sql.BigInt, usuarioId],
         ["modo", sql.VarChar(8), modo],
@@ -192,7 +193,7 @@ async function tomarLote(usuarioId: number, modo: ModoCorreo): Promise<number | 
     );
     const loteId = num(lote.id);
     const tomadas = await ej.ejecutar(
-      `UPDATE dmc.correo_aviso SET lote_id = @lote
+      `UPDATE ${T.correo_aviso} SET lote_id = @lote
         WHERE usuario_id = @u AND modo = @modo AND lote_id IS NULL AND enviar_desde <= SYSDATETIME()`,
       [
         ["lote", sql.BigInt, loteId],
@@ -201,7 +202,7 @@ async function tomarLote(usuarioId: number, modo: ModoCorreo): Promise<number | 
       ]
     );
     if (tomadas === 0) {
-      await ej.ejecutar(`DELETE FROM dmc.correo_aviso_lote WHERE id = @lote`, [["lote", sql.BigInt, loteId]]);
+      await ej.ejecutar(`DELETE FROM ${T.correo_aviso_lote} WHERE id = @lote`, [["lote", sql.BigInt, loteId]]);
       return null;
     }
     return loteId;
@@ -219,8 +220,8 @@ async function despacharCuenta(
 
   const filas = await consultaCon<Omit<NovedadCorreo, "id"> & { id: unknown }>(
     `SELECT a.id, ${F_TS("a.creado_en")} AS creadoEn, a.tipo, a.actor_nombre AS actor, a.texto, a.detalle, a.enlace
-       FROM dmc.correo_aviso c
-       JOIN dmc.actividad a ON a.id = c.actividad_id
+       FROM ${T.correo_aviso} c
+       JOIN ${T.actividad} a ON a.id = c.actividad_id
       WHERE c.lote_id = @lote
       ORDER BY a.id`,
     [["lote", sql.BigInt, loteId]]
@@ -278,7 +279,7 @@ async function cerrarLote(
   fin: { estado: "ENVIADO" | "ERROR" | "DESCARTADO"; cantidad: number; proveedorId?: string; error?: string }
 ): Promise<void> {
   await ejecutar(
-    `UPDATE dmc.correo_aviso_lote
+    `UPDATE ${T.correo_aviso_lote}
         SET estado = @estado, cantidad = @cantidad, proveedor_id = @prov, error = @error, cerrado_en = SYSDATETIME()
       WHERE id = @lote`,
     [
@@ -294,7 +295,7 @@ async function cerrarLote(
 /** Lo que falló vuelve a la cola en unos minutos, hasta MAX_INTENTOS. */
 async function liberarParaReintento(loteId: number): Promise<void> {
   await ejecutar(
-    `UPDATE dmc.correo_aviso
+    `UPDATE ${T.correo_aviso}
         SET lote_id = NULL, intentos = intentos + 1, enviar_desde = DATEADD(minute, @espera, SYSDATETIME())
       WHERE lote_id = @lote AND intentos + 1 < @max`,
     [
@@ -311,11 +312,11 @@ async function rescatarLotesColgados(): Promise<void> {
     `SET XACT_ABORT ON;
      BEGIN TRANSACTION;
        DECLARE @colgados TABLE (id bigint PRIMARY KEY);
-       UPDATE dmc.correo_aviso_lote
+       UPDATE ${T.correo_aviso_lote}
           SET estado = 'ERROR', error = N'No terminó de enviarse: se reintenta.', cerrado_en = SYSDATETIME()
        OUTPUT INSERTED.id INTO @colgados
         WHERE estado = 'ENVIANDO' AND creado_en < DATEADD(minute, -@min, SYSDATETIME());
-       UPDATE dmc.correo_aviso
+       UPDATE ${T.correo_aviso}
           SET lote_id = NULL, intentos = intentos + 1, enviar_desde = SYSDATETIME()
         WHERE lote_id IN (SELECT id FROM @colgados) AND intentos + 1 < @max;
      COMMIT TRANSACTION;`,
@@ -329,10 +330,10 @@ async function rescatarLotesColgados(): Promise<void> {
 /** Borra la cola ya resuelta de hace más de 30 días y los lotes de hace más de 90. */
 export async function limpiarCorreos(): Promise<void> {
   await consulta(
-    `DELETE FROM dmc.correo_aviso
+    `DELETE FROM ${T.correo_aviso}
       WHERE creado_en < DATEADD(day, -30, SYSDATETIME())
         AND (lote_id IS NOT NULL OR enviar_desde < DATEADD(day, -30, SYSDATETIME()));
-     DELETE FROM dmc.correo_aviso_lote
+     DELETE FROM ${T.correo_aviso_lote}
       WHERE creado_en < DATEADD(day, -90, SYSDATETIME()) AND estado <> 'ENVIANDO';`
   );
 }

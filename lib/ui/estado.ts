@@ -118,7 +118,7 @@ export const ESTADO_PROBLEMA_COLOR: Record<EstadoProblema, string> = {
 /**
  * Los motivos de una visita en una línea.
  *
- * Una visita puede venir por varias cosas a la vez (dmc.visita_motivo). Donde
+ * Una visita puede venir por varias cosas a la vez (tecnico.visita_motivo). Donde
  * antes se pintaba `visita.motivo?.nombre` —que es solo el principal— hay que
  * usar esto para no ocultar los demás.
  */

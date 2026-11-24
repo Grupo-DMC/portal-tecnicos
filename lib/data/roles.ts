@@ -9,8 +9,9 @@ import {
 } from "@/lib/permisos";
 import { ordenarRoles, rolDelPanel, type Modo } from "@/lib/roles";
 import type { Rol, RolUsuario, Usuario } from "@/lib/types";
+import { T } from "@/lib/db/esquema";
 
-// Roles del panel y sus permisos: dmc.rol, dmc.rol_permiso y dmc.usuario.rol_id.
+// Roles del panel y sus permisos: tecnico.rol, tecnico.rol_permiso y tecnico.usuario.rol_id.
 
 export interface Acceso {
   permisos: string[];
@@ -33,9 +34,9 @@ export async function accesoDeUsuario(usuario: Usuario, modo: Modo): Promise<Acc
 
   const filas = await consultaCon<{ nombre: string | null; permiso: string | null }>(
     `SELECT r.nombre, rp.permiso
-       FROM dmc.usuario u
-       LEFT JOIN dmc.rol r          ON r.id = u.rol_id
-       LEFT JOIN dmc.rol_permiso rp ON rp.rol_id = r.id
+       FROM ${T.usuario} u
+       LEFT JOIN ${T.rol} r          ON r.id = u.rol_id
+       LEFT JOIN ${T.rol_permiso} rp ON rp.rol_id = r.id
       WHERE u.id = @id`,
     [["id", sql.BigInt, usuario.id]]
   );
@@ -49,7 +50,7 @@ export async function accesoDeUsuario(usuario: Usuario, modo: Modo): Promise<Acc
 }
 
 /**
- * El rol «Técnico»: sus permisos de celular viven en dmc.rol_permiso como los de
+ * El rol «Técnico»: sus permisos de celular viven en tecnico.rol_permiso como los de
  * cualquier rol, pero la fila se crea al guardarlos por primera vez (la app no
  * tiene DDL). Mientras no exista, el técnico conserva todo lo que ya podía hacer.
  */
@@ -59,8 +60,8 @@ export const ROL_TECNICO = "Técnico";
 export async function permisosCelular(): Promise<string[]> {
   const filas = await consultaCon<{ permiso: string | null }>(
     `SELECT rp.permiso
-       FROM dmc.rol r
-       LEFT JOIN dmc.rol_permiso rp ON rp.rol_id = r.id
+       FROM ${T.rol} r
+       LEFT JOIN ${T.rol_permiso} rp ON rp.rol_id = r.id
       WHERE r.nombre = @nombre`,
     [["nombre", sql.NVarChar(60), ROL_TECNICO]]
   );
@@ -73,14 +74,14 @@ export async function guardarPermisosCelular(permisos: string[]): Promise<void> 
   const limpios = normalizarPermisosCelular(permisos);
   await enTransaccion(async (ej) => {
     let [fila] = await ej.consulta<{ id: number }>(
-      `SELECT id FROM dmc.rol WITH (UPDLOCK) WHERE nombre = @nombre`,
+      `SELECT id FROM ${T.rol} WITH (UPDLOCK) WHERE nombre = @nombre`,
       [["nombre", sql.NVarChar(60), ROL_TECNICO]]
     );
     // Mientras la fila no exista, los técnicos lo pueden todo (ver permisosCelular).
     const creado = !fila;
     if (!fila) {
       [fila] = await ej.consulta<{ id: number }>(
-        `INSERT INTO dmc.rol (nombre, descripcion, es_sistema) VALUES (@nombre, @descripcion, 1);
+        `INSERT INTO ${T.rol} (nombre, descripcion, es_sistema) VALUES (@nombre, @descripcion, 1);
          SELECT CAST(SCOPE_IDENTITY() AS bigint) AS id;`,
         [
           ["nombre", sql.NVarChar(60), ROL_TECNICO],
@@ -92,20 +93,20 @@ export async function guardarPermisosCelular(permisos: string[]): Promise<void> 
     const previos = creado
       ? TODOS_LOS_PERMISOS_CELULAR
       : (
-          await ej.consulta<{ permiso: string }>(`SELECT permiso FROM dmc.rol_permiso WHERE rol_id = @id`, [
+          await ej.consulta<{ permiso: string }>(`SELECT permiso FROM ${T.rol_permiso} WHERE rol_id = @id`, [
             ["id", sql.BigInt, rolId],
           ])
         ).map((p) => p.permiso);
     // Quitarles algo a los técnicos cierra sus sesiones abiertas.
     if (previos.some((p) => !limpios.includes(p))) {
       await ej.ejecutar(
-        `UPDATE dmc.usuario SET sesion_version = sesion_version + 1
-          WHERE id IN (SELECT usuario_id FROM dmc.usuario_rol WHERE rol = 'TECNICO')`
+        `UPDATE ${T.usuario} SET sesion_version = sesion_version + 1
+          WHERE id IN (SELECT usuario_id FROM ${T.usuario_rol} WHERE rol = 'TECNICO')`
       );
     }
-    await ej.ejecutar(`DELETE FROM dmc.rol_permiso WHERE rol_id = @id`, [["id", sql.BigInt, rolId]]);
+    await ej.ejecutar(`DELETE FROM ${T.rol_permiso} WHERE rol_id = @id`, [["id", sql.BigInt, rolId]]);
     for (const permiso of limpios) {
-      await ej.ejecutar(`INSERT INTO dmc.rol_permiso (rol_id, permiso) VALUES (@id, @permiso)`, [
+      await ej.ejecutar(`INSERT INTO ${T.rol_permiso} (rol_id, permiso) VALUES (@id, @permiso)`, [
         ["id", sql.BigInt, rolId],
         ["permiso", sql.VarChar(60), permiso],
       ]);
@@ -118,13 +119,13 @@ export async function listarRoles(): Promise<Rol[]> {
   const [roles, permisos] = await Promise.all([
     consultaCon<{ id: number; nombre: string; descripcion: string | null; es_sistema: boolean; usuarios: number }>(
       `SELECT r.id, r.nombre, r.descripcion, r.es_sistema,
-              (SELECT COUNT(*) FROM dmc.usuario u WHERE u.rol_id = r.id) AS usuarios
-         FROM dmc.rol r
+              (SELECT COUNT(*) FROM ${T.usuario} u WHERE u.rol_id = r.id) AS usuarios
+         FROM ${T.rol} r
         WHERE r.nombre <> @tecnico
         ORDER BY r.es_sistema DESC, r.nombre`,
       [["tecnico", sql.NVarChar(60), ROL_TECNICO]]
     ),
-    consulta<{ rol_id: number; permiso: string }>(`SELECT rol_id, permiso FROM dmc.rol_permiso`),
+    consulta<{ rol_id: number; permiso: string }>(`SELECT rol_id, permiso FROM ${T.rol_permiso}`),
   ]);
   return roles.map((r) => ({
     id: num(r.id),
@@ -150,7 +151,7 @@ export async function guardarRol(id: number | null, d: DatosRol): Promise<number
     if (rolId === null) {
       // Sin OUTPUT: se relee por SCOPE_IDENTITY, igual que al crear una visita.
       const [fila] = await ej.consulta<{ id: number }>(
-        `INSERT INTO dmc.rol (nombre, descripcion) VALUES (@nombre, @descripcion);
+        `INSERT INTO ${T.rol} (nombre, descripcion) VALUES (@nombre, @descripcion);
          SELECT CAST(SCOPE_IDENTITY() AS bigint) AS id;`,
         [
           ["nombre", sql.NVarChar(60), d.nombre.trim()],
@@ -160,7 +161,7 @@ export async function guardarRol(id: number | null, d: DatosRol): Promise<number
       rolId = num(fila.id);
     } else {
       await ej.ejecutar(
-        `UPDATE dmc.rol
+        `UPDATE ${T.rol}
             SET nombre = @nombre, descripcion = @descripcion, actualizado_en = SYSDATETIME()
           WHERE id = @id`,
         [
@@ -170,19 +171,19 @@ export async function guardarRol(id: number | null, d: DatosRol): Promise<number
         ]
       );
       const previos = await ej.consulta<{ permiso: string }>(
-        `SELECT permiso FROM dmc.rol_permiso WITH (UPDLOCK) WHERE rol_id = @id`,
+        `SELECT permiso FROM ${T.rol_permiso} WITH (UPDLOCK) WHERE rol_id = @id`,
         [["id", sql.BigInt, rolId]]
       );
       // Quitarle algo al rol cierra las sesiones abiertas de quienes lo tienen.
       if (previos.some((p) => !permisos.includes(p.permiso))) {
-        await ej.ejecutar(`UPDATE dmc.usuario SET sesion_version = sesion_version + 1 WHERE rol_id = @id`, [
+        await ej.ejecutar(`UPDATE ${T.usuario} SET sesion_version = sesion_version + 1 WHERE rol_id = @id`, [
           ["id", sql.BigInt, rolId],
         ]);
       }
-      await ej.ejecutar(`DELETE FROM dmc.rol_permiso WHERE rol_id = @id`, [["id", sql.BigInt, rolId]]);
+      await ej.ejecutar(`DELETE FROM ${T.rol_permiso} WHERE rol_id = @id`, [["id", sql.BigInt, rolId]]);
     }
     for (const permiso of permisos) {
-      await ej.ejecutar(`INSERT INTO dmc.rol_permiso (rol_id, permiso) VALUES (@id, @permiso)`, [
+      await ej.ejecutar(`INSERT INTO ${T.rol_permiso} (rol_id, permiso) VALUES (@id, @permiso)`, [
         ["id", sql.BigInt, rolId],
         ["permiso", sql.VarChar(60), permiso],
       ]);
@@ -199,8 +200,8 @@ export async function guardarRol(id: number | null, d: DatosRol): Promise<number
 export async function eliminarRol(id: number): Promise<string | null> {
   return enTransaccion(async (ej) => {
     const [rol] = await ej.consulta<{ es_sistema: boolean; usuarios: number }>(
-      `SELECT r.es_sistema, (SELECT COUNT(*) FROM dmc.usuario u WHERE u.rol_id = r.id) AS usuarios
-         FROM dmc.rol r WITH (UPDLOCK) WHERE r.id = @id`,
+      `SELECT r.es_sistema, (SELECT COUNT(*) FROM ${T.usuario} u WHERE u.rol_id = r.id) AS usuarios
+         FROM ${T.rol} r WITH (UPDLOCK) WHERE r.id = @id`,
       [["id", sql.BigInt, id]]
     );
     if (!rol) return "Ese rol ya no existe.";
@@ -208,8 +209,8 @@ export async function eliminarRol(id: number): Promise<string | null> {
     if (num(rol.usuarios) > 0) {
       return `Ese rol todavía lo tienen ${num(rol.usuarios)} usuarios. Pásalos a otro rol antes de eliminarlo.`;
     }
-    // dmc.rol_permiso se va con el ON DELETE CASCADE.
-    await ej.ejecutar(`DELETE FROM dmc.rol WHERE id = @id`, [["id", sql.BigInt, id]]);
+    // tecnico.rol_permiso se va con el ON DELETE CASCADE.
+    await ej.ejecutar(`DELETE FROM ${T.rol} WHERE id = @id`, [["id", sql.BigInt, id]]);
     return null;
   });
 }
@@ -241,7 +242,7 @@ export function permisosDelPanel(roles: readonly RolUsuario[], rolId: number | n
 
 /**
  * Varias cuentas por id. Con `bloquear`, dentro de una transacción, las filas
- * de dmc.usuario quedan tomadas hasta el final: nadie les cambia el rol entre
+ * de tecnico.usuario quedan tomadas hasta el final: nadie les cambia el rol entre
  * el control y la escritura.
  */
 export async function leerCuentas(
@@ -261,9 +262,9 @@ export async function leerCuentas(
     permiso: string | null;
   }>(
     `SELECT u.id, u.email, u.rol_id, u.tecnico_id, u.activo, rp.permiso,
-            (SELECT STRING_AGG(r.rol, ',') FROM dmc.usuario_rol r WHERE r.usuario_id = u.id) AS roles
-       FROM dmc.usuario u ${bloquear ? "WITH (UPDLOCK, HOLDLOCK)" : ""}
-       LEFT JOIN dmc.rol_permiso rp ON rp.rol_id = u.rol_id
+            (SELECT STRING_AGG(r.rol, ',') FROM ${T.usuario_rol} r WHERE r.usuario_id = u.id) AS roles
+       FROM ${T.usuario} u ${bloquear ? "WITH (UPDLOCK, HOLDLOCK)" : ""}
+       LEFT JOIN ${T.rol_permiso} rp ON rp.rol_id = u.rol_id
       WHERE u.id IN (SELECT CAST(value AS bigint) FROM OPENJSON(@ids))`,
     [["ids", sql.NVarChar(sql.MAX), JSON.stringify([...new Set(ids)])]]
   );
@@ -302,8 +303,8 @@ export async function leerRol(
 ): Promise<{ id: number; nombre: string; permisos: string[] } | null> {
   const filas = await ej.consulta<{ nombre: string; permiso: string | null }>(
     `SELECT r.nombre, rp.permiso
-       FROM dmc.rol r
-       LEFT JOIN dmc.rol_permiso rp ON rp.rol_id = r.id
+       FROM ${T.rol} r
+       LEFT JOIN ${T.rol_permiso} rp ON rp.rol_id = r.id
       WHERE r.id = @id AND r.nombre <> @tecnico`,
     [
       ["id", sql.BigInt, id],

@@ -446,7 +446,7 @@ export async function liberarVisitaAction(folioPedido: string): Promise<Resultad
  * cliente de prueba, el ensayo del técnico— y no para una que se hizo pero ya
  * no sirve. Solo quien tenga el permiso, y solo si escribe el folio de nuevo: es la
  * traba contra el clic accidental. Queda con nombre y apellido en
- * dmc.visita_eliminacion.
+ * tecnico.visita_eliminacion.
  */
 export async function eliminarVisitaAction(pedido: {
   folio: string;

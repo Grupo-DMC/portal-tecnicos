@@ -2,8 +2,9 @@ import "server-only";
 import { ipDeLaPeticion } from "@/lib/auth";
 import { ejecutar, sql } from "@/lib/data/sql";
 import { log } from "@/lib/log";
+import { T } from "@/lib/db/esquema";
 
-// Registro de acciones sensibles — dmc.auditoria (migración 024).
+// Registro de acciones sensibles — tecnico.auditoria (migración 024).
 //
 // Qué se anota: quién (id y correo en el momento), qué, sobre qué id, cuándo e
 // IP. El detalle lleva solo lo necesario para entender el cambio (por ejemplo,
@@ -79,7 +80,7 @@ export async function auditar(actor: ActorAuditoria | null, evento: EventoAudito
   try {
     const ip = await ipDeLaPeticion().catch(() => null);
     await ejecutar(
-      `INSERT INTO dmc.auditoria (usuario_id, usuario_email, accion, entidad, entidad_id, detalle, ip)
+      `INSERT INTO ${T.auditoria} (usuario_id, usuario_email, accion, entidad, entidad_id, detalle, ip)
        VALUES (@usuario, @email, @accion, @entidad, @entidadId, @detalle, @ip)`,
       [
         ["usuario", sql.BigInt, actor?.usuario.id ?? null],

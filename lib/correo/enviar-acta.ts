@@ -17,7 +17,7 @@ import { archivosMultimedia } from "@/lib/ui/descarga";
 import { unirCorreos, type ClaveAdjunto } from "@/lib/ui/correo";
 import type { Visita } from "@/lib/types";
 
-// Manda el acta de una visita por correo y deja el registro en dmc.acta_envio.
+// Manda el acta de una visita por correo y deja el registro en tecnico.acta_envio.
 //
 //   1. Comprueba que el correo esté configurado y que la visita esté cerrada.
 //   2. Junta los adjuntos elegidos: el PDF del acta y el mismo .zip de fotos y

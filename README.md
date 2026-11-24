@@ -162,10 +162,18 @@ reales.
 
 - El esquema base está en `sql/` y los cambios posteriores en archivos numerados
   `sql/migracion-NNN-*.sql`.
-- Las migraciones son idempotentes y se aplican **en orden** con una cuenta con permisos de DDL.
-  La cuenta que usa la aplicación solo lee y escribe datos.
+- **El esquema no está escrito en las consultas.** Todas arman sus tablas con `T` (`lib/db/esquema.ts`:
+  `` `SELECT … FROM ${T.visita}` ``), que lee `DB_SCHEMA` (por defecto `dmc`, el de DMC_Contingencia; en
+  DMC_Core es `tecnico`). Las tablas de clientes (`GRUPO_CLIENTES`) pueden pasar a otro esquema con
+  `DB_SCHEMA_CLIENTES` (y las de cuentas y roles con `DB_SCHEMA_SEGURIDAD`), sin tocar el código. Un objeto nuevo se agrega a `OBJETOS`; un test avisa si falta.
+  El corte a DMC_Core está en [`docs/corte-dmc-core.md`](docs/corte-dmc-core.md).
+- Las migraciones son idempotentes y se aplican **en orden** con una cuenta con permisos de DDL, que **no**
+  es la de la app (esa solo lee y escribe datos): `npm run migrar` informa qué falta y
+  `npm run migrar -- --aplicar` las aplica, con `DB_MIGRATIONS_USER` / `DB_MIGRATIONS_PASSWORD`
+  (ver `.env.example`). Las migraciones nuevas se escriben con `$(ESQUEMA).tabla`, sin `dmc.` ni `USE`.
+- `npm run comparar-esquema` compara el catálogo de una base real con `sql/dmc_contingencia_sqlserver.sql`.
 - Cada migración nueva también se refleja en el script del esquema base.
-- Cada migración registra su número en `dmc.schema_version`. La aplicación espera la versión de
+- Cada migración registra su número en `schema_version` (del esquema vigente). La aplicación espera la versión de
   `lib/data/esquema.ts` y no tiene caminos alternativos para una base atrasada; `/api/salud` informa
   la versión aplicada.
 - `sql/dmc_contingencia_sqlserver.sql` contiene solo el esquema y lo mínimo que la aplicación necesita

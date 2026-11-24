@@ -15,6 +15,7 @@ import {
   listarSecciones,
   listarTrabajos,
 } from "@/lib/data/catalogos-lectura";
+import { T } from "@/lib/db/esquema";
 
 // Las listas del checklist: la plantilla propia, la foto del checklist a la
 // que vuelve el botón Reiniciar.
@@ -93,7 +94,7 @@ export async function guardarPlantilla(nombre: string, usuarioId: number | null)
   };
 
   await ejecutar(
-    `MERGE dmc.checklist_plantilla AS destino
+    `MERGE ${T.checklist_plantilla} AS destino
      USING (SELECT @nombre AS nombre) AS origen ON destino.nombre = origen.nombre
      WHEN MATCHED THEN UPDATE SET payload = @payload, creado_por = @usuario, actualizado_en = SYSDATETIME()
      WHEN NOT MATCHED THEN INSERT (nombre, payload, creado_por) VALUES (@nombre, @payload, @usuario);`,
@@ -122,7 +123,7 @@ async function leerPlantilla(nombre: string): Promise<{ fila: FilaPlantilla; dat
     `SELECT id, nombre, payload,
             CONVERT(varchar(19), creado_en, 126)      AS creado_en,
             CONVERT(varchar(19), actualizado_en, 126) AS actualizado_en
-       FROM dmc.checklist_plantilla WHERE nombre = @nombre`,
+       FROM ${T.checklist_plantilla} WHERE nombre = @nombre`,
     [["nombre", sql.NVarChar(80), nombre]]
   );
   if (!fila) return null;

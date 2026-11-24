@@ -3,8 +3,9 @@ import { log } from "@/lib/log";
 import { consultaCon, ejecutar, num, sql, F_TS } from "@/lib/data/sql";
 import type { PersonaLocal } from "@/lib/types";
 import { mensajeCorreo } from "@/lib/ui/formato";
+import { T } from "@/lib/db/esquema";
 
-// Quienes han recibido o firmado en cada tienda (dmc.persona_local). Es una
+// Quienes han recibido o firmado en cada tienda (tecnico.persona_local). Es una
 // ayuda para no reescribir datos: si la lectura o la escritura falla, la visita
 // se agenda y el acta se cierra igual.
 
@@ -19,7 +20,7 @@ export interface DatosPersona {
 /** Si el técnico tiene (o tuvo) una visita en la sucursal, como titular o ayudante. */
 export async function tecnicoTieneVisitaEn(tecnicoId: number, sucursalId: number): Promise<boolean> {
   const [fila] = await consultaCon<{ n: number }>(
-    `SELECT TOP 1 1 AS n FROM dmc.visita
+    `SELECT TOP 1 1 AS n FROM ${T.visita}
       WHERE sucursal_id = @sucursal AND activo = 1
         AND (tecnico_id = @tecnico OR tecnico_ayudante_id = @tecnico)`,
     [
@@ -43,9 +44,9 @@ export async function listarPersonasLocal(sucursalId: number): Promise<PersonaLo
       ultima_vez: string;
     }>(
       `SELECT id, nombre, rut, telefono, cargo, email, ${F_TS("ultima_vez")} AS ultima_vez
-         FROM dmc.persona_local
+         FROM ${T.persona_local}
         WHERE sucursal_id = @sucursal
-        ORDER BY dmc.persona_local.ultima_vez DESC, id DESC`,
+        ORDER BY ${T.persona_local}.ultima_vez DESC, id DESC`,
       [["sucursal", sql.BigInt, sucursalId]]
     );
     return filas.map((f) => ({
@@ -76,13 +77,13 @@ export async function registrarPersonaLocal(sucursalId: number, persona: DatosPe
       `DECLARE @n int = 0;
 
        IF @rut IS NOT NULL
-         UPDATE dmc.persona_local
+         UPDATE ${T.persona_local}
             SET nombre = @nombre, telefono = COALESCE(@telefono, telefono),
                 email = COALESCE(@email, email),
                 cargo = COALESCE(@cargo, cargo), ultima_vez = SYSDATETIME()
           WHERE sucursal_id = @sucursal AND rut = @rut;
        ELSE
-         UPDATE dmc.persona_local
+         UPDATE ${T.persona_local}
             SET telefono = COALESCE(@telefono, telefono),
                 email = COALESCE(@email, email),
                 cargo = COALESCE(@cargo, cargo), ultima_vez = SYSDATETIME()
@@ -90,7 +91,7 @@ export async function registrarPersonaLocal(sucursalId: number, persona: DatosPe
        SET @n = @@ROWCOUNT;
 
        IF @n = 0
-         INSERT INTO dmc.persona_local (sucursal_id, nombre, rut, telefono, email, cargo)
+         INSERT INTO ${T.persona_local} (sucursal_id, nombre, rut, telefono, email, cargo)
          VALUES (@sucursal, @nombre, @rut, @telefono, @email, @cargo);`,
       [
         ["sucursal", sql.BigInt, sucursalId],

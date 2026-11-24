@@ -2,12 +2,13 @@ import "server-only";
 import { consultaCon, ejecutar, num, numONull, sql } from "@/lib/data/sql";
 import { log } from "@/lib/log";
 import type { AdjuntoTrabajo, EstadoVisita } from "@/lib/types";
+import { T } from "@/lib/db/esquema";
 
 /**
  * Las fotos y los videos que explican el trabajo a realizar.
  *
- * Es el encargo, no la evidencia: viven en dmc.visita_adjunto y no se mezclan
- * con dmc.visita_foto ni dmc.visita_video, que son lo que el técnico deja en el
+ * Es el encargo, no la evidencia: viven en tecnico.visita_adjunto y no se mezclan
+ * con tecnico.visita_foto ni tecnico.visita_video, que son lo que el técnico deja en el
  * acta. La subida es la misma del video del acta, por trozos y en tres pasos:
  * `abrirAdjunto` crea la fila vacía, `pegarTrozoAdjunto` le agrega el archivo y
  * `cerrarAdjunto` la deja utilizable. Mientras no llegue entero, nadie la ve.
@@ -79,7 +80,7 @@ export async function getVisitaParaAdjunto(folio: string): Promise<VisitaParaAdj
     creada_en_terreno: boolean;
   }>(
     `SELECT id, estado, tecnico_id, tecnico_ayudante_id, creada_en_terreno
-       FROM dmc.visita WHERE folio = @folio AND activo = 1`,
+       FROM ${T.visita} WHERE folio = @folio AND activo = 1`,
     [["folio", sql.VarChar(16), folio]]
   );
   return fila
@@ -115,12 +116,12 @@ const HORAS_ADJUNTO_A_MEDIAS = 24;
 export async function purgarAdjuntosDescartados(): Promise<void> {
   try {
     await ejecutar(
-      `DELETE FROM dmc.visita_adjunto
+      `DELETE FROM ${T.visita_adjunto}
         WHERE subida_completa = 0 AND subido_en < DATEADD(HOUR, -@horas, SYSDATETIME())`,
       [["horas", sql.Int, HORAS_ADJUNTO_A_MEDIAS]]
     );
     await ejecutar(
-      `UPDATE dmc.visita_adjunto SET contenido = NULL
+      `UPDATE ${T.visita_adjunto} SET contenido = NULL
         WHERE activo = 0 AND contenido IS NOT NULL AND subido_en < DATEADD(DAY, -@dias, SYSDATETIME())`,
       [["dias", sql.Int, DIAS_ADJUNTO_QUITADO]]
     );
@@ -136,7 +137,7 @@ export async function purgarAdjuntosDescartados(): Promise<void> {
 export async function abrirAdjunto(visitaId: number, d: DatosAdjunto, usuarioId: number): Promise<number | null> {
   await purgarAdjuntosDescartados();
   const [uso] = await consultaCon<{ dia: number }>(
-    `SELECT COALESCE(SUM(CAST(bytes AS bigint)), 0) AS dia FROM dmc.visita_adjunto
+    `SELECT COALESCE(SUM(CAST(bytes AS bigint)), 0) AS dia FROM ${T.visita_adjunto}
       WHERE subido_por = @usuario AND subido_en > DATEADD(DAY, -1, SYSDATETIME())`,
     [["usuario", sql.BigInt, usuarioId]]
   );
@@ -146,10 +147,10 @@ export async function abrirAdjunto(visitaId: number, d: DatosAdjunto, usuarioId:
   const [fila] = await consultaCon<{ id: number | null }>(
     `DECLARE @nuevo TABLE (id bigint);
 
-     INSERT INTO dmc.visita_adjunto (visita_id, tipo, nombre, mime, contenido, bytes, duracion_seg, subido_por)
+     INSERT INTO ${T.visita_adjunto} (visita_id, tipo, nombre, mime, contenido, bytes, duracion_seg, subido_por)
      OUTPUT INSERTED.id INTO @nuevo
      SELECT @visita, @tipo, @nombre, @mime, 0x, @bytes, @duracion, @usuario
-      WHERE (SELECT COUNT(*) FROM dmc.visita_adjunto WHERE visita_id = @visita AND activo = 1) < @maximo;
+      WHERE (SELECT COUNT(*) FROM ${T.visita_adjunto} WHERE visita_id = @visita AND activo = 1) < @maximo;
 
      SELECT id FROM @nuevo;`,
     [
@@ -183,7 +184,7 @@ export async function pegarTrozoAdjunto(
 
   const [fila] = await consultaCon<{ recibidos: number; bytes: number; completa: boolean; tipo: "FOTO" | "VIDEO" }>(
     `SELECT bytes_recibidos AS recibidos, bytes, subida_completa AS completa, tipo
-       FROM dmc.visita_adjunto WHERE id = @id AND visita_id = @visita AND activo = 1`,
+       FROM ${T.visita_adjunto} WHERE id = @id AND visita_id = @visita AND activo = 1`,
     [
       ["id", sql.BigInt, id],
       ["visita", sql.BigInt, visitaId],
@@ -210,7 +211,7 @@ export async function pegarTrozoAdjunto(
   // .WRITE con offset NULL agrega al final. El bytes_recibidos = @desde del
   // WHERE hace de candado: dos envíos del mismo trozo no se pegan dos veces.
   const filas = await ejecutar(
-    `UPDATE dmc.visita_adjunto
+    `UPDATE ${T.visita_adjunto}
         SET contenido.WRITE(@trozo, NULL, 0),
             bytes_recibidos = bytes_recibidos + @largo
       WHERE id = @id AND visita_id = @visita
@@ -230,7 +231,7 @@ export async function pegarTrozoAdjunto(
 /** Marca el archivo utilizable. Falla si no llegó completo. */
 export async function cerrarAdjunto(id: number, visitaId: number): Promise<boolean> {
   const filas = await ejecutar(
-    `UPDATE dmc.visita_adjunto SET subida_completa = 1, subido_en = SYSDATETIME()
+    `UPDATE ${T.visita_adjunto} SET subida_completa = 1, subido_en = SYSDATETIME()
       WHERE id = @id AND visita_id = @visita AND activo = 1
         AND subida_completa = 0 AND bytes_recibidos = bytes`,
     [
@@ -244,7 +245,7 @@ export async function cerrarAdjunto(id: number, visitaId: number): Promise<boole
 /** Quitar un adjunto: no se borra la fila, se deja inactiva. */
 export async function desactivarAdjunto(id: number, visitaId: number): Promise<boolean> {
   const filas = await ejecutar(
-    `UPDATE dmc.visita_adjunto SET activo = 0 WHERE id = @id AND visita_id = @visita AND activo = 1`,
+    `UPDATE ${T.visita_adjunto} SET activo = 0 WHERE id = @id AND visita_id = @visita AND activo = 1`,
     [
       ["id", sql.BigInt, id],
       ["visita", sql.BigInt, visitaId],
@@ -290,7 +291,7 @@ export interface AdjuntoMeta {
 export async function getAdjuntoMeta(id: number): Promise<AdjuntoMeta | null> {
   const [fila] = await consultaCon<{ mime: string; largo: number; tipo: "FOTO" | "VIDEO"; nombre: string | null }>(
     `SELECT mime, tipo, nombre, DATALENGTH(contenido) AS largo
-       FROM dmc.visita_adjunto WHERE id = @id AND activo = 1 AND subida_completa = 1`,
+       FROM ${T.visita_adjunto} WHERE id = @id AND activo = 1 AND subida_completa = 1`,
     [["id", sql.BigInt, id]]
   );
   if (!fila?.largo) return null;
@@ -301,7 +302,7 @@ export async function getAdjuntoMeta(id: number): Promise<AdjuntoMeta | null> {
 export async function getAdjuntoTramo(id: number, desde: number, hasta: number): Promise<Buffer | null> {
   const [fila] = await consultaCon<{ trozo: Buffer | null }>(
     // SUBSTRING sobre varbinary es 1-based.
-    `SELECT SUBSTRING(contenido, @desde, @largo) AS trozo FROM dmc.visita_adjunto WHERE id = @id`,
+    `SELECT SUBSTRING(contenido, @desde, @largo) AS trozo FROM ${T.visita_adjunto} WHERE id = @id`,
     [
       ["id", sql.BigInt, id],
       ["desde", sql.BigInt, desde + 1],
@@ -315,7 +316,7 @@ export async function getAdjuntoTramo(id: number, desde: number, hasta: number):
 export async function getDuenosDeAdjunto(id: number): Promise<{ tecnicos: number[]; visitaActiva: boolean } | null> {
   const [fila] = await consultaCon<{ tecnico_id: number; tecnico_ayudante_id: number | null; activo: boolean }>(
     `SELECT v.tecnico_id, v.tecnico_ayudante_id, v.activo
-       FROM dmc.visita_adjunto x JOIN dmc.visita v ON v.id = x.visita_id WHERE x.id = @id`,
+       FROM ${T.visita_adjunto} x JOIN ${T.visita} v ON v.id = x.visita_id WHERE x.id = @id`,
     [["id", sql.BigInt, id]]
   );
   if (!fila) return null;

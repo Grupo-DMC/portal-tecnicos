@@ -13,13 +13,14 @@ import {
 } from "@/lib/data/estado-activo";
 import type { Cliente, Mall, Marca, RolUsuario, Sucursal, Tecnico, Usuario } from "@/lib/types";
 import { mismosRoles, ordenarRoles, problemaDeRoles, tieneRolTecnico } from "@/lib/roles";
+import { T } from "@/lib/db/esquema";
 
-// Maestros: dmc.cliente, dmc.mall, dmc.sucursal, dmc.tecnico y dmc.usuario.
+// Maestros: tecnico.cliente, tecnico.mall, tecnico.sucursal, tecnico.tecnico y tecnico.usuario.
 // Lectura para las tablas del panel y escritura para sus diálogos de alta/edición.
 //
 // Desactivar exige un motivo (migración 039): lo valida la acción y lo vuelve a
 // exigir la base con un CHECK. Cada cambio de estado se anota en
-// dmc.cambio_estado en la misma transacción que el guardado.
+// tecnico.cambio_estado en la misma transacción que el guardado.
 
 /** Las columnas de la baja que traen las filas leídas con `columnasDeBaja`. */
 interface ConBaja {
@@ -51,7 +52,7 @@ async function rutTomado(tabla: "cliente" | "tecnico", rut: string, idPropio: nu
   const limpio = rutLimpio(rut);
   if (!limpio) return false;
   const filas = await consultaCon<{ id: number }>(
-    `SELECT TOP 1 id FROM dmc.${tabla}
+    `SELECT TOP 1 id FROM ${T[tabla]}
       WHERE REPLACE(REPLACE(UPPER(rut), '.', ''), '-', '') = @rut
         AND (@id IS NULL OR id <> @id)`,
     [
@@ -66,7 +67,7 @@ async function rutTomado(tabla: "cliente" | "tecnico", rut: string, idPropio: nu
  * Deja el nombre de toda sucursal en un mall como «Cliente · Marca · Mall»
  * (sin la marca si repite el cliente), con la misma regla de la migración 033.
  *
- * `dmc.sucursal.nombre` es un texto guardado y lo leen tal cual las visitas,
+ * `tecnico.sucursal.nombre` es un texto guardado y lo leen tal cual las visitas,
  * los filtros, las actas y el selector de «Agendar visita». Como se compone de
  * tres tablas, cada cambio en cualquiera de ellas —renombrar cliente, marca o
  * mall, cambiar la marca o el mall de una sucursal, mover tiendas entre malls—
@@ -89,10 +90,10 @@ export async function sincronizarNombresDeSucursales(): Promise<void> {
                LEFT(c.nombre_fantasia
                     + CASE WHEN m.nombre <> c.nombre_fantasia THEN N' · ' + m.nombre ELSE N'' END
                     + N' · ' + ml.nombre, 120) AS fusionado
-          FROM dmc.sucursal s
-          JOIN dmc.cliente c  ON c.id  = s.cliente_id
-          JOIN dmc.marca   m  ON m.id  = s.marca_id
-          JOIN dmc.mall    ml ON ml.id = s.mall_id
+          FROM ${T.sucursal} s
+          JOIN ${T.cliente} c  ON c.id  = s.cliente_id
+          JOIN ${T.marca}   m  ON m.id  = s.marca_id
+          JOIN ${T.mall}    ml ON ml.id = s.mall_id
     ),
     numerado AS (
         SELECT *, ROW_NUMBER() OVER (PARTITION BY marca_id, fusionado ORDER BY id) AS n FROM base
@@ -108,14 +109,14 @@ export async function sincronizarNombresDeSucursales(): Promise<void> {
     SELECT id, actual, nombre INTO #cambios FROM nuevo WHERE nombre COLLATE Latin1_General_BIN2 <> actual COLLATE Latin1_General_BIN2;
 
     DELETE c FROM #cambios c
-     WHERE EXISTS (SELECT 1 FROM dmc.sucursal o
-                    WHERE o.marca_id = (SELECT marca_id FROM dmc.sucursal WHERE id = c.id)
+     WHERE EXISTS (SELECT 1 FROM ${T.sucursal} o
+                    WHERE o.marca_id = (SELECT marca_id FROM ${T.sucursal} WHERE id = c.id)
                       AND o.nombre = c.nombre AND o.id <> c.id
                       AND o.id NOT IN (SELECT id FROM #cambios));
 
     -- Dos pasos para no chocar con la restricción única mientras se renombra.
-    UPDATE s SET nombre = N'~' + CAST(s.id AS nvarchar(20)) FROM dmc.sucursal s JOIN #cambios c ON c.id = s.id;
-    UPDATE s SET nombre = c.nombre FROM dmc.sucursal s JOIN #cambios c ON c.id = s.id;
+    UPDATE s SET nombre = N'~' + CAST(s.id AS nvarchar(20)) FROM ${T.sucursal} s JOIN #cambios c ON c.id = s.id;
+    UPDATE s SET nombre = c.nombre FROM ${T.sucursal} s JOIN #cambios c ON c.id = s.id;
 
     DROP TABLE #cambios;
     COMMIT TRANSACTION;`);
@@ -142,7 +143,7 @@ export async function listarClientes(filtro: { ids?: number[] } = {}): Promise<C
   const filas = await consultaCon<FilaCliente>(
     `SELECT id, rut, razon_social, nombre_fantasia, activo, motivo_inactivo, notas, plan_calibracion, garantia_meses,
             ${baja.columnas}
-       FROM dmc.cliente c
+       FROM ${T.cliente} c
        ${baja.apply}
       ${filtro.ids ? `WHERE id IN ${subIds("ids")}` : ""}
       ORDER BY nombre_fantasia`,
@@ -202,7 +203,7 @@ export async function guardarCliente(id: number | null, d: DatosCliente, actor: 
     let filaId: number;
     if (id === null) {
       const [fila] = await ej.consulta<{ id: number }>(
-        `INSERT INTO dmc.cliente (rut, razon_social, nombre_fantasia, activo, motivo_inactivo, notas, plan_calibracion, garantia_meses)
+        `INSERT INTO ${T.cliente} (rut, razon_social, nombre_fantasia, activo, motivo_inactivo, notas, plan_calibracion, garantia_meses)
          OUTPUT INSERTED.id AS id
          VALUES (@rut, @razon, @fantasia, @activo, @motivo, @notas, @plan, @garantia)`,
         params
@@ -210,7 +211,7 @@ export async function guardarCliente(id: number | null, d: DatosCliente, actor: 
       filaId = num(fila.id);
     } else {
       await ej.ejecutar(
-        `UPDATE dmc.cliente
+        `UPDATE ${T.cliente}
             SET rut = @rut, razon_social = @razon, nombre_fantasia = @fantasia, activo = @activo,
                 motivo_inactivo = @motivo, notas = @notas, plan_calibracion = @plan, garantia_meses = @garantia
           WHERE id = @id`,
@@ -239,7 +240,7 @@ export async function listarMarcas(filtro: { clienteId?: number } = {}): Promise
   const baja = columnasDeBaja("marca", "m");
   const filas = await consultaCon<FilaMarca>(
     `SELECT id, cliente_id, nombre, activo, motivo_inactivo, ${baja.columnas}
-       FROM dmc.marca m
+       FROM ${T.marca} m
        ${baja.apply}
       ${filtro.clienteId !== undefined ? "WHERE cliente_id = @cliente" : ""}
       ORDER BY nombre`,
@@ -276,7 +277,7 @@ export async function guardarMarca(id: number | null, d: DatosMarca, actor: Acto
     let filaId: number;
     if (id === null) {
       const [fila] = await ej.consulta<{ id: number }>(
-        `INSERT INTO dmc.marca (cliente_id, nombre, activo, motivo_inactivo)
+        `INSERT INTO ${T.marca} (cliente_id, nombre, activo, motivo_inactivo)
          OUTPUT INSERTED.id AS id VALUES (@cliente, @nombre, @activo, @motivo)`,
         params
       );
@@ -284,7 +285,7 @@ export async function guardarMarca(id: number | null, d: DatosMarca, actor: Acto
     } else {
       // El cliente de una marca no cambia: sus sucursales ya cuelgan de él (fk_sucursal_marca).
       await ej.ejecutar(
-        `UPDATE dmc.marca SET nombre = @nombre, activo = @activo, motivo_inactivo = @motivo
+        `UPDATE ${T.marca} SET nombre = @nombre, activo = @activo, motivo_inactivo = @motivo
           WHERE id = @id AND cliente_id = @cliente`,
         [...params, ["id", sql.BigInt, id]]
       );
@@ -313,7 +314,7 @@ export async function listarMalls(filtro: { ids?: number[] } = {}): Promise<Mall
   const baja = columnasDeBaja("mall", "ml");
   const filas = await consultaCon<FilaMall>(
     `SELECT id, nombre, direccion, comuna, region, activo, motivo_inactivo, ${baja.columnas}
-       FROM dmc.mall ml
+       FROM ${T.mall} ml
        ${baja.apply}
       ${filtro.ids ? `WHERE id IN ${subIds("ids")}` : ""}
       ORDER BY nombre`,
@@ -361,7 +362,7 @@ export async function guardarMall(id: number | null, d: DatosMall, actor: ActorE
     let filaId: number;
     if (id === null) {
       const [fila] = await ej.consulta<{ id: number }>(
-        `INSERT INTO dmc.mall (nombre, direccion, comuna, region, activo, motivo_inactivo)
+        `INSERT INTO ${T.mall} (nombre, direccion, comuna, region, activo, motivo_inactivo)
          OUTPUT INSERTED.id AS id
          VALUES (@nombre, @direccion, @comuna, @region, @activo, @motivo)`,
         params
@@ -369,7 +370,7 @@ export async function guardarMall(id: number | null, d: DatosMall, actor: ActorE
       filaId = num(fila.id);
     } else {
       await ej.ejecutar(
-        `UPDATE dmc.mall
+        `UPDATE ${T.mall}
             SET nombre = @nombre, direccion = @direccion, comuna = @comuna, region = @region, activo = @activo,
                 motivo_inactivo = @motivo
           WHERE id = @id`,
@@ -405,9 +406,9 @@ export async function ponerTiendasDeMall(mallId: number, sucursalIds: number[]):
   ];
   const ajenas = await consultaCon<{ nombre: string; mall: string }>(
     `SELECT s.nombre, m.nombre AS mall
-       FROM dmc.sucursal s
+       FROM ${T.sucursal} s
        JOIN (SELECT CAST([value] AS bigint) AS id FROM OPENJSON(@ids)) t ON t.id = s.id
-       JOIN dmc.mall m ON m.id = s.mall_id
+       JOIN ${T.mall} m ON m.id = s.mall_id
       WHERE s.mall_id <> @mall
       ORDER BY s.nombre`,
     params
@@ -417,7 +418,7 @@ export async function ponerTiendasDeMall(mallId: number, sucursalIds: number[]):
   await ejecutar(
     `UPDATE s
         SET mall_id = CASE WHEN t.id IS NULL THEN NULL ELSE @mall END
-       FROM dmc.sucursal s
+       FROM ${T.sucursal} s
        LEFT JOIN (SELECT CAST([value] AS bigint) AS id FROM OPENJSON(@ids)) t ON t.id = s.id
       WHERE (s.mall_id = @mall AND t.id IS NULL)
          OR (t.id IS NOT NULL AND s.mall_id IS NULL)`,
@@ -470,7 +471,7 @@ export async function listarSucursales(
     `SELECT id, cliente_id, marca_id, mall_id, nombre, codigo, direccion, comuna, region, telefono, activo,
             motivo_inactivo, notas, ${F_FECHA("fecha_instalacion")} AS fecha_instalacion, remota, garantia_meses,
             plan_calibracion, ${baja.columnas}
-       FROM dmc.sucursal s
+       FROM ${T.sucursal} s
        ${baja.apply}
       ${donde.length ? `WHERE ${donde.join(" AND ")}` : ""}
       ORDER BY nombre`,
@@ -558,7 +559,7 @@ export async function guardarSucursal(id: number | null, d: DatosSucursal, actor
     let filaId: number;
     if (id === null) {
       const [fila] = await ej.consulta<{ id: number }>(
-        `INSERT INTO dmc.sucursal (cliente_id, marca_id, mall_id, nombre, codigo, direccion, comuna, region, telefono, activo,
+        `INSERT INTO ${T.sucursal} (cliente_id, marca_id, mall_id, nombre, codigo, direccion, comuna, region, telefono, activo,
                                    motivo_inactivo, notas, fecha_instalacion, remota, garantia_meses, plan_calibracion)
          OUTPUT INSERTED.id AS id
          VALUES (@cliente, @marca, @mall, @nombre, @codigo, @direccion, @comuna, @region, @telefono, @activo, @motivo, @notas,
@@ -568,7 +569,7 @@ export async function guardarSucursal(id: number | null, d: DatosSucursal, actor
       filaId = num(fila.id);
     } else {
       await ej.ejecutar(
-        `UPDATE dmc.sucursal
+        `UPDATE ${T.sucursal}
             SET cliente_id = @cliente, marca_id = @marca, mall_id = @mall, nombre = @nombre, codigo = @codigo, direccion = @direccion,
                 comuna = @comuna, region = @region, telefono = @telefono, activo = @activo,
                 motivo_inactivo = @motivo, notas = @notas, fecha_instalacion = @instalacion, remota = @remota,
@@ -616,7 +617,7 @@ export async function crearSucursalesLote(filas: DatosSucursalLote[]): Promise<n
     }))
   );
   const creadas = await ejecutar(
-    `INSERT INTO dmc.sucursal (cliente_id, marca_id, mall_id, nombre, codigo, direccion, comuna, region, activo)
+    `INSERT INTO ${T.sucursal} (cliente_id, marca_id, mall_id, nombre, codigo, direccion, comuna, region, activo)
      SELECT j.cliente, j.marca, j.mall, j.nombre, j.codigo, j.direccion, j.comuna, j.region, 1
        FROM OPENJSON(@filas)
             WITH (cliente bigint '$.cliente', marca bigint '$.marca', mall bigint '$.mall', nombre nvarchar(120) '$.nombre', codigo varchar(20) '$.codigo',
@@ -671,7 +672,7 @@ export async function listarTecnicos(): Promise<Tecnico[]> {
   const filas = await consulta<FilaTecnico>(
     `SELECT id, rut, nombres, apellido_paterno, apellido_materno, nombre_completo, email, telefono, activo,
             motivo_inactivo, ${baja.columnas}
-       FROM dmc.tecnico t
+       FROM ${T.tecnico} t
        ${baja.apply}
       ORDER BY nombre_completo`
   );
@@ -711,7 +712,7 @@ export async function guardarTecnico(id: number | null, d: DatosTecnico, actor: 
     let filaId: number;
     if (id === null) {
       const [fila] = await ej.consulta<{ id: number }>(
-        `INSERT INTO dmc.tecnico (rut, nombres, apellido_paterno, apellido_materno, email, telefono, activo, motivo_inactivo)
+        `INSERT INTO ${T.tecnico} (rut, nombres, apellido_paterno, apellido_materno, email, telefono, activo, motivo_inactivo)
          OUTPUT INSERTED.id AS id
          VALUES (@rut, @nombres, @paterno, @materno, @email, @telefono, @activo, @motivo)`,
         params
@@ -719,7 +720,7 @@ export async function guardarTecnico(id: number | null, d: DatosTecnico, actor: 
       filaId = num(fila.id);
     } else {
       await ej.ejecutar(
-        `UPDATE dmc.tecnico
+        `UPDATE ${T.tecnico}
             SET rut = @rut, nombres = @nombres, apellido_paterno = @paterno, apellido_materno = @materno,
                 email = @email, telefono = @telefono, activo = @activo, motivo_inactivo = @motivo
           WHERE id = @id`,
@@ -747,9 +748,9 @@ export async function listarUsuarios(): Promise<Usuario[]> {
   const baja = columnasDeBaja("usuario", "u");
   const filas = await consulta<FilaUsuarioLista>(
     `SELECT id, email, rol_id, tecnico_id, activo, motivo_inactivo, ${F_TS("ultimo_acceso_en")} AS ultimo_acceso_en,
-            (SELECT STRING_AGG(r.rol, ',') FROM dmc.usuario_rol r WHERE r.usuario_id = u.id) AS roles,
+            (SELECT STRING_AGG(r.rol, ',') FROM ${T.usuario_rol} r WHERE r.usuario_id = u.id) AS roles,
             ${baja.columnas}
-       FROM dmc.usuario u
+       FROM ${T.usuario} u
        ${baja.apply}
       ORDER BY email`
   );
@@ -768,9 +769,9 @@ export async function listarUsuarios(): Promise<Usuario[]> {
 
 export interface DatosUsuario {
   email: string;
-  /** Sus roles (dmc.usuario_rol). Ver lib/roles.problemaDeRoles para las combinaciones. */
+  /** Sus roles (tecnico.usuario_rol). Ver lib/roles.problemaDeRoles para las combinaciones. */
   roles: RolUsuario[];
-  /** El rol del panel (dmc.rol). Solo cuenta si tiene el rol COORDINADOR. */
+  /** El rol del panel (tecnico.rol). Solo cuenta si tiene el rol COORDINADOR. */
   rolId?: number | null;
   /** El técnico vinculado. Solo cuenta si tiene el rol TECNICO, y ahí es obligatorio. */
   tecnicoId: number | null;
@@ -819,7 +820,7 @@ type EjecutorTx = Parameters<Parameters<typeof enTransaccion>[0]>[0];
  */
 async function fijarRoles(ej: EjecutorTx, usuarioId: number, roles: readonly RolUsuario[]): Promise<void> {
   await ej.ejecutar(
-    `WITH actuales AS (SELECT usuario_id, rol FROM dmc.usuario_rol WHERE usuario_id = @id)
+    `WITH actuales AS (SELECT usuario_id, rol FROM ${T.usuario_rol} WHERE usuario_id = @id)
      MERGE actuales AS d
      USING (SELECT @id AS usuario_id, CAST(value AS varchar(12)) AS rol FROM STRING_SPLIT(@roles, ',')) AS o
         ON d.usuario_id = o.usuario_id AND d.rol = o.rol
@@ -876,7 +877,7 @@ export async function guardarUsuario(
     if (actual === null) {
       // Sin roles todavía: es el alta de los roles la que dispara las reglas.
       const [fila] = await ej.consulta<{ id: number }>(
-        `INSERT INTO dmc.usuario (email, password_hash, rol_id, tecnico_id, activo, motivo_inactivo, debe_cambiar_password)
+        `INSERT INTO ${T.usuario} (email, password_hash, rol_id, tecnico_id, activo, motivo_inactivo, debe_cambiar_password)
          VALUES (@email, @hash, @rolId, @tecnico, @activo, @motivo, @debe);
          SELECT CAST(SCOPE_IDENTITY() AS bigint) AS id;`,
         [
@@ -915,7 +916,7 @@ export async function guardarUsuario(
     //   2. se fijan los roles;
     //   3. quedan el técnico y el rol del panel definitivos.
     await ej.ejecutar(
-      `UPDATE dmc.usuario
+      `UPDATE ${T.usuario}
           SET tecnico_id = COALESCE(@tecnico, tecnico_id),
               rol_id = CASE WHEN @rolId IS NULL THEN NULL ELSE rol_id END
         WHERE id = @id`,
@@ -926,17 +927,17 @@ export async function guardarUsuario(
       ]
     );
     await fijarRoles(ej, actual.id, roles);
-    // Sin OUTPUT: dmc.usuario tiene trigger de actualización. La versión se
+    // Sin OUTPUT: tecnico.usuario tiene trigger de actualización. La versión se
     // relee en el mismo lote.
     const [fila] = await ej.consulta<{ sesion_version: number }>(
-      `UPDATE dmc.usuario
+      `UPDATE ${T.usuario}
           SET email = @email, rol_id = @rolId, tecnico_id = @tecnico, activo = @activo,
               motivo_inactivo = @motivo,
               password_hash = COALESCE(@hash, password_hash),
               debe_cambiar_password = CASE WHEN @hash IS NULL THEN debe_cambiar_password ELSE @debe END,
               sesion_version = sesion_version + @revoca
         WHERE id = @id;
-       SELECT sesion_version FROM dmc.usuario WHERE id = @id;`,
+       SELECT sesion_version FROM ${T.usuario} WHERE id = @id;`,
       [
         ["email", sql.NVarChar(160), email],
         ["rolId", sql.BigInt, rolId],
@@ -959,7 +960,7 @@ export async function guardarUsuario(
     });
     // Cambia la clave, los roles o se desactiva: sus navegadores dejan de recibir avisos push.
     if (revoca) {
-      await ej.ejecutar(`DELETE FROM dmc.push_suscripcion WHERE usuario_id = @id`, [["id", sql.BigInt, actual.id]]);
+      await ej.ejecutar(`DELETE FROM ${T.push_suscripcion} WHERE usuario_id = @id`, [["id", sql.BigInt, actual.id]]);
     }
     return { id: actual.id, sesionVersion: num(fila.sesion_version) };
   });

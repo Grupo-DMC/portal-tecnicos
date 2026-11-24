@@ -11,6 +11,7 @@ import { hoyISO } from "@/lib/ui/fecha";
 import { PRIMER_ANIO_PAPEL } from "@/lib/ui/papel";
 import { validar } from "@/lib/validacion/comun";
 import { entradaFirmantes, entradaVisitasPapel } from "@/lib/validacion/visitas";
+import { T } from "@/lib/db/esquema";
 
 /** Cuántos informes se aceptan por guardado: más que eso conviene partirlo. */
 const MAXIMO_POR_LOTE = 150;
@@ -58,11 +59,11 @@ export async function crearVisitasPapelAction(lotePedido: { informes: InformePap
     listarTrabajos(),
     idsSucursal.length
       ? consultaCon<{ id: number; cliente_id: number }>(
-          `SELECT id, cliente_id FROM dmc.sucursal WHERE id IN ${subIds("ids")}`,
+          `SELECT id, cliente_id FROM ${T.sucursal} WHERE id IN ${subIds("ids")}`,
           [paramIds("ids", idsSucursal)]
         )
       : Promise.resolve([]),
-    consultaCon<{ id: number }>(`SELECT id FROM dmc.tecnico`, []),
+    consultaCon<{ id: number }>(`SELECT id FROM ${T.tecnico}`, []),
   ]);
   const clienteDe = new Map(sucursales.map((s) => [num(s.id), num(s.cliente_id)]));
   const hayTecnico = new Set(tecnicos.map((t) => num(t.id)));
@@ -168,7 +169,7 @@ export async function firmantesDeSucursalesAction(lotePedido: {
     const filas = await consultaCon<{ sucursal_id: number; nombre: string; rut: string | null; n: number }>(
       `SELECT sucursal_id, LTRIM(RTRIM(responsable_nombre)) AS nombre,
               MAX(LTRIM(RTRIM(responsable_rut))) AS rut, COUNT(*) AS n
-         FROM dmc.visita
+         FROM ${T.visita}
         WHERE sucursal_id IN ${subIds("ids")}
           AND responsable_nombre IS NOT NULL AND LTRIM(RTRIM(responsable_nombre)) <> ''
         GROUP BY sucursal_id, LTRIM(RTRIM(responsable_nombre))

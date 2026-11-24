@@ -1,6 +1,7 @@
 import "server-only";
 import { consultaCon, num, sql } from "@/lib/data/sql";
 import type { ConflictoAgenda } from "@/lib/contratos/visitas";
+import { T } from "@/lib/db/esquema";
 
 // Alertas al agendar: dos visitas del mismo día que se pisan. No bloquean nada;
 // el panel las muestra para que coordinación decida.
@@ -33,17 +34,17 @@ export async function conflictosDeAgenda(p: PedidoConflictos): Promise<Conflicto
     sucursal: string;
     mall: string | null;
   }>(
-    `DECLARE @mall bigint = (SELECT mall_id FROM dmc.sucursal WHERE id = @sucursal);
+    `DECLARE @mall bigint = (SELECT mall_id FROM ${T.sucursal} WHERE id = @sucursal);
 
      SELECT v.folio, v.estado, v.tecnico_id, v.tecnico_ayudante_id,
             t.nombre_completo AS tecnico, ta.nombre_completo AS ayudante,
             c.nombre_fantasia AS cliente, v.sucursal_id, s.nombre AS sucursal, m.nombre AS mall
-       FROM dmc.visita v
-       JOIN dmc.sucursal s ON s.id = v.sucursal_id
-       JOIN dmc.cliente  c ON c.id = v.cliente_id
-       JOIN dmc.tecnico  t ON t.id = v.tecnico_id
-       LEFT JOIN dmc.tecnico ta ON ta.id = v.tecnico_ayudante_id
-       LEFT JOIN dmc.mall m ON m.id = s.mall_id
+       FROM ${T.visita} v
+       JOIN ${T.sucursal} s ON s.id = v.sucursal_id
+       JOIN ${T.cliente}  c ON c.id = v.cliente_id
+       JOIN ${T.tecnico}  t ON t.id = v.tecnico_id
+       LEFT JOIN ${T.tecnico} ta ON ta.id = v.tecnico_ayudante_id
+       LEFT JOIN ${T.mall} m ON m.id = s.mall_id
       WHERE v.activo = 1 AND v.estado IN ${ESTADOS_QUE_CUENTAN}
         AND v.fecha_programada = @fecha
         AND (@folio IS NULL OR v.folio <> @folio)

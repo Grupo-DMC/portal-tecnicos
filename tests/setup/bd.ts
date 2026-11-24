@@ -1,5 +1,6 @@
 import { afterAll, inject } from "vitest";
-import { validarDestinoDePrueba } from "./guarda-bd";
+import { ESQUEMA_DE_PRUEBA, validarDestinoDePrueba } from "./guarda-bd";
+import { entornoDeEsquemas } from "./multiesquema";
 
 // Apunta la capa de datos real (lib/db/pool) a la base desechable creada por
 // bd-global.ts. Si no hay base, no toca nada y los tests se saltan con
@@ -11,6 +12,8 @@ if (bd.disponible) {
   process.env.DB_SERVER = bd.server;
   process.env.DB_PORT = String(bd.port);
   process.env.DB_NAME = bd.database;
+  process.env.DB_SCHEMA = ESQUEMA_DE_PRUEBA;
+  Object.assign(process.env, entornoDeEsquemas());
   process.env.DB_USER = bd.user;
   process.env.DB_PASSWORD = bd.password;
   process.env.DB_ENCRYPT = "true";

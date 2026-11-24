@@ -4,6 +4,7 @@ import { buscarVisitas, lugaresConVisitas } from "@/lib/data/visitas-lista";
 import { acotarFiltros, ELIMINADAS, SIN_FILTROS, type FiltrosVisitas } from "@/lib/ui/filtros-visitas";
 import { hoyISO, sumarDias } from "@/lib/ui/fecha";
 import { hayBd, insertarVisita, limpiarDatos, sembrarMundo, uno, type Mundo } from "./_ayuda";
+import { T } from "@/lib/db/esquema";
 
 // Los filtros del listado del panel ejecutados contra SQL Server de verdad: el
 // WHERE se arma con SQL dinámico parametrizado y solo la base confirma que
@@ -26,28 +27,28 @@ describe.skipIf(!hayBd)("BD · listado de visitas con filtros", () => {
     await limpiarDatos();
     m = await sembrarMundo();
     await consulta(`
-      INSERT INTO dmc.cliente (rut, razon_social, nombre_fantasia) VALUES ('76.000.002-0', N'Dos SpA', N'Cliente Dos');
-      INSERT INTO dmc.mall (nombre, direccion, comuna, region) VALUES (N'Mall Plaza', N'Av. 1', N'Valparaíso', N'Valparaíso');`);
-    otroClienteId = Number((await uno<{ id: number }>(`SELECT id FROM dmc.cliente WHERE rut = '76.000.002-0'`))!.id);
-    mallId = Number((await uno<{ id: number }>(`SELECT id FROM dmc.mall`))!.id);
-    await consulta(`INSERT INTO dmc.marca (cliente_id, nombre) VALUES (${otroClienteId}, N'Marca Dos')`);
-    marca2 = Number((await uno<{ id: number }>(`SELECT id FROM dmc.marca WHERE cliente_id = ${otroClienteId}`))!.id);
-    await consulta(`INSERT INTO dmc.sucursal (cliente_id, marca_id, mall_id, nombre, direccion, comuna, region)
+      INSERT INTO ${T.cliente} (rut, razon_social, nombre_fantasia) VALUES ('76.000.002-0', N'Dos SpA', N'Cliente Dos');
+      INSERT INTO ${T.mall} (nombre, direccion, comuna, region) VALUES (N'Mall Plaza', N'Av. 1', N'Valparaíso', N'Valparaíso');`);
+    otroClienteId = Number((await uno<{ id: number }>(`SELECT id FROM ${T.cliente} WHERE rut = '76.000.002-0'`))!.id);
+    mallId = Number((await uno<{ id: number }>(`SELECT id FROM ${T.mall}`))!.id);
+    await consulta(`INSERT INTO ${T.marca} (cliente_id, nombre) VALUES (${otroClienteId}, N'Marca Dos')`);
+    marca2 = Number((await uno<{ id: number }>(`SELECT id FROM ${T.marca} WHERE cliente_id = ${otroClienteId}`))!.id);
+    await consulta(`INSERT INTO ${T.sucursal} (cliente_id, marca_id, mall_id, nombre, direccion, comuna, region)
                     VALUES (${otroClienteId}, ${marca2}, ${mallId}, N'Tienda Valpo', N'Av. 1', N'Valparaíso', N'Valparaíso')`);
-    otraSucursalId = Number((await uno<{ id: number }>(`SELECT id FROM dmc.sucursal WHERE nombre = N'Tienda Valpo'`))!.id);
+    otraSucursalId = Number((await uno<{ id: number }>(`SELECT id FROM ${T.sucursal} WHERE nombre = N'Tienda Valpo'`))!.id);
     // La tienda del mundo queda en un mall de la Metropolitana, y el cliente
     // Uno suma una segunda marca con una tienda sin visitas.
-    await consulta(`INSERT INTO dmc.mall (nombre, direccion, comuna, region) VALUES (N'Mall Centro', N'Av. 2', N'Santiago', N'Metropolitana')`);
-    mallCentroId = Number((await uno<{ id: number }>(`SELECT id FROM dmc.mall WHERE nombre = N'Mall Centro'`))!.id);
-    await consulta(`UPDATE dmc.sucursal SET mall_id = ${mallCentroId} WHERE id = ${m.sucursalId}`);
-    await consulta(`INSERT INTO dmc.marca (cliente_id, nombre) VALUES (${m.clienteId}, N'Marca Uno B')`);
-    const marcaB = Number((await uno<{ id: number }>(`SELECT id FROM dmc.marca WHERE nombre = N'Marca Uno B'`))!.id);
-    await consulta(`INSERT INTO dmc.sucursal (cliente_id, marca_id, nombre, direccion, comuna, region)
+    await consulta(`INSERT INTO ${T.mall} (nombre, direccion, comuna, region) VALUES (N'Mall Centro', N'Av. 2', N'Santiago', N'Metropolitana')`);
+    mallCentroId = Number((await uno<{ id: number }>(`SELECT id FROM ${T.mall} WHERE nombre = N'Mall Centro'`))!.id);
+    await consulta(`UPDATE ${T.sucursal} SET mall_id = ${mallCentroId} WHERE id = ${m.sucursalId}`);
+    await consulta(`INSERT INTO ${T.marca} (cliente_id, nombre) VALUES (${m.clienteId}, N'Marca Uno B')`);
+    const marcaB = Number((await uno<{ id: number }>(`SELECT id FROM ${T.marca} WHERE nombre = N'Marca Uno B'`))!.id);
+    await consulta(`INSERT INTO ${T.sucursal} (cliente_id, marca_id, nombre, direccion, comuna, region)
                     VALUES (${m.clienteId}, ${marcaB}, N'Tienda Sin Visitas', N'Av. 3', N'Santiago', N'Metropolitana')`);
 
     const crear = async (clave: string, extra: Parameters<typeof insertarVisita>[1], cambios = "") => {
       const v = await insertarVisita(m, extra);
-      if (cambios) await consulta(`UPDATE dmc.visita SET ${cambios} WHERE id = ${v.id}`);
+      if (cambios) await consulta(`UPDATE ${T.visita} SET ${cambios} WHERE id = ${v.id}`);
       porId[clave] = v.folio;
       return v;
     };
@@ -57,8 +58,8 @@ describe.skipIf(!hayBd)("BD · listado de visitas con filtros", () => {
     await crear("d", { fecha: D(10), estado: "PROGRAMADA" }, `cliente_id = ${otroClienteId}, sucursal_id = ${otraSucursalId}`);
     await crear("e", { fecha: D(11), estado: "PENDIENTE" }, `cliente_id = ${otroClienteId}, sucursal_id = ${otraSucursalId}, tecnico_ayudante_id = ${m.tecnico2Id}`);
     const f2 = await crear("f", { fecha: D(12), estado: "PROGRAMADA" });
-    await consulta(`UPDATE dmc.visita SET activo = 0 WHERE id = ${f2.id}`); // eliminada
-    await consulta(`INSERT INTO dmc.problema (visita_id, tipo_codigo) SELECT id, 'ANTENA_NO_DETECTA' FROM dmc.visita WHERE folio = '${porId.c}'`);
+    await consulta(`UPDATE ${T.visita} SET activo = 0 WHERE id = ${f2.id}`); // eliminada
+    await consulta(`INSERT INTO ${T.problema} (visita_id, tipo_codigo) SELECT id, 'ANTENA_NO_DETECTA' FROM ${T.visita} WHERE folio = '${porId.c}'`);
   });
   afterAll(() => limpiarDatos());
 

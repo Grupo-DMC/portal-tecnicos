@@ -3,7 +3,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import sql from "mssql";
 import type { TestProject } from "vitest/node";
-import { leerEnv, validarDestinoDePrueba } from "./guarda-bd";
+import { adaptarEsquema, dividirLotes as dividirLotesSql } from "../../scripts/adaptar-esquema.mjs";
+import { ESQUEMA_DE_PRUEBA, leerEnv, validarDestinoDePrueba } from "./guarda-bd";
+import { repartirEsquemas } from "./multiesquema";
 
 // Crea UNA base desechable `dmc_test_<id>` en el SQL Server local, le aplica el
 // DDL del repo y la borra al terminar. Las credenciales salen de `.env.test`
@@ -28,15 +30,11 @@ function cargarConfig() {
 }
 
 /** Divide un script de SSMS en lotes por las líneas `GO`. */
-export function dividirLotes(script: string): string[] {
-  return script
-    .split(/^\s*GO\s*(?:--.*)?$/gim)
-    .map((l) => l.trim())
-    .filter(Boolean);
-}
+export const dividirLotes = dividirLotesSql;
 
 async function aplicar(pool: sql.ConnectionPool, archivo: string) {
-  const script = readFileSync(resolve(RAIZ, "sql", archivo), "utf8");
+  // El DDL del repo está escrito para `dmc`; se crea en el esquema de pruebas (`tecnico`).
+  const script = adaptarEsquema(readFileSync(resolve(RAIZ, "sql", archivo), "utf8"), ESQUEMA_DE_PRUEBA);
   for (const lote of dividirLotes(script)) await pool.request().batch(lote);
 }
 
@@ -67,6 +65,8 @@ export default async function setup(project: TestProject) {
   const pool = await new sql.ConnectionPool({ ...base, database: nombreBase }).connect();
   try {
     await aplicar(pool, "dmc_contingencia_sqlserver.sql");
+    // Como DMC_Core: clientes y seguridad en su esquema, con sinónimos en `tecnico`.
+    await repartirEsquemas(pool, ESQUEMA_DE_PRUEBA);
   } finally {
     await pool.close();
   }

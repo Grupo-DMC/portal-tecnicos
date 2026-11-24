@@ -3,6 +3,7 @@ import { consultaCon, ejecutar, enTransaccion, num, numONull, sql, type Ejecutor
 import { editableHastaSql, TOMADA_POR } from "@/lib/data/visitas";
 import type { EstadoVisita } from "@/lib/types";
 import { log } from "@/lib/log";
+import { T } from "@/lib/db/esquema";
 
 /**
  * El video del trabajo, subido por partes.
@@ -23,7 +24,7 @@ import { log } from "@/lib/log";
  * deja a mano para limpiarla.
  *
  * Los límites de duración, resolución y peso los hacen cumplir los CHECK de
- * dmc.visita_video: acá se validan antes solo para devolver un mensaje que el
+ * tecnico.visita_video: acá se validan antes solo para devolver un mensaje que el
  * técnico entienda en vez de un error de constraint.
  */
 
@@ -103,8 +104,8 @@ export async function getVisitaParaVideo(folio: string): Promise<VisitaParaVideo
     `SELECT v.id, v.estado, v.tecnico_id, v.tecnico_ayudante_id, ${TOMADA_POR} AS tomada_por,
             (SELECT CAST(CASE WHEN ${editableHastaSql("e")} >= SYSDATETIME()
                               THEN 1 ELSE 0 END AS bit)
-               FROM dmc.visita_ejecucion e WHERE e.visita_id = v.id) AS editable
-       FROM dmc.visita v WHERE v.folio = @folio AND v.activo = 1`,
+               FROM ${T.visita_ejecucion} e WHERE e.visita_id = v.id) AS editable
+       FROM ${T.visita} v WHERE v.folio = @folio AND v.activo = 1`,
     [["folio", sql.VarChar(16), folio]]
   );
   return fila
@@ -138,12 +139,12 @@ const HORAS_CLIP_A_MEDIAS = 24;
 export async function purgarVideosDescartados(): Promise<void> {
   try {
     await ejecutar(
-      `DELETE FROM dmc.visita_video
+      `DELETE FROM ${T.visita_video}
         WHERE subida_completa = 0 AND subido_en < DATEADD(HOUR, -@horas, SYSDATETIME())`,
       [["horas", sql.Int, HORAS_CLIP_A_MEDIAS]]
     );
     await ejecutar(
-      `UPDATE dmc.visita_video SET contenido = NULL
+      `UPDATE ${T.visita_video} SET contenido = NULL
         WHERE activo = 0 AND subida_completa = 1 AND contenido IS NOT NULL
           AND subido_en < DATEADD(DAY, -@dias, SYSDATETIME())`,
       [["dias", sql.Int, DIAS_CLIP_QUITADO]]
@@ -165,12 +166,12 @@ export async function purgarVideosDescartados(): Promise<void> {
  */
 async function excedeCuota(ej: Ejecutor, visitaId: number, nuevos: number, tecnicoId: number | null): Promise<string | null> {
   const [uso] = await ej.consulta<{ n: number; bytes: number; dia: number }>(
-    `SELECT (SELECT COUNT(*) FROM dmc.visita_video WHERE visita_id = @visita AND contenido IS NOT NULL) AS n,
-            (SELECT COALESCE(SUM(CAST(bytes AS bigint)), 0) FROM dmc.visita_video
+    `SELECT (SELECT COUNT(*) FROM ${T.visita_video} WHERE visita_id = @visita AND contenido IS NOT NULL) AS n,
+            (SELECT COALESCE(SUM(CAST(bytes AS bigint)), 0) FROM ${T.visita_video}
               WHERE visita_id = @visita AND contenido IS NOT NULL) AS bytes,
             (SELECT COALESCE(SUM(CAST(CASE WHEN w.subida_completa = 1 THEN w.bytes ELSE w.bytes_recibidos END AS bigint)), 0)
-               FROM dmc.visita_video w
-               JOIN dmc.visita x ON x.id = w.visita_id
+               FROM ${T.visita_video} w
+               JOIN ${T.visita} x ON x.id = w.visita_id
               WHERE w.subido_en > DATEADD(DAY, -1, SYSDATETIME())
                 AND (x.tecnico_id = @tecnico OR x.tecnico_ayudante_id = @tecnico)) AS dia`,
     [
@@ -192,7 +193,7 @@ export async function abrirVideo(visitaId: number, d: DatosVideo, tecnicoId: num
   // El chequeo y el insert van juntos, con la fila de la visita bloqueada: dos
   // aperturas en paralelo se turnan y la segunda ve el clip de la primera.
   return enTransaccion(async (ej) => {
-    await ej.consulta(`SELECT id FROM dmc.visita WITH (UPDLOCK, ROWLOCK) WHERE id = @visita`, [
+    await ej.consulta(`SELECT id FROM ${T.visita} WITH (UPDLOCK, ROWLOCK) WHERE id = @visita`, [
       ["visita", sql.BigInt, visitaId],
     ]);
     const exceso = await excedeCuota(ej, visitaId, d.bytes, tecnicoId);
@@ -200,7 +201,7 @@ export async function abrirVideo(visitaId: number, d: DatosVideo, tecnicoId: num
     const [fila] = await ej.consulta<{ id: number }>(
       `DECLARE @nuevo TABLE (id bigint);
 
-     INSERT INTO dmc.visita_video
+     INSERT INTO ${T.visita_video}
        (visita_id, etiqueta, contenido, mime, bytes, bytes_recibidos,
         duracion_seg, ancho, alto, subida_completa, grabado_en)
      OUTPUT INSERTED.id INTO @nuevo
@@ -252,7 +253,7 @@ export async function pegarTrozo(
 
   const [fila] = await consultaCon<{ recibidos: number; bytes: number; completa: boolean }>(
     `SELECT bytes_recibidos AS recibidos, bytes, subida_completa AS completa
-       FROM dmc.visita_video WHERE id = @id AND visita_id = @visita`,
+       FROM ${T.visita_video} WHERE id = @id AND visita_id = @visita`,
     [
       ["id", sql.BigInt, videoId],
       ["visita", sql.BigInt, visitaId],
@@ -278,7 +279,7 @@ export async function pegarTrozo(
   // bytes_recibidos = @desde del WHERE hace de candado: dos envíos del mismo
   // trozo no se pegan dos veces.
   const filas = await ejecutar(
-    `UPDATE dmc.visita_video
+    `UPDATE ${T.visita_video}
         SET contenido.WRITE(@trozo, NULL, 0),
             bytes_recibidos = bytes_recibidos + @largo
       WHERE id = @id AND visita_id = @visita
@@ -298,7 +299,7 @@ export async function pegarTrozo(
 /** Marca el clip utilizable. Falla si no llegó completo. */
 export async function cerrarVideo(videoId: number, visitaId: number): Promise<boolean> {
   const filas = await ejecutar(
-    `UPDATE dmc.visita_video
+    `UPDATE ${T.visita_video}
         SET subida_completa = 1,
             archivo_url = CONCAT('/api/visita/video/', CAST(id AS varchar(20))),
             subido_en = SYSDATETIME()
@@ -315,7 +316,7 @@ export async function cerrarVideo(videoId: number, visitaId: number): Promise<bo
 /** Quitar un clip del acta: no se borra la fila, se deja inactiva. */
 export async function desactivarVideo(videoId: number, visitaId: number): Promise<boolean> {
   const filas = await ejecutar(
-    `UPDATE dmc.visita_video SET activo = 0 WHERE id = @id AND visita_id = @visita AND activo = 1`,
+    `UPDATE ${T.visita_video} SET activo = 0 WHERE id = @id AND visita_id = @visita AND activo = 1`,
     [
       ["id", sql.BigInt, videoId],
       ["visita", sql.BigInt, visitaId],
@@ -340,7 +341,7 @@ export interface VideoMeta {
 export async function getVideoMeta(id: number): Promise<VideoMeta | null> {
   const [fila] = await consultaCon<{ mime: string; largo: number }>(
     `SELECT mime, DATALENGTH(contenido) AS largo
-       FROM dmc.visita_video
+       FROM ${T.visita_video}
       WHERE id = @id AND activo = 1 AND subida_completa = 1`,
     [["id", sql.BigInt, id]]
   );
@@ -358,7 +359,7 @@ export async function getVideoMeta(id: number): Promise<VideoMeta | null> {
 export async function getVideoTramo(id: number, desde: number, hasta: number): Promise<Buffer | null> {
   const [fila] = await consultaCon<{ trozo: Buffer | null }>(
     // SUBSTRING sobre varbinary es 1-based.
-    `SELECT SUBSTRING(contenido, @desde, @largo) AS trozo FROM dmc.visita_video WHERE id = @id`,
+    `SELECT SUBSTRING(contenido, @desde, @largo) AS trozo FROM ${T.visita_video} WHERE id = @id`,
     [
       ["id", sql.BigInt, id],
       ["desde", sql.BigInt, desde + 1],
@@ -372,7 +373,7 @@ export async function getVideoTramo(id: number, desde: number, hasta: number): P
 export async function getDuenosDeVideo(id: number): Promise<number[]> {
   const [fila] = await consultaCon<{ tecnico_id: number; tecnico_ayudante_id: number | null }>(
     `SELECT v.tecnico_id, v.tecnico_ayudante_id
-       FROM dmc.visita_video x JOIN dmc.visita v ON v.id = x.visita_id WHERE x.id = @id`,
+       FROM ${T.visita_video} x JOIN ${T.visita} v ON v.id = x.visita_id WHERE x.id = @id`,
     [["id", sql.BigInt, id]]
   );
   if (!fila) return [];

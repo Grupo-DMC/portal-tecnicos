@@ -12,12 +12,13 @@ import type { ActaEntrada } from "@/lib/contratos/acta";
 import type { DatosVisita } from "@/lib/contratos/visitas";
 import { hoyISO, sumarDias } from "@/lib/ui/fecha";
 import { hayBd, limpiarDatos, sembrarMundo, uno, type Mundo } from "./_ayuda";
+import { T, type Objeto } from "@/lib/db/esquema";
 
 // PNG de 1×1 píxel: pasa la validación de firma/foto por cabecera.
 const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 
-const cuenta = async (tabla: string, donde = "1=1") =>
-  Number((await uno<{ n: number }>(`SELECT COUNT(*) AS n FROM dmc.${tabla} WHERE ${donde}`))!.n);
+const cuenta = async (tabla: Objeto, donde = "1=1") =>
+  Number((await uno<{ n: number }>(`SELECT COUNT(*) AS n FROM ${T[tabla]} WHERE ${donde}`))!.n);
 
 describe.skipIf(!hayBd)("BD · escrituras reales de la capa de datos (transacciones)", () => {
   let m: Mundo;
@@ -82,7 +83,7 @@ describe.skipIf(!hayBd)("BD · escrituras reales de la capa de datos (transaccio
       expect(v.sucursalId).toBe(m.sucursalId);
       expect(await cuenta("visita_motivo", `visita_id = ${v.id} AND ambito = 'PLAN'`)).toBe(2);
       expect(await cuenta("visita_estado_historial", `visita_id = ${v.id}`)).toBe(1);
-      const f = await uno<{ creada_por: number }>(`SELECT creada_por FROM dmc.visita WHERE id = ${v.id}`);
+      const f = await uno<{ creada_por: number }>(`SELECT creada_por FROM ${T.visita} WHERE id = ${v.id}`);
       expect(Number(f!.creada_por)).toBe(m.adminId);
     });
 
@@ -112,7 +113,7 @@ describe.skipIf(!hayBd)("BD · escrituras reales de la capa de datos (transaccio
     it("el técnico la inicia (EN_CURSO) y el otro no puede mientras la tiene tomada", async () => {
       const v = await crearVisita(datos({ tecnicoAyudanteId: m.tecnico2Id }), m.adminId);
       expect(await iniciarVisita(v.folio, null, ctxA())).toBeNull();
-      expect((await uno<{ estado: string }>(`SELECT estado FROM dmc.visita WHERE id = ${v.id}`))!.estado).toBe("EN_CURSO");
+      expect((await uno<{ estado: string }>(`SELECT estado FROM ${T.visita} WHERE id = ${v.id}`))!.estado).toBe("EN_CURSO");
       const otro = await iniciarVisita(v.folio, null, ctxB());
       expect(otro?.error).toBeTruthy();
     });
@@ -120,13 +121,13 @@ describe.skipIf(!hayBd)("BD · escrituras reales de la capa de datos (transaccio
     it("un técnico ajeno a la visita no la puede iniciar", async () => {
       const v = await crearVisita(datos(), m.adminId);
       expect((await iniciarVisita(v.folio, null, ctxB()))?.error).toBeTruthy();
-      expect((await uno<{ estado: string }>(`SELECT estado FROM dmc.visita WHERE id = ${v.id}`))!.estado).toBe("PROGRAMADA");
+      expect((await uno<{ estado: string }>(`SELECT estado FROM ${T.visita} WHERE id = ${v.id}`))!.estado).toBe("PROGRAMADA");
     });
 
     it("el administrador la libera y vuelve a PROGRAMADA", async () => {
       const v = await enCurso();
       expect(await liberarVisita({ folio: v.folio, usuarioId: m.adminId })).toBeNull();
-      expect((await uno<{ estado: string }>(`SELECT estado FROM dmc.visita WHERE id = ${v.id}`))!.estado).toBe("PROGRAMADA");
+      expect((await uno<{ estado: string }>(`SELECT estado FROM ${T.visita} WHERE id = ${v.id}`))!.estado).toBe("PROGRAMADA");
     });
   });
 
@@ -136,9 +137,9 @@ describe.skipIf(!hayBd)("BD · escrituras reales de la capa de datos (transaccio
       const r = await guardarActa(acta(v.folio), ctxA());
       expect(r.ok).toBe(true);
 
-      expect((await uno<{ estado: string }>(`SELECT estado FROM dmc.visita WHERE id = ${v.id}`))!.estado).toBe("COMPLETADA");
+      expect((await uno<{ estado: string }>(`SELECT estado FROM ${T.visita} WHERE id = ${v.id}`))!.estado).toBe("COMPLETADA");
       const e = await uno<{ responsable_nombre: string; hora_termino: Date | null; dispositivo: string; registrado_offline: boolean }>(
-        `SELECT responsable_nombre, hora_termino, dispositivo, registrado_offline FROM dmc.visita_ejecucion WHERE visita_id = ${v.id}`
+        `SELECT responsable_nombre, hora_termino, dispositivo, registrado_offline FROM ${T.visita_ejecucion} WHERE visita_id = ${v.id}`
       );
       expect(e).toMatchObject({ responsable_nombre: "María Soto", dispositivo: "Pixel de prueba", registrado_offline: false });
       expect(e!.hora_termino).toBeTruthy();
@@ -147,7 +148,7 @@ describe.skipIf(!hayBd)("BD · escrituras reales de la capa de datos (transaccio
       expect(await cuenta("problema", `visita_id = ${v.id}`)).toBe(1);
       expect(await cuenta("problema_item")).toBe(1);
       expect(await cuenta("visita_firma", `visita_id = ${v.id} AND rol = 'TIENDA'`)).toBe(1);
-      const historial = await consulta<{ estado: string }>(`SELECT estado FROM dmc.visita_estado_historial WHERE visita_id = ${v.id} ORDER BY id`);
+      const historial = await consulta<{ estado: string }>(`SELECT estado FROM ${T.visita_estado_historial} WHERE visita_id = ${v.id} ORDER BY id`);
       expect(historial.map((h) => h.estado)).toEqual(["PROGRAMADA", "EN_CURSO", "COMPLETADA"]);
     });
 
@@ -162,14 +163,14 @@ describe.skipIf(!hayBd)("BD · escrituras reales de la capa de datos (transaccio
       await expect(guardarActa(rota, ctxA())).rejects.toThrow(/fk_problema_tipo/);
 
       // La visita sigue EN_CURSO y no quedó ni un rastro del intento.
-      expect((await uno<{ estado: string }>(`SELECT estado FROM dmc.visita WHERE id = ${v.id}`))!.estado).toBe("EN_CURSO");
+      expect((await uno<{ estado: string }>(`SELECT estado FROM ${T.visita} WHERE id = ${v.id}`))!.estado).toBe("EN_CURSO");
       expect(await cuenta("problema")).toBe(0);
       expect(await cuenta("problema_item")).toBe(0);
       expect(await cuenta("visita_trabajo")).toBe(0);
       expect(await cuenta("visita_firma")).toBe(0);
       expect(await cuenta("visita_motivo", `visita_id = ${v.id} AND ambito = 'REAL'`)).toBe(0);
       const e = await uno<{ hora_termino: Date | null; observaciones: string | null }>(
-        `SELECT hora_termino, observaciones FROM dmc.visita_ejecucion WHERE visita_id = ${v.id}`
+        `SELECT hora_termino, observaciones FROM ${T.visita_ejecucion} WHERE visita_id = ${v.id}`
       );
       expect(e!.hora_termino).toBeNull();
       expect(e!.observaciones).toBeNull();
@@ -199,7 +200,7 @@ describe.skipIf(!hayBd)("BD · escrituras reales de la capa de datos (transaccio
       const v = await enCurso();
       const r = await guardarActa(acta(v.folio), ctxB());
       expect(r.ok).toBe(false);
-      expect((await uno<{ estado: string }>(`SELECT estado FROM dmc.visita WHERE id = ${v.id}`))!.estado).toBe("EN_CURSO");
+      expect((await uno<{ estado: string }>(`SELECT estado FROM ${T.visita} WHERE id = ${v.id}`))!.estado).toBe("EN_CURSO");
       expect(await cuenta("visita_firma")).toBe(0);
     });
 
@@ -207,7 +208,7 @@ describe.skipIf(!hayBd)("BD · escrituras reales de la capa de datos (transaccio
       const v = await enCurso();
       const r = await guardarActa(acta(v.folio, { firma: { nombre: "x", rut: null, dataUrl: "data:image/png;base64,AAAA" } }), ctxA());
       expect(r.ok).toBe(false);
-      expect((await uno<{ estado: string }>(`SELECT estado FROM dmc.visita WHERE id = ${v.id}`))!.estado).toBe("EN_CURSO");
+      expect((await uno<{ estado: string }>(`SELECT estado FROM ${T.visita} WHERE id = ${v.id}`))!.estado).toBe("EN_CURSO");
     });
 
     it("un problema «Otro» sin descripción lo frena la base misma y revierte el cierre", async () => {
@@ -215,7 +216,7 @@ describe.skipIf(!hayBd)("BD · escrituras reales de la capa de datos (transaccio
       await expect(
         guardarActa(acta(v.folio, { problemas: [{ tipoCodigo: "OTRO", estado: "ABIERTO", descripcion: null, solucion: null, items: [] }] }), ctxA())
       ).rejects.toThrow(/ck_problema_otro_desc/);
-      expect((await uno<{ estado: string }>(`SELECT estado FROM dmc.visita WHERE id = ${v.id}`))!.estado).toBe("EN_CURSO");
+      expect((await uno<{ estado: string }>(`SELECT estado FROM ${T.visita} WHERE id = ${v.id}`))!.estado).toBe("EN_CURSO");
     });
   });
 
@@ -223,8 +224,8 @@ describe.skipIf(!hayBd)("BD · escrituras reales de la capa de datos (transaccio
     it("cancelar por administración deja el motivo en la bitácora", async () => {
       const v = await crearVisita(datos(), m.adminId);
       expect(await cancelarVisitaPorAdmin({ folio: v.folio, motivo: "Local cerrado definitivamente", usuarioId: m.adminId })).toBeNull();
-      expect((await uno<{ estado: string }>(`SELECT estado FROM dmc.visita WHERE id = ${v.id}`))!.estado).toBe("CANCELADA_ADMIN");
-      const h = await uno<{ motivo: string }>(`SELECT TOP 1 motivo FROM dmc.visita_estado_historial WHERE visita_id = ${v.id} ORDER BY id DESC`);
+      expect((await uno<{ estado: string }>(`SELECT estado FROM ${T.visita} WHERE id = ${v.id}`))!.estado).toBe("CANCELADA_ADMIN");
+      const h = await uno<{ motivo: string }>(`SELECT TOP 1 motivo FROM ${T.visita_estado_historial} WHERE visita_id = ${v.id} ORDER BY id DESC`);
       expect(h!.motivo).toContain("Local cerrado definitivamente");
     });
 
@@ -233,7 +234,7 @@ describe.skipIf(!hayBd)("BD · escrituras reales de la capa de datos (transaccio
       await guardarActa(acta(v.folio), ctxA());
       const r = await cancelarVisitaPorAdmin({ folio: v.folio, motivo: "Intento de cancelar una cerrada", usuarioId: m.adminId });
       expect(r?.error).toBeTruthy();
-      expect((await uno<{ estado: string }>(`SELECT estado FROM dmc.visita WHERE id = ${v.id}`))!.estado).toBe("COMPLETADA");
+      expect((await uno<{ estado: string }>(`SELECT estado FROM ${T.visita} WHERE id = ${v.id}`))!.estado).toBe("COMPLETADA");
     });
 
     it("eliminar es lógico: exige escribir el folio, deja registro y conserva el acta", async () => {
@@ -241,10 +242,10 @@ describe.skipIf(!hayBd)("BD · escrituras reales de la capa de datos (transaccio
       await guardarActa(acta(v.folio), ctxA());
       const mala = await eliminarVisita({ folio: v.folio, confirmacionFolio: "V-0000", usuarioId: m.adminId });
       expect(mala?.error).toBeTruthy();
-      expect((await uno<{ activo: boolean }>(`SELECT activo FROM dmc.visita WHERE id = ${v.id}`))!.activo).toBe(true);
+      expect((await uno<{ activo: boolean }>(`SELECT activo FROM ${T.visita} WHERE id = ${v.id}`))!.activo).toBe(true);
 
       expect(await eliminarVisita({ folio: v.folio, confirmacionFolio: v.folio, usuarioId: m.adminId })).toBeNull();
-      expect((await uno<{ activo: boolean }>(`SELECT activo FROM dmc.visita WHERE id = ${v.id}`))!.activo).toBe(false);
+      expect((await uno<{ activo: boolean }>(`SELECT activo FROM ${T.visita} WHERE id = ${v.id}`))!.activo).toBe(false);
       expect(await cuenta("visita_eliminacion", `visita_id = ${v.id}`)).toBe(1);
       // El acta y la firma siguen en la base.
       expect(await cuenta("visita_firma", `visita_id = ${v.id}`)).toBe(1);

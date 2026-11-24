@@ -14,6 +14,10 @@
     "test:e2e": "playwright test",
     "test:coverage": "vitest run --coverage",
     "hash-password": "node scripts/hash-password.mjs",
+    "migrar": "node scripts/migrar.mjs",
+    "comparar-esquema": "node scripts/comparar-esquema.mjs",
+    "verificar-ubicacion": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verificar-ubicacion.mjs",
+    "consultas-mixtas": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/consultas-mixtas.mjs",
     "secreto": "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
   },
   "dependencies": {

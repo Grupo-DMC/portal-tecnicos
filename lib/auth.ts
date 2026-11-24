@@ -59,7 +59,7 @@ export type ResultadoAutenticacion =
   | { ok: false; bloqueado: boolean };
 
 /**
- * Valida credenciales contra dmc.usuario. Ante cualquier fallo —correo
+ * Valida credenciales contra tecnico.usuario. Ante cualquier fallo —correo
  * desconocido, contraseña mala, usuario inactivo— responde lo mismo sin
  * distinguir cuál: quien intenta entrar no tiene por qué saber qué correos
  * existen. Cada intento queda anotado para frenar los repetidos (ver

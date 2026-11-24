@@ -15,9 +15,10 @@ import {
   type PreferenciasAviso,
 } from "@/lib/notificaciones";
 import { nombreVisible } from "@/lib/ui/cuenta";
+import { T } from "@/lib/db/esquema";
 
-// Lo que pasa en el sistema y la campanita que lo muestra — dmc.actividad,
-// dmc.notificacion_usuario y dmc.notificacion_preferencia (migración 034).
+// Lo que pasa en el sistema y la campanita que lo muestra — tecnico.actividad,
+// tecnico.notificacion_usuario y tecnico.notificacion_preferencia (migración 034).
 //
 // Anotar es de mejor esfuerzo, igual que la auditoría: si falla, lo que ya se
 // hizo no se deshace; queda el error en el log del servidor.
@@ -55,14 +56,14 @@ export async function registrarActividad(actor: ActorActividad | null, evento: E
     const nombre = actor ? actor.tecnico?.nombreCompleto || nombreVisible(null, actor.usuario.email) : null;
     const enlace = evento.enlace ?? (evento.folio ? `/admin/visitas/${evento.folio}` : null);
     const [fila] = await consultaCon<{ id: unknown; actor: string | null; detalle: string | null; enlace: string | null }>(
-      `INSERT INTO dmc.actividad (tipo, actor_usuario_id, actor_nombre, de_tecnico, texto, detalle, enlace)
+      `INSERT INTO ${T.actividad} (tipo, actor_usuario_id, actor_nombre, de_tecnico, texto, detalle, enlace)
        OUTPUT INSERTED.id AS id, INSERTED.actor_nombre AS actor, INSERTED.detalle AS detalle, INSERTED.enlace AS enlace
        VALUES (@tipo, @actor,
                CASE WHEN @tecnico = 1 THEN @nombre
-                    ELSE COALESCE(NULLIF(LTRIM(RTRIM((SELECT nombre FROM dmc.usuario WHERE id = @actor))), N''), @nombre) END,
+                    ELSE COALESCE(NULLIF(LTRIM(RTRIM((SELECT nombre FROM ${T.usuario} WHERE id = @actor))), N''), @nombre) END,
                @tecnico, @texto,
-               COALESCE(@detalle, (SELECT TOP (1) s.nombre FROM dmc.visita v
-                                     JOIN dmc.sucursal s ON s.id = v.sucursal_id
+               COALESCE(@detalle, (SELECT TOP (1) s.nombre FROM ${T.visita} v
+                                     JOIN ${T.sucursal} s ON s.id = v.sucursal_id
                                     WHERE v.folio = @folio)),
                @enlace)`,
       [
@@ -112,10 +113,10 @@ interface FilaPreferencia {
 export async function leerConfiguracion(usuarioId: number): Promise<ConfiguracionAvisos & { leidoHasta: number | null }> {
   const [cuenta, prefs] = await Promise.all([
     consultaCon<FilaConfiguracion>(
-      `SELECT leido_hasta AS leidoHasta, ver_propios AS verPropios FROM dmc.notificacion_usuario WHERE usuario_id = @u`,
+      `SELECT leido_hasta AS leidoHasta, ver_propios AS verPropios FROM ${T.notificacion_usuario} WHERE usuario_id = @u`,
       [["u", sql.BigInt, usuarioId]]
     ),
-    consultaCon<FilaPreferencia>(`SELECT tipo, nivel FROM dmc.notificacion_preferencia WHERE usuario_id = @u`, [
+    consultaCon<FilaPreferencia>(`SELECT tipo, nivel FROM ${T.notificacion_preferencia} WHERE usuario_id = @u`, [
       ["u", sql.BigInt, usuarioId],
     ]),
   ]);
@@ -153,8 +154,8 @@ export async function bandejaDe(usuarioId: number, permisos: readonly string[]):
   let leidoHasta = config.leidoHasta;
   if (leidoHasta === null) {
     const filas = await consultaCon<{ ultimo: unknown }>(
-      `MERGE dmc.notificacion_usuario AS d
-       USING (SELECT @u AS usuario_id, ISNULL((SELECT MAX(id) FROM dmc.actividad), 0) AS ultimo) AS o
+      `MERGE ${T.notificacion_usuario} AS d
+       USING (SELECT @u AS usuario_id, ISNULL((SELECT MAX(id) FROM ${T.actividad}), 0) AS ultimo) AS o
           ON d.usuario_id = o.usuario_id
         WHEN NOT MATCHED THEN INSERT (usuario_id, leido_hasta) VALUES (o.usuario_id, o.ultimo)
        OUTPUT inserted.leido_hasta AS ultimo;`,
@@ -169,7 +170,7 @@ export async function bandejaDe(usuarioId: number, permisos: readonly string[]):
     `SELECT TOP (${MAXIMO})
             a.id, ${F_TS("a.creado_en")} AS creadoEn, a.tipo, a.actor_usuario_id AS actorId,
             a.actor_nombre AS actor, a.de_tecnico AS deTecnico, a.texto, a.detalle, a.enlace
-       FROM dmc.actividad a
+       FROM ${T.actividad} a
       WHERE a.creado_en >= DATEADD(day, -${DIAS}, SYSDATETIME())
         AND (
               (a.actor_usuario_id = @u AND @propios = 1)
@@ -186,7 +187,7 @@ export async function bandejaDe(usuarioId: number, permisos: readonly string[]):
 
   const [conteo] = await consultaCon<{ n: number }>(
     `SELECT COUNT(*) AS n FROM (
-       SELECT TOP (100) 1 AS x FROM dmc.actividad a
+       SELECT TOP (100) 1 AS x FROM ${T.actividad} a
         WHERE a.id > @leido
           AND a.creado_en >= DATEADD(day, -${DIAS}, SYSDATETIME())
           AND (a.actor_usuario_id IS NULL OR a.actor_usuario_id <> @u)
@@ -227,7 +228,7 @@ export async function bandejaDe(usuarioId: number, permisos: readonly string[]):
 /** Deja como vistas todas las actividades hasta `hasta` (nunca retrocede). */
 export async function marcarLeidas(usuarioId: number, hasta: number): Promise<void> {
   await ejecutar(
-    `MERGE dmc.notificacion_usuario AS d
+    `MERGE ${T.notificacion_usuario} AS d
      USING (SELECT @u AS usuario_id, @hasta AS hasta) AS o ON d.usuario_id = o.usuario_id
       WHEN MATCHED AND d.leido_hasta < o.hasta THEN
            UPDATE SET leido_hasta = o.hasta, actualizado_en = SYSDATETIME()
@@ -245,13 +246,13 @@ export async function guardarConfiguracion(usuarioId: number, config: Configurac
   await ejecutar(
     `SET XACT_ABORT ON;
      BEGIN TRANSACTION;
-       MERGE dmc.notificacion_usuario AS d
+       MERGE ${T.notificacion_usuario} AS d
        USING (SELECT @u AS usuario_id) AS o ON d.usuario_id = o.usuario_id
         WHEN MATCHED THEN UPDATE SET ver_propios = @propios, actualizado_en = SYSDATETIME()
         WHEN NOT MATCHED THEN INSERT (usuario_id, leido_hasta, ver_propios)
-             VALUES (o.usuario_id, ISNULL((SELECT MAX(id) FROM dmc.actividad), 0), @propios);
-       DELETE FROM dmc.notificacion_preferencia WHERE usuario_id = @u;
-       INSERT INTO dmc.notificacion_preferencia (usuario_id, tipo, nivel)
+             VALUES (o.usuario_id, ISNULL((SELECT MAX(id) FROM ${T.actividad}), 0), @propios);
+       DELETE FROM ${T.notificacion_preferencia} WHERE usuario_id = @u;
+       INSERT INTO ${T.notificacion_preferencia} (usuario_id, tipo, nivel)
        SELECT @u, j.tipo, j.nivel
          FROM OPENJSON(@filas) WITH (tipo varchar(40) '$.tipo', nivel varchar(8) '$.nivel') j;
      COMMIT TRANSACTION;`,

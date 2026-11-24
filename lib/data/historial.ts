@@ -4,6 +4,7 @@ import { listarEstadosProblema } from "@/lib/data/catalogos";
 import { etiquetaEstadoProblema, tagEstadoProblema } from "@/lib/ui/estado";
 import type { EstadoProblema } from "@/lib/types";
 import type { HistorialVista } from "@/lib/contratos/panel";
+import { T } from "@/lib/db/esquema";
 
 // "Última visita al local" del detalle móvil: qué dejó registrado la visita
 // anterior en esa misma sucursal. Antes era un objeto fijo en lib/mock/historial;
@@ -34,9 +35,9 @@ export async function getHistorialLocal(sucursalId: number | undefined, excluirV
   }>(
     `SELECT TOP 1 v.id, ${F_FECHA("v.fecha_programada")} AS fecha,
             t.nombre_completo AS tecnico, e.observaciones
-       FROM dmc.visita v
-       JOIN dmc.tecnico t ON t.id = v.tecnico_id
-       LEFT JOIN dmc.visita_ejecucion e ON e.visita_id = v.id
+       FROM ${T.visita} v
+       JOIN ${T.tecnico} t ON t.id = v.tecnico_id
+       LEFT JOIN ${T.visita_ejecucion} e ON e.visita_id = v.id
       WHERE v.sucursal_id = @sucursal
         AND v.id <> @excluir
         AND v.estado IN ('COMPLETADA', 'PENDIENTE')
@@ -55,15 +56,15 @@ export async function getHistorialLocal(sucursalId: number | undefined, excluirV
     listarEstadosProblema(),
     consultaCon<{ nombre: string }>(
       `SELECT ISNULL(c.nombre, w.trabajo_codigo) AS nombre
-         FROM dmc.visita_trabajo w
-         LEFT JOIN dmc.catalogo_trabajo c ON c.codigo = w.trabajo_codigo
+         FROM ${T.visita_trabajo} w
+         LEFT JOIN ${T.catalogo_trabajo} c ON c.codigo = w.trabajo_codigo
         WHERE w.visita_id = @visita ORDER BY w.orden, w.id`,
       [["visita", sql.BigInt, visitaId]]
     ),
     consultaCon<{ tipo: string; estado: EstadoProblema; descripcion: string | null; solucion: string | null }>(
       `SELECT ISNULL(c.nombre, p.tipo_codigo) AS tipo, p.estado, p.descripcion, p.solucion
-         FROM dmc.problema p
-         LEFT JOIN dmc.catalogo_problema c ON c.codigo = p.tipo_codigo
+         FROM ${T.problema} p
+         LEFT JOIN ${T.catalogo_problema} c ON c.codigo = p.tipo_codigo
         WHERE p.visita_id = @visita AND p.estado <> 'RESUELTO'
         ORDER BY p.orden, p.id`,
       [["visita", sql.BigInt, visitaId]]

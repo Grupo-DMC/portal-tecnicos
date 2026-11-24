@@ -13,13 +13,14 @@ import {
   type PreferenciasCanal,
 } from "@/lib/notificaciones";
 import { rolDelPanel } from "@/lib/roles";
+import { T } from "@/lib/db/esquema";
 
 // Quién quiere enterarse de qué, y por dónde. Es la única puerta para decidir
 // el destinatario de un aviso: la usan el push (lib/data/push.ts) y el correo
 // (lib/data/correo-avisos.ts), así los dos aplican las mismas reglas.
 //
-// Las preferencias por canal viven en dmc.notificacion_canal y
-// dmc.notificacion_correo (migración 043). Solo se leen con los avisos por
+// Las preferencias por canal viven en tecnico.notificacion_canal y
+// tecnico.notificacion_correo (migración 043). Solo se leen con los avisos por
 // correo activos: mientras no, el push sigue al nivel «Avisar» como siempre.
 
 export interface CanalesCuenta {
@@ -32,11 +33,11 @@ export const CANALES_VACIOS: CanalesCuenta = { canales: {}, ajustes: AJUSTES_COR
 export async function leerCanales(usuarioId: number): Promise<CanalesCuenta> {
   const [filas, cuenta] = await Promise.all([
     consultaCon<{ tipo: string; push: boolean | null; correo: string | null }>(
-      `SELECT tipo, push, correo FROM dmc.notificacion_canal WHERE usuario_id = @u`,
+      `SELECT tipo, push, correo FROM ${T.notificacion_canal} WHERE usuario_id = @u`,
       [["u", sql.BigInt, usuarioId]]
     ),
     consultaCon<{ activo: boolean; horaResumen: unknown }>(
-      `SELECT activo, hora_resumen AS horaResumen FROM dmc.notificacion_correo WHERE usuario_id = @u`,
+      `SELECT activo, hora_resumen AS horaResumen FROM ${T.notificacion_correo} WHERE usuario_id = @u`,
       [["u", sql.BigInt, usuarioId]]
     ),
   ]);
@@ -64,12 +65,12 @@ export async function guardarCanales(usuarioId: number, datos: CanalesCuenta): P
   await ejecutar(
     `SET XACT_ABORT ON;
      BEGIN TRANSACTION;
-       MERGE dmc.notificacion_correo AS d
+       MERGE ${T.notificacion_correo} AS d
        USING (SELECT @u AS usuario_id) AS o ON d.usuario_id = o.usuario_id
         WHEN MATCHED THEN UPDATE SET activo = @activo, hora_resumen = @hora, actualizado_en = SYSDATETIME()
         WHEN NOT MATCHED THEN INSERT (usuario_id, activo, hora_resumen) VALUES (o.usuario_id, @activo, @hora);
-       DELETE FROM dmc.notificacion_canal WHERE usuario_id = @u;
-       INSERT INTO dmc.notificacion_canal (usuario_id, tipo, push, correo)
+       DELETE FROM ${T.notificacion_canal} WHERE usuario_id = @u;
+       INSERT INTO ${T.notificacion_canal} (usuario_id, tipo, push, correo)
        SELECT @u, j.tipo, j.push, j.correo
          FROM OPENJSON(@filas) WITH (tipo varchar(40) '$.tipo', push bit '$.push', correo varchar(8) '$.correo') j;
      COMMIT TRANSACTION;`,

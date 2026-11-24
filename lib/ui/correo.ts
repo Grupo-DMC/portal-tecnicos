@@ -137,7 +137,7 @@ export function esClaveAdjunto(v: string): v is ClaveAdjunto {
   return v === "pdf" || v === "zip";
 }
 
-/** El último envío del acta, como lo muestra el panel (dmc.acta_envio). */
+/** El último envío del acta, como lo muestra el panel (tecnico.acta_envio). */
 export interface ActaEnviada {
   para: string;
   cc: string;

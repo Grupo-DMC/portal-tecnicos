@@ -1,4 +1,4 @@
-// Reserva del acta (dmc.visita_reserva, migración 026): la lógica de cuándo
+// Reserva del acta (tecnico.visita_reserva, migración 026): la lógica de cuándo
 // una reserva sigue vigente y quién puede escribir. Es pura y no toca la base:
 // el servidor le pasa lo que leyó y el celular lo que le contestó el servidor,
 // así que se prueba sin conexión (tests/reserva.test.ts).
@@ -12,7 +12,7 @@
 /** Cuánto dura una reserva sin actividad: 15 minutos. */
 export const PLAZO_RESERVA_SEG = 15 * 60;
 
-/** Lo que se lee de una fila de dmc.visita_reserva. */
+/** Lo que se lee de una fila de tecnico.visita_reserva. */
 export interface ReservaLeida {
   usuarioId: number;
   tecnicoId: number;

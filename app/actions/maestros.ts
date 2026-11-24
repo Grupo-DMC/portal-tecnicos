@@ -99,7 +99,7 @@ function revalidar() {
   revalidatePath("/admin", "layout");
 }
 
-/** Quien guarda, para el historial de cambios de estado (dmc.cambio_estado). */
+/** Quien guarda, para el historial de cambios de estado (tecnico.cambio_estado). */
 function actorDe(sesion: { usuario: { id: number; email: string } }) {
   return { id: sesion.usuario.id, email: sesion.usuario.email };
 }
@@ -309,7 +309,7 @@ export async function guardarUsuarioAction(
   if (combinacion) return { ok: false, error: combinacion };
   const sinMotivo = problemaDeBaja(datos.activo, datos.motivoInactivo, "la cuenta");
   if (sinMotivo) return { ok: false, error: sinMotivo };
-  // Al crear, la contraseña es obligatoria: dmc.usuario.password_hash es NOT
+  // Al crear, la contraseña es obligatoria: tecnico.usuario.password_hash es NOT
   // NULL y un usuario sin clave no podría entrar nunca. Al editar, vacía = no
   // se cambia. No se recorta: se guarda tal como se escribió.
   if (id === null || datos.password !== "") {

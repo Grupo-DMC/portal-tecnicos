@@ -7,7 +7,7 @@ import { esEvidenciaDeEliminada } from "@/lib/data/visitas";
 import { enModoTecnico, esAdmin } from "@/lib/roles";
 
 // Sirve el video que el técnico grabó en terreno. Los bytes viven en
-// dmc.visita_video.contenido: no hay almacenamiento de archivos contratado.
+// tecnico.visita_video.contenido: no hay almacenamiento de archivos contratado.
 //
 // A diferencia de la foto, un video se pide por rangos: sin responder 206 no se
 // puede adelantar el clip y en Safari ni siquiera arranca. El rango se resuelve

@@ -6,7 +6,7 @@ import { getAdjuntoMeta, getAdjuntoTramo, getDuenosDeAdjunto } from "@/lib/data/
 import { enModoTecnico, esAdmin } from "@/lib/roles";
 
 // Sirve las fotos y los videos que explican el trabajo a realizar. Los bytes
-// viven en dmc.visita_adjunto.contenido.
+// viven en tecnico.visita_adjunto.contenido.
 //
 // Se piden por rangos, como el video del acta: sin responder 206 no se puede
 // adelantar un clip y en Safari ni arranca. Una foto cabe en un tramo y sale

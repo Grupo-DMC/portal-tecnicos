@@ -3,6 +3,7 @@ import { cerrarEnvioActa, correosConocidos, crearEnvioActa, getActaEnviada } fro
 import { registrarPersonaLocal } from "@/lib/data/personas-local";
 import { consulta } from "@/lib/data/sql";
 import { hayBd, insertarVisita, limpiarDatos, sembrarMundo, uno, type Mundo } from "./_ayuda";
+import { T } from "@/lib/db/esquema";
 
 // El envío del acta por correo contra una base real: el registro con CCO y los
 // videos del zip, y los correos que se sugieren por tienda y por cliente.
@@ -17,9 +18,9 @@ describe.skipIf(!hayBd)("BD · envío del acta por correo", () => {
 
   async function videoDe(visitaId: number): Promise<number> {
     await consulta(`
-      INSERT INTO dmc.visita_video (visita_id, archivo_url, contenido, mime, bytes, bytes_recibidos, duracion_seg, orden, subida_completa)
+      INSERT INTO ${T.visita_video} (visita_id, archivo_url, contenido, mime, bytes, bytes_recibidos, duracion_seg, orden, subida_completa)
       VALUES (${visitaId}, '', 0x00000018667479706D703432, 'video/mp4', 12, 12, 3, 1, 1)`);
-    return Number((await uno<{ id: number }>(`SELECT TOP 1 id FROM dmc.visita_video ORDER BY id DESC`))!.id);
+    return Number((await uno<{ id: number }>(`SELECT TOP 1 id FROM ${T.visita_video} ORDER BY id DESC`))!.id);
   }
 
   it("registra Para, CC, CCO, el PDF y cada video del zip, y quién lo envió", async () => {
@@ -58,7 +59,7 @@ describe.skipIf(!hayBd)("BD · envío del acta por correo", () => {
     await registrarPersonaLocal(m.sucursalId, { nombre: "María", email: "maria@tienda.cl", cargo: "Jefa de tienda" });
     const v = await insertarVisita(m, { estado: "COMPLETADA" });
     await consulta(`
-      INSERT INTO dmc.visita_ejecucion (visita_id, hora_inicio, hora_termino, responsable_nombre, responsable_email)
+      INSERT INTO ${T.visita_ejecucion} (visita_id, hora_inicio, hora_termino, responsable_nombre, responsable_email)
       VALUES (${v.id}, '2026-10-26T09:00:00', '2026-10-26T10:00:00', N'Carla', N'carla@tienda.cl')`);
 
     const enviado = await crearEnvioActa({

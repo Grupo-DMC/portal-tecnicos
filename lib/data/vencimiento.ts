@@ -2,6 +2,7 @@ import "server-only";
 import { log } from "@/lib/log";
 import { ejecutar, sql } from "@/lib/data/sql";
 import { hoyISO, sumarDias } from "@/lib/ui/fecha";
+import { T } from "@/lib/db/esquema";
 
 /**
  * Cancelación automática de las visitas que el técnico no completó a tiempo.
@@ -67,23 +68,23 @@ async function revisar(): Promise<void> {
      DECLARE @vencidas TABLE (id bigint PRIMARY KEY, fecha date);
      INSERT INTO @vencidas (id, fecha)
      SELECT id, ${plazo}
-       FROM dmc.visita WITH (UPDLOCK, HOLDLOCK)
+       FROM ${T.visita} WITH (UPDLOCK, HOLDLOCK)
       WHERE activo = 1
         AND estado IN ('PROGRAMADA', 'EN_CURSO', 'REAGENDADA')
         AND ${plazo} < @limite;
 
      IF EXISTS (SELECT 1 FROM @vencidas)
      BEGIN
-       DECLARE @antes bigint = (SELECT ISNULL(MAX(id), 0) FROM dmc.visita_estado_historial);
+       DECLARE @antes bigint = (SELECT ISNULL(MAX(id), 0) FROM ${T.visita_estado_historial});
 
        UPDATE v SET estado = 'CANCELADA'
-         FROM dmc.visita v JOIN @vencidas x ON x.id = v.id;
+         FROM ${T.visita} v JOIN @vencidas x ON x.id = v.id;
 
        UPDATE h
           SET motivo = CONCAT(@motivo, ' (fecha asignada ', FORMAT(x.fecha, 'dd-MM-yyyy'),
                               ', con ', @dias, ' día de tolerancia).'),
               origen = 'WEB', usuario_id = NULL
-         FROM dmc.visita_estado_historial h
+         FROM ${T.visita_estado_historial} h
          JOIN @vencidas x ON x.id = h.visita_id
         WHERE h.id > @antes AND h.estado = 'CANCELADA';
      END

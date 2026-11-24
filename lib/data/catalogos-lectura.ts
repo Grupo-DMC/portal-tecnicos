@@ -13,10 +13,11 @@ import type {
   CatalogoTrabajo,
   CatalogoTrabajoSubtrabajo,
 } from "@/lib/types";
+import { T } from "@/lib/db/esquema";
 
 // Las listas del checklist que el panel edita y el móvil consume: la lectura.
-// dmc.catalogo_motivo, dmc.catalogo_problema (+opciones), dmc.catalogo_trabajo
-// (+subtrabajos y los motivos a los que pertenece), dmc.catalogo_interno y las
+// tecnico.catalogo_motivo, tecnico.catalogo_problema (+opciones), tecnico.catalogo_trabajo
+// (+subtrabajos y los motivos a los que pertenece), tecnico.catalogo_interno y las
 // listas de gestión, cargos, estados y secciones.
 
 // ── Lectura ─────────────────────────────────────────────────────────────────
@@ -35,7 +36,7 @@ interface FilaMotivo {
 /** Las secciones activas de motivos, de trabajos o de tipos de problema (categorías), en su orden. */
 export async function listarSecciones(tipo: TipoSeccion): Promise<CatalogoSeccion[]> {
   const filas = await consultaCon<{ id: number; nombre: string; orden: number }>(
-    `SELECT id, nombre, orden FROM dmc.catalogo_seccion
+    `SELECT id, nombre, orden FROM ${T.catalogo_seccion}
       WHERE tipo = @tipo AND activo = 1 ORDER BY orden, id`,
     [["tipo", sql.VarChar(10), tipo]]
   );
@@ -45,8 +46,8 @@ export async function listarSecciones(tipo: TipoSeccion): Promise<CatalogoSeccio
 export async function listarMotivos(): Promise<CatalogoMotivo[]> {
   const filas = await consulta<FilaMotivo & { seccion: string | null; seccion_orden: number | null }>(
     `SELECT m.id, m.codigo, m.nombre, m.orden, m.activo, s.nombre AS seccion, s.orden AS seccion_orden
-       FROM dmc.catalogo_motivo m
-       LEFT JOIN dmc.catalogo_seccion s ON s.id = m.seccion_id AND s.activo = 1
+       FROM ${T.catalogo_motivo} m
+       LEFT JOIN ${T.catalogo_seccion} s ON s.id = m.seccion_id AND s.activo = 1
       WHERE m.activo = 1 ORDER BY m.orden, m.id`
   );
   return filas.map((f) => ({
@@ -85,13 +86,13 @@ export async function listarProblemas(): Promise<CatalogoProblema[]> {
     consulta<FilaProblema & { seccion: string | null; seccion_orden: number | null }>(
       `SELECT p.id, p.codigo, p.nombre, p.grupo_label, p.singular, p.ayuda, p.orden, p.activo,
               s.nombre AS seccion, s.orden AS seccion_orden
-         FROM dmc.catalogo_problema p
-         LEFT JOIN dmc.catalogo_seccion s ON s.id = p.seccion_id AND s.activo = 1
+         FROM ${T.catalogo_problema} p
+         LEFT JOIN ${T.catalogo_seccion} s ON s.id = p.seccion_id AND s.activo = 1
         WHERE p.activo = 1 ORDER BY p.orden, p.id`
     ),
     consulta<FilaOpcion>(
       `SELECT id, problema_id, etiqueta, orden, permite_cantidad, activo
-         FROM dmc.catalogo_problema_opcion WHERE activo = 1 ORDER BY orden, id`
+         FROM ${T.catalogo_problema_opcion} WHERE activo = 1 ORDER BY orden, id`
     ),
   ]);
 
@@ -145,19 +146,19 @@ export async function listarTrabajos(): Promise<CatalogoTrabajo[]> {
     consulta<FilaTrabajo & { seccion: string | null; seccion_orden: number | null }>(
       `SELECT t.id, t.codigo, t.nombre, t.grupo_label, t.singular, t.orden, t.activo,
               s.nombre AS seccion, s.orden AS seccion_orden
-         FROM dmc.catalogo_trabajo t
-         LEFT JOIN dmc.catalogo_seccion s ON s.id = t.seccion_id AND s.activo = 1
+         FROM ${T.catalogo_trabajo} t
+         LEFT JOIN ${T.catalogo_seccion} s ON s.id = t.seccion_id AND s.activo = 1
         WHERE t.activo = 1 ORDER BY t.orden, t.id`
     ),
     consulta<FilaSubtrabajo>(
       `SELECT id, trabajo_id, etiqueta, grupo, orden, permite_cantidad, activo
-         FROM dmc.catalogo_trabajo_subtrabajo WHERE activo = 1 ORDER BY orden, id`
+         FROM ${T.catalogo_trabajo_subtrabajo} WHERE activo = 1 ORDER BY orden, id`
     ),
     // Solo los motivos activos: los enlaces de uno dado de baja no cuentan.
     consulta<{ trabajo_id: number; codigo: string; orden: number }>(
       `SELECT mt.trabajo_id, m.codigo, mt.orden
-         FROM dmc.catalogo_motivo_trabajo mt
-         JOIN dmc.catalogo_motivo m ON m.id = mt.motivo_id AND m.activo = 1
+         FROM ${T.catalogo_motivo_trabajo} mt
+         JOIN ${T.catalogo_motivo} m ON m.id = mt.motivo_id AND m.activo = 1
         ORDER BY m.orden, m.id`
     ),
   ]);
@@ -196,7 +197,7 @@ export async function listarTrabajos(): Promise<CatalogoTrabajo[]> {
 export async function listarInternos(): Promise<CatalogoInterno[]> {
   const filas = await consulta<FilaMotivo>(
     `SELECT id, codigo, nombre, orden, activo
-       FROM dmc.catalogo_interno WHERE activo = 1 ORDER BY orden, id`
+       FROM ${T.catalogo_interno} WHERE activo = 1 ORDER BY orden, id`
   );
   return filas.map((f) => ({
     id: num(f.id),
@@ -211,7 +212,7 @@ export async function listarInternos(): Promise<CatalogoInterno[]> {
 export async function listarPendientes(): Promise<CatalogoPendiente[]> {
   const filas = await consulta<FilaMotivo>(
     `SELECT id, codigo, nombre, orden, activo
-       FROM dmc.catalogo_pendiente WHERE activo = 1 ORDER BY orden, id`
+       FROM ${T.catalogo_pendiente} WHERE activo = 1 ORDER BY orden, id`
   );
   return filas.map((f) => ({
     id: num(f.id),
@@ -226,7 +227,7 @@ export async function listarPendientes(): Promise<CatalogoPendiente[]> {
 export async function listarCargos(): Promise<CatalogoCargo[]> {
   const filas = await consulta<FilaMotivo>(
     `SELECT id, codigo, nombre, orden, activo
-       FROM dmc.catalogo_cargo WHERE activo = 1 ORDER BY orden, id`
+       FROM ${T.catalogo_cargo} WHERE activo = 1 ORDER BY orden, id`
   );
   return filas.map((f) => ({
     id: num(f.id),
@@ -247,7 +248,7 @@ export async function cargoDelChecklist(nombre: string | null | undefined): Prom
   if (!buscado) return null;
   // nombre es nvarchar con intercalación sin mayúsculas: «jefe» encuentra «Jefe».
   const [fila] = await consultaCon<{ nombre: string }>(
-    `SELECT TOP 1 nombre FROM dmc.catalogo_cargo
+    `SELECT TOP 1 nombre FROM ${T.catalogo_cargo}
       WHERE activo = 1 AND LTRIM(RTRIM(nombre)) = @nombre COLLATE Latin1_General_CI_AS
       ORDER BY orden, id`,
     [["nombre", sql.NVarChar(80), buscado]]
@@ -259,7 +260,7 @@ export async function cargoDelChecklist(nombre: string | null | undefined): Prom
 export async function listarGestionProblemas(): Promise<CatalogoGestionProblema[]> {
   const filas = await consulta<FilaMotivo>(
     `SELECT id, codigo, nombre, orden, activo
-       FROM dmc.catalogo_problema_gestion WHERE activo = 1 ORDER BY orden, id`
+       FROM ${T.catalogo_problema_gestion} WHERE activo = 1 ORDER BY orden, id`
   );
   return filas.map((f) => ({
     id: num(f.id),
@@ -273,7 +274,7 @@ export async function listarGestionProblemas(): Promise<CatalogoGestionProblema[
 /** ¿Ese código es un estado vigente de la Lista 7? */
 export async function esEstadoProblemaVigente(codigo: string): Promise<boolean> {
   const [fila] = await consultaCon<{ n: number }>(
-    `SELECT TOP 1 1 AS n FROM dmc.catalogo_problema_estado WHERE codigo = @codigo`,
+    `SELECT TOP 1 1 AS n FROM ${T.catalogo_problema_estado} WHERE codigo = @codigo`,
     [["codigo", sql.VarChar(10), codigo]]
   );
   return Boolean(fila);
@@ -287,7 +288,7 @@ export async function esEstadoProblemaVigente(codigo: string): Promise<boolean> 
 export async function listarEstadosProblema(): Promise<CatalogoEstadoProblema[]> {
   const filas = await consulta<FilaMotivo>(
     `SELECT id, codigo, nombre, orden, activo
-       FROM dmc.catalogo_problema_estado ORDER BY activo DESC, orden, id`
+       FROM ${T.catalogo_problema_estado} ORDER BY activo DESC, orden, id`
   );
   return filas.map((f) => ({
     id: num(f.id),

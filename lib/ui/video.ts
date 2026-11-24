@@ -10,7 +10,7 @@
 // hacen casi todos los celulares.
 //
 // Los tres límites siguen siendo los mismos, porque son los que hace cumplir
-// dmc.visita_video (ck_video_duracion, ck_video_resolucion, ck_video_bytes):
+// tecnico.visita_video (ck_video_duracion, ck_video_resolucion, ck_video_bytes):
 //
 //   · 720p ....... 1280x720 acostado o 720x1280 parado
 //   · 1 minuto ... lo que pase del segundo 60 se corta

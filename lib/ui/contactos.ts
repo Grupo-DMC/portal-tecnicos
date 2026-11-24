@@ -181,7 +181,7 @@ const claveNombre = (nombre: string) => sinTildes(nombre.trim().replace(/\s+/g, 
 /**
  * Lo que se ofrece al técnico (y a coordinación) para no reescribir los datos
  * de quien recibe en la tienda: los contactos propios de la sucursal, cargados
- * en el panel, y las personas que ya firmaron ahí (dmc.persona_local).
+ * en el panel, y las personas que ya firmaron ahí (tecnico.persona_local).
  *
  * Si un contacto ya firmó antes (mismo nombre), sale una sola vez: la persona
  * del historial, que trae el RUT, completada con el teléfono y el correo del

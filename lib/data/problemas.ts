@@ -4,6 +4,7 @@ import { listarGestionProblemas } from "@/lib/data/catalogos";
 import type { DatosProblemas, GrupoProblemas } from "@/lib/contratos/panel";
 import { hoyISO } from "@/lib/ui/fecha";
 import type { EstadoProblema, EstadoVisita } from "@/lib/types";
+import { T } from "@/lib/db/esquema";
 
 // El panel "Problemas": cada falla levantada en terreno, agrupada por tienda,
 // con lo que coordinación necesita para llevarla hasta el cierre — cuánto lleva
@@ -20,7 +21,7 @@ const diasEntre = (desde: string, hasta: string) =>
   );
 
 /** Solo los problemas de visitas vigentes: una visita eliminada se lleva los suyos. */
-const DE_VISITA_ACTIVA = `SELECT p.id FROM dmc.problema p JOIN dmc.visita v ON v.id = p.visita_id WHERE v.activo = 1`;
+const DE_VISITA_ACTIVA = `SELECT p.id FROM ${T.problema} p JOIN ${T.visita} v ON v.id = p.visita_id WHERE v.activo = 1`;
 
 export async function getPanelProblemas(): Promise<DatosProblemas> {
   interface Fila {
@@ -56,18 +57,18 @@ export async function getPanelProblemas(): Promise<DatosProblemas> {
               c.id AS cliente_id, c.nombre_fantasia AS cliente,
               ag.folio AS agenda_folio, ag.fecha AS agenda_fecha, ag.tecnico AS agenda_tecnico,
               ag.estado AS agenda_estado
-         FROM dmc.problema p
-         JOIN dmc.visita   v ON v.id = p.visita_id
-         JOIN dmc.sucursal s ON s.id = v.sucursal_id
-         JOIN dmc.cliente  c ON c.id = v.cliente_id
-         JOIN dmc.tecnico  t ON t.id = v.tecnico_id
-         LEFT JOIN dmc.catalogo_motivo cm ON cm.codigo = v.motivo_codigo
+         FROM ${T.problema} p
+         JOIN ${T.visita}   v ON v.id = p.visita_id
+         JOIN ${T.sucursal} s ON s.id = v.sucursal_id
+         JOIN ${T.cliente}  c ON c.id = v.cliente_id
+         JOIN ${T.tecnico}  t ON t.id = v.tecnico_id
+         LEFT JOIN ${T.catalogo_motivo} cm ON cm.codigo = v.motivo_codigo
          OUTER APPLY (
            SELECT TOP 1 va.folio, ${F_FECHA("va.fecha_programada")} AS fecha,
                         ta.nombre_completo AS tecnico, va.estado
-             FROM dmc.problema_visita_resolucion r
-             JOIN dmc.visita  va ON va.id = r.visita_id
-             JOIN dmc.tecnico ta ON ta.id = va.tecnico_id
+             FROM ${T.problema_visita_resolucion} r
+             JOIN ${T.visita}  va ON va.id = r.visita_id
+             JOIN ${T.tecnico} ta ON ta.id = va.tecnico_id
             WHERE r.problema_id = p.id AND va.activo = 1
             ORDER BY va.fecha_programada DESC, va.id DESC
          ) AS ag
@@ -75,7 +76,7 @@ export async function getPanelProblemas(): Promise<DatosProblemas> {
         ORDER BY p.creado_en DESC, p.id DESC`
     ),
     consulta<{ id: number; problema_id: number; etiqueta: string; cantidad: number }>(
-      `SELECT id, problema_id, etiqueta, cantidad FROM dmc.problema_item
+      `SELECT id, problema_id, etiqueta, cantidad FROM ${T.problema_item}
         WHERE problema_id IN (${DE_VISITA_ACTIVA}) ORDER BY id`
     ),
     consulta<{
@@ -89,18 +90,18 @@ export async function getPanelProblemas(): Promise<DatosProblemas> {
     }>(
       `SELECT h.problema_id, h.campo, h.valor_anterior, h.valor_nuevo, h.motivo,
               COALESCE(tu.nombre_completo, u.email) AS por, ${F_TS("h.ocurrido_en")} AS en
-         FROM dmc.problema_historial h
-         LEFT JOIN dmc.usuario u  ON u.id  = h.usuario_id
-         LEFT JOIN dmc.tecnico tu ON tu.id = u.tecnico_id
+         FROM ${T.problema_historial} h
+         LEFT JOIN ${T.usuario} u  ON u.id  = h.usuario_id
+         LEFT JOIN ${T.tecnico} tu ON tu.id = u.tecnico_id
         WHERE h.problema_id IN (${DE_VISITA_ACTIVA})
         ORDER BY h.ocurrido_en, h.id`
     ),
     consulta<{ problema_id: number; codigo: string; en: string; por: string | null }>(
       `SELECT g.problema_id, g.gestion_codigo AS codigo, ${F_TS("g.marcado_en")} AS en,
               COALESCE(tu.nombre_completo, u.email) AS por
-         FROM dmc.problema_gestion g
-         LEFT JOIN dmc.usuario u  ON u.id  = g.usuario_id
-         LEFT JOIN dmc.tecnico tu ON tu.id = u.tecnico_id
+         FROM ${T.problema_gestion} g
+         LEFT JOIN ${T.usuario} u  ON u.id  = g.usuario_id
+         LEFT JOIN ${T.tecnico} tu ON tu.id = u.tecnico_id
         WHERE g.problema_id IN (${DE_VISITA_ACTIVA})
         ORDER BY g.marcado_en, g.id`
     ),
@@ -119,17 +120,17 @@ export async function getPanelProblemas(): Promise<DatosProblemas> {
               t.nombre_completo AS tecnico, cm.nombre AS motivo, e.observaciones,
               (SELECT STRING_AGG(CAST(ISNULL(ct.nombre, w.trabajo_codigo) AS nvarchar(max)), N' · ')
                         WITHIN GROUP (ORDER BY w.orden, w.id)
-                 FROM dmc.visita_trabajo w
-                 LEFT JOIN dmc.catalogo_trabajo ct ON ct.codigo = w.trabajo_codigo
+                 FROM ${T.visita_trabajo} w
+                 LEFT JOIN ${T.catalogo_trabajo} ct ON ct.codigo = w.trabajo_codigo
                 WHERE w.visita_id = v.id AND w.activo = 1) AS trabajos
-         FROM dmc.visita v
-         JOIN dmc.tecnico t ON t.id = v.tecnico_id
-         LEFT JOIN dmc.catalogo_motivo cm ON cm.codigo = v.motivo_codigo
-         LEFT JOIN dmc.visita_ejecucion e ON e.visita_id = v.id
+         FROM ${T.visita} v
+         JOIN ${T.tecnico} t ON t.id = v.tecnico_id
+         LEFT JOIN ${T.catalogo_motivo} cm ON cm.codigo = v.motivo_codigo
+         LEFT JOIN ${T.visita_ejecucion} e ON e.visita_id = v.id
         WHERE v.activo = 1
           AND v.sucursal_id IN (SELECT v2.sucursal_id
-                                  FROM dmc.problema p2
-                                  JOIN dmc.visita v2 ON v2.id = p2.visita_id
+                                  FROM ${T.problema} p2
+                                  JOIN ${T.visita} v2 ON v2.id = p2.visita_id
                                  WHERE v2.activo = 1)
         ORDER BY v.fecha_programada DESC, v.id DESC`
     ),
@@ -230,7 +231,7 @@ export async function marcarGestionProblema(input: {
   usuarioId: number;
 }): Promise<{ error: string } | null> {
   const [problema] = await consultaCon<{ estado: EstadoProblema }>(
-    `SELECT p.estado FROM dmc.problema p JOIN dmc.visita v ON v.id = p.visita_id
+    `SELECT p.estado FROM ${T.problema} p JOIN ${T.visita} v ON v.id = p.visita_id
       WHERE p.id = @id AND v.activo = 1`,
     [["id", sql.BigInt, input.problemaId]]
   );
@@ -247,23 +248,23 @@ export async function marcarGestionProblema(input: {
 
   if (!input.marcado) {
     await ejecutar(
-      `DELETE FROM dmc.problema_gestion WHERE problema_id = @problema AND gestion_codigo = @codigo`,
+      `DELETE FROM ${T.problema_gestion} WHERE problema_id = @problema AND gestion_codigo = @codigo`,
       params
     );
     return null;
   }
 
   const [paso] = await consultaCon<{ id: number }>(
-    `SELECT id FROM dmc.catalogo_problema_gestion WHERE codigo = @codigo AND activo = 1`,
+    `SELECT id FROM ${T.catalogo_problema_gestion} WHERE codigo = @codigo AND activo = 1`,
     [["codigo", sql.VarChar(40), input.codigo]]
   );
   if (!paso) return { error: "Ese paso ya no está en el checklist: recarga la página." };
 
   // Dos pestañas marcando lo mismo: la segunda no choca con la unicidad.
   await ejecutar(
-    `IF NOT EXISTS (SELECT 1 FROM dmc.problema_gestion
+    `IF NOT EXISTS (SELECT 1 FROM ${T.problema_gestion}
                      WHERE problema_id = @problema AND gestion_codigo = @codigo)
-       INSERT INTO dmc.problema_gestion (problema_id, gestion_codigo, usuario_id)
+       INSERT INTO ${T.problema_gestion} (problema_id, gestion_codigo, usuario_id)
        VALUES (@problema, @codigo, @usuario);`,
     params
   );

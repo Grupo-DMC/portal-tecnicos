@@ -43,7 +43,7 @@ import { enModoTecnico } from "@/lib/roles";
 export interface ResultadoVideo {
   ok: boolean;
   error?: string;
-  /** Id de la fila en dmc.visita_video. */
+  /** Id de la fila en tecnico.visita_video. */
   videoId?: number;
   /** Cuántos bytes lleva escritos la base; sirve para reanudar tras un corte. */
   recibidos?: number;

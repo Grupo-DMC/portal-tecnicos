@@ -2,6 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { contactosDeCliente, contactosPropiosDeSucursal, guardarContacto, quitarCargoDeContacto, getContacto } from "@/lib/data/contactos";
 import { listarPersonasLocal, registrarPersonaLocal } from "@/lib/data/personas-local";
 import { hayBd, limpiarDatos, mensajeDeError, sembrarMundo, uno, type Mundo } from "./_ayuda";
+import { T } from "@/lib/db/esquema";
 
 // Migración 041: contactos del cliente y de cada tienda, y el correo del
 // responsable de tienda (acta y personas del local), contra una base real.
@@ -73,10 +74,10 @@ describe.skipIf(!hayBd)("BD · contactos por ficha y correo del responsable", ()
 
   it("la base no acepta un correo sin forma de correo", async () => {
     expect(
-      await mensajeDeError(`INSERT INTO dmc.persona_local (sucursal_id, nombre, email) VALUES (${m.sucursalId}, N'X', N'sin-arroba')`)
+      await mensajeDeError(`INSERT INTO ${T.persona_local} (sucursal_id, nombre, email) VALUES (${m.sucursalId}, N'X', N'sin-arroba')`)
     ).toMatch(/ck_persona_local_email/);
     const col = await uno<{ n: number }>(
-      `SELECT COUNT(*) AS n FROM sys.columns WHERE object_id = OBJECT_ID('dmc.visita_ejecucion') AND name = 'responsable_email'`
+      `SELECT COUNT(*) AS n FROM sys.columns WHERE object_id = OBJECT_ID('${T.visita_ejecucion}') AND name = 'responsable_email'`
     );
     expect(Number(col?.n)).toBe(1);
   });

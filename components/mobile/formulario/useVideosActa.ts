@@ -27,7 +27,7 @@ export function useVideosActa({
   onReservaAjena: (reserva: ReservaAjena) => void;
 }) {
   // El video no se acumula en el formulario como las fotos: se sube a
-  // dmc.visita_video en cuanto se termina de grabar, porque un minuto en 720p
+  // tecnico.visita_video en cuanto se termina de grabar, porque un minuto en 720p
   // pesa unos 11 MB y no cabe ni en una Server Action ni en localStorage. Por
   // eso la lista arranca de lo que la visita ya tiene subido y no del borrador:
   // la base es la que sabe qué clips hay.

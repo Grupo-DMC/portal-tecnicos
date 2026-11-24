@@ -6,9 +6,10 @@ import { cachePerfiles } from "@/lib/data/preferencias-canal";
 import { avisosCorreoActivos } from "@/lib/correo/avisos-config";
 import { log } from "@/lib/log";
 import { quierePush } from "@/lib/notificaciones";
+import { T } from "@/lib/db/esquema";
 
 // Avisos push: llegan al navegador aunque no haya ninguna pestaña abierta.
-// Las suscripciones viven en dmc.push_suscripcion (migración 036). Todo es de
+// Las suscripciones viven en tecnico.push_suscripcion (migración 036). Todo es de
 // mejor esfuerzo: si falla, la campanita sigue igual. Sin las claves VAPID
 // (ver .env.example) esto no hace nada.
 
@@ -80,7 +81,7 @@ function prepararVapid() {
 export async function guardarSuscripcion(usuarioId: number, s: SuscripcionPush): Promise<void> {
   if (!endpointPermitido(s.endpoint)) throw new EndpointNoPermitido();
   await ejecutar(
-    `MERGE dmc.push_suscripcion AS d
+    `MERGE ${T.push_suscripcion} AS d
      USING (SELECT @endpoint AS endpoint) AS o ON d.endpoint = o.endpoint
      WHEN MATCHED THEN UPDATE SET usuario_id = @u, p256dh = @p256dh, auth = @auth
      WHEN NOT MATCHED THEN INSERT (usuario_id, endpoint, p256dh, auth) VALUES (@u, @endpoint, @p256dh, @auth);`,
@@ -94,9 +95,9 @@ export async function guardarSuscripcion(usuarioId: number, s: SuscripcionPush):
   // Tope por cuenta: se queda con las más nuevas. La que se acaba de guardar
   // nunca cae: si ya existía, conserva su id viejo y por id parecería la más antigua.
   await ejecutar(
-    `DELETE FROM dmc.push_suscripcion
+    `DELETE FROM ${T.push_suscripcion}
       WHERE usuario_id = @u AND endpoint <> @endpoint
-        AND id NOT IN (SELECT TOP (@max) id FROM dmc.push_suscripcion
+        AND id NOT IN (SELECT TOP (@max) id FROM ${T.push_suscripcion}
                         WHERE usuario_id = @u AND endpoint <> @endpoint ORDER BY id DESC)`,
     [
       ["u", sql.BigInt, usuarioId],
@@ -109,7 +110,7 @@ export async function guardarSuscripcion(usuarioId: number, s: SuscripcionPush):
 export class EndpointNoPermitido extends Error {}
 
 export async function borrarSuscripcion(usuarioId: number, endpoint: string): Promise<void> {
-  await ejecutar(`DELETE FROM dmc.push_suscripcion WHERE endpoint = @endpoint AND usuario_id = @u`, [
+  await ejecutar(`DELETE FROM ${T.push_suscripcion} WHERE endpoint = @endpoint AND usuario_id = @u`, [
     ["endpoint", sql.NVarChar(450), endpoint],
     ["u", sql.BigInt, usuarioId],
   ]);
@@ -133,7 +134,7 @@ export async function enviarPush(aviso: AvisoPush): Promise<void> {
   if (!pushConfigurado()) return;
   try {
     const filas = await consultaCon<FilaSuscripcion>(
-      `SELECT id, usuario_id AS usuarioId, endpoint, p256dh, auth FROM dmc.push_suscripcion
+      `SELECT id, usuario_id AS usuarioId, endpoint, p256dh, auth FROM ${T.push_suscripcion}
         WHERE usuario_id <> COALESCE(@actor, 0)`,
       [["actor", sql.BigInt, aviso.actorId]]
     );
@@ -162,7 +163,7 @@ export async function enviarPush(aviso: AvisoPush): Promise<void> {
         if (!(await puede(num(f.usuarioId)))) return;
         // Suscripciones guardadas antes de la lista blanca: se descartan sin enviar nada.
         if (!endpointPermitido(f.endpoint)) {
-          await ejecutar(`DELETE FROM dmc.push_suscripcion WHERE id = @id`, [["id", sql.BigInt, num(f.id)]]);
+          await ejecutar(`DELETE FROM ${T.push_suscripcion} WHERE id = @id`, [["id", sql.BigInt, num(f.id)]]);
           return;
         }
         try {
@@ -175,7 +176,7 @@ export async function enviarPush(aviso: AvisoPush): Promise<void> {
           const estado = (err as { statusCode?: number }).statusCode;
           // 404/410: el navegador ya no existe o revocó el permiso.
           if (estado === 404 || estado === 410) {
-            await ejecutar(`DELETE FROM dmc.push_suscripcion WHERE id = @id`, [["id", sql.BigInt, num(f.id)]]);
+            await ejecutar(`DELETE FROM ${T.push_suscripcion} WHERE id = @id`, [["id", sql.BigInt, num(f.id)]]);
           } else {
             log.error("push.envio", { err, estado });
           }

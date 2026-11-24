@@ -11,7 +11,7 @@ export function getSqlConfig(): MssqlConfig {
     "DB_NAME",
     "Es el nombre de la base de datos en SQL Server. Defínela en el entorno del despliegue."
   );
-  const user = envObligatoria("DB_USER", "Usuario de autenticación SQL con permisos sobre el esquema dmc.");
+  const user = envObligatoria("DB_USER", "Usuario de autenticación SQL con permisos sobre el esquema de la app (DB_SCHEMA).");
   const password = envObligatoria("DB_PASSWORD", "Contraseña del usuario SQL. Nunca la escribas en un archivo del repositorio.");
 
   if (envBooleana("DB_TRUSTED_CONNECTION", false)) {

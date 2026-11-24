@@ -2,7 +2,7 @@
 // el navegador y el servidor: qué se puede desactivar, cuánto mide el motivo y
 // cómo se cuenta una baja en pantalla.
 
-/** Lo que se activa y desactiva desde el panel. Es el valor de dmc.cambio_estado.entidad. */
+/** Lo que se activa y desactiva desde el panel. Es el valor de tecnico.cambio_estado.entidad. */
 export const ENTIDADES_CON_ESTADO = ["cliente", "marca", "mall", "sucursal", "tecnico", "usuario", "contacto"] as const;
 export type EntidadEstado = (typeof ENTIDADES_CON_ESTADO)[number];
 

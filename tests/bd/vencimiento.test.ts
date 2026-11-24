@@ -3,12 +3,13 @@ import { cancelarVisitasVencidas, DIAS_TOLERANCIA, MOTIVO_VENCIDA } from "@/lib/
 import { hoyISO, sumarDias } from "@/lib/ui/fecha";
 import { consulta } from "@/lib/data/sql";
 import { hayBd, insertarVisita, limpiarDatos, sembrarMundo, uno, type Mundo } from "./_ayuda";
+import { T } from "@/lib/db/esquema";
 
 // Una visita que el técnico no cerró a tiempo se cancela sola: el día asignado
 // más un día de tolerancia. No hay cron: se revisa al leer.
 describe.skipIf(!hayBd)("BD · cancelación automática por vencimiento", () => {
   let m: Mundo;
-  const estadoDe = async (id: number) => (await uno<{ estado: string }>(`SELECT estado FROM dmc.visita WHERE id = ${id}`))!.estado;
+  const estadoDe = async (id: number) => (await uno<{ estado: string }>(`SELECT estado FROM ${T.visita} WHERE id = ${id}`))!.estado;
   const dias = (n: number) => sumarDias(hoyISO(), n);
 
   beforeEach(async () => {
@@ -31,7 +32,7 @@ describe.skipIf(!hayBd)("BD · cancelación automática por vencimiento", () => 
     const vieja = await insertarVisita(m, { fecha: dias(-5) });
     await cancelarVisitasVencidas();
     expect(await estadoDe(vieja.id)).toBe("CANCELADA");
-    const h = await uno<{ motivo: string; origen: string }>(`SELECT TOP 1 motivo, origen FROM dmc.visita_estado_historial WHERE visita_id = ${vieja.id} ORDER BY id DESC`);
+    const h = await uno<{ motivo: string; origen: string }>(`SELECT TOP 1 motivo, origen FROM ${T.visita_estado_historial} WHERE visita_id = ${vieja.id} ORDER BY id DESC`);
     expect(h!.motivo).toContain(MOTIVO_VENCIDA);
     expect(h!.origen).toBe("WEB");
   });
@@ -67,7 +68,7 @@ describe.skipIf(!hayBd)("BD · cancelación automática por vencimiento", () => 
 
   it("no toca las visitas eliminadas (activo = 0)", async () => {
     const v = await insertarVisita(m, { fecha: dias(-9) });
-    await consulta(`UPDATE dmc.visita SET activo = 0 WHERE id = ${v.id}`);
+    await consulta(`UPDATE ${T.visita} SET activo = 0 WHERE id = ${v.id}`);
     await cancelarVisitasVencidas();
     expect(await estadoDe(v.id)).toBe("PROGRAMADA");
   });
@@ -77,7 +78,7 @@ describe.skipIf(!hayBd)("BD · cancelación automática por vencimiento", () => 
     await cancelarVisitasVencidas();
     vi.setSystemTime(Date.now() + 20 * 60 * 1000);
     await cancelarVisitasVencidas();
-    const n = await uno<{ n: number }>(`SELECT COUNT(*) AS n FROM dmc.visita_estado_historial WHERE visita_id = ${v.id} AND estado = 'CANCELADA'`);
+    const n = await uno<{ n: number }>(`SELECT COUNT(*) AS n FROM ${T.visita_estado_historial} WHERE visita_id = ${v.id} AND estado = 'CANCELADA'`);
     expect(Number(n!.n)).toBe(1);
   });
 });

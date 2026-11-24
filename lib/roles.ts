@@ -2,7 +2,7 @@ import type { RolUsuario } from "@/lib/types";
 
 // Roles de una cuenta y modos de trabajo (migración 044).
 //
-// Una cuenta tiene uno o más roles en dmc.usuario_rol: ADMIN o COORDINADOR (a
+// Una cuenta tiene uno o más roles en tecnico.usuario_rol: ADMIN o COORDINADOR (a
 // lo más uno de los dos: son dos formas de entrar al mismo panel) y, aparte,
 // TECNICO. Quien tiene un rol del panel y además TECNICO trabaja en uno de dos
 // modos a la vez —el panel de administración o el panel de técnico— y lo

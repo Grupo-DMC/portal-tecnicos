@@ -1,9 +1,10 @@
 import "server-only";
 import { F_TS, sql, type Ejecutor } from "@/lib/data/sql";
 import type { EntidadEstado } from "@/lib/ui/estado-activo";
+import { T } from "@/lib/db/esquema";
 
 // El historial de activaciones y desactivaciones de los maestros
-// (dmc.cambio_estado, migración 039). La base exige el motivo de dos formas:
+// (tecnico.cambio_estado, migración 039). La base exige el motivo de dos formas:
 // un CHECK en cada tabla (activo = 0 pide motivo_inactivo) y otro en el
 // historial. Acá solo se escribe y se lee.
 //
@@ -19,13 +20,13 @@ export interface ActorEstado {
 
 /** La tabla de cada entidad. Se interpola en el texto: sale de este literal, nunca de la entrada. */
 const TABLA: Record<EntidadEstado, string> = {
-  cliente: "dmc.cliente",
-  marca: "dmc.marca",
-  mall: "dmc.mall",
-  sucursal: "dmc.sucursal",
-  tecnico: "dmc.tecnico",
-  usuario: "dmc.usuario",
-  contacto: "dmc.contacto",
+  cliente: `${T.cliente}`,
+  marca: `${T.marca}`,
+  mall: `${T.mall}`,
+  sucursal: `${T.sucursal}`,
+  tecnico: `${T.tecnico}`,
+  usuario: `${T.usuario}`,
+  contacto: `${T.contacto}`,
 };
 
 /**
@@ -58,7 +59,7 @@ export async function anotarCambioDeEstado(
   const cambia = cambio.antes === null ? !cambio.despues : cambio.antes !== cambio.despues;
   if (!cambia) return;
   await ej.ejecutar(
-    `INSERT INTO dmc.cambio_estado (entidad, entidad_id, activo, motivo, usuario_id, usuario_email)
+    `INSERT INTO ${T.cambio_estado} (entidad, entidad_id, activo, motivo, usuario_id, usuario_email)
      VALUES (@entidad, @id, @activo, @motivo, @usuario, @email)`,
     [
       ["entidad", sql.VarChar(20), cambio.entidad],
@@ -82,7 +83,7 @@ export function columnasDeBaja(entidad: EntidadEstado, alias: string): { columna
     columnas: `baja.usuario_email AS baja_por, ${F_TS("baja.creado_en")} AS baja_en`,
     apply: `OUTER APPLY (
               SELECT TOP 1 ce.usuario_email, ce.creado_en
-                FROM dmc.cambio_estado ce
+                FROM ${T.cambio_estado} ce
                WHERE ${alias}.activo = 0 AND ce.entidad = '${entidad}' AND ce.entidad_id = ${alias}.id AND ce.activo = 0
                ORDER BY ce.id DESC
             ) baja`,

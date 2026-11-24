@@ -1,4 +1,4 @@
-// Tipos 1:1 con el schema `dmc` definido en sql/dmc_contingencia_sqlserver.sql.
+// Tipos 1:1 con el esquema (`dmc` en DMC_Contingencia, `tecnico` en DMC_Core) definido en sql/dmc_contingencia_sqlserver.sql.
 // Es la forma que devuelve la capa de consultas de lib/data/*, ya con los
 // nombres en camelCase y las fechas como texto ISO.
 
@@ -22,7 +22,7 @@ export type EstadoVisita =
   | "CANCELADA_ADMIN";
 
 /**
- * El código de un estado de problema (dmc.catalogo_problema_estado). Ya no
+ * El código de un estado de problema (tecnico.catalogo_problema_estado). Ya no
  * son tres fijos: la Lista 7 del Checklist agrega estados intermedios. Los dos
  * que el sistema conoce por nombre son ABIERTO (con el que nace) y RESUELTO
  * (el único que lo cierra).
@@ -139,11 +139,11 @@ export interface Usuario {
   id: number;
   email: string;
   /**
-   * Sus roles (dmc.usuario_rol, migración 044), en el orden de lib/roles.ROLES.
+   * Sus roles (tecnico.usuario_rol, migración 044), en el orden de lib/roles.ROLES.
    * Nunca vacío. Para decidir según el modo en que trabaja, ver lib/roles.
    */
   roles: RolUsuario[];
-  /** El rol del panel (dmc.rol). Solo lo llevan las cuentas COORDINADOR. */
+  /** El rol del panel (tecnico.rol). Solo lo llevan las cuentas COORDINADOR. */
   rolId?: number | null;
   tecnicoId: number | null;
   activo: boolean;
@@ -322,7 +322,7 @@ export interface Problema {
   items: ProblemaItem[];
 }
 
-/** Alguien que ya recibió o firmó en una tienda (dmc.persona_local). */
+/** Alguien que ya recibió o firmó en una tienda (tecnico.persona_local). */
 export interface PersonaLocal {
   id: number;
   nombre: string;
@@ -373,7 +373,7 @@ export interface VisitaEjecucion {
   edicionSolicitadaMotivo?: string | null;
 }
 
-/** Una corrección hecha al acta después de cerrarla (dmc.visita_edicion). */
+/** Una corrección hecha al acta después de cerrarla (tecnico.visita_edicion). */
 export interface VisitaEdicion {
   id: number;
   visitaId: number;
@@ -421,7 +421,7 @@ export interface VisitaVideo {
   grabadoEn: string | null;
 }
 
-/** Foto o video que explica el trabajo a realizar (dmc.visita_adjunto). No es evidencia del acta. */
+/** Foto o video que explica el trabajo a realizar (tecnico.visita_adjunto). No es evidencia del acta. */
 export interface AdjuntoTrabajo {
   id: number;
   visitaId: number;
@@ -482,7 +482,7 @@ export interface Visita {
   motivoCodigo: string;
   /**
    * Todos los motivos agendados. `motivoCodigo` es el principal (el primero de
-   * esta lista): es el que tiene la FK en dmc.visita.
+   * esta lista): es el que tiene la FK en tecnico.visita.
    */
   motivosCodigos: string[];
   /** Los mismos motivos, ya con su nombre del catálogo, para pintarlos. */
@@ -553,7 +553,7 @@ export interface SolicitudPassword {
   atendidoPor: number | null;
   atendidoEn: string | null;
   creadoEn: string;
-  /** Sale del join con dmc.usuario; null si el correo no está dado de alta. */
+  /** Sale del join con tecnico.usuario; null si el correo no está dado de alta. */
   usuarioRoles: RolUsuario[] | null;
   usuarioActivo: boolean | null;
   /**

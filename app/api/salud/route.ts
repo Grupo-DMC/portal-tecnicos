@@ -5,6 +5,7 @@ import { describirDestinoSql } from "@/lib/db/config";
 import { getPool } from "@/lib/db/pool";
 import { env, enProduccion, exigirConexionSql } from "@/lib/env";
 import { SQL_VERSION_ESQUEMA, VERSION_ESQUEMA } from "@/lib/data/esquema";
+import { T, esquema as esquemaVigente } from "@/lib/db/esquema";
 
 // Diagnóstico del despliegue: dice si la app llega a SQL Server sin exigir un
 // inicio de sesión (que es justo lo que falla cuando la base no responde).
@@ -54,9 +55,9 @@ export async function GET(req: NextRequest) {
     const r = await pool
       .request()
       .query<{ motivos: number; problemas: number; trabajos: number; esquema: number | null }>(
-        `SELECT (SELECT COUNT(*) FROM dmc.catalogo_motivo   WHERE activo = 1) AS motivos,
-                (SELECT COUNT(*) FROM dmc.catalogo_problema WHERE activo = 1) AS problemas,
-                (SELECT COUNT(*) FROM dmc.catalogo_trabajo  WHERE activo = 1) AS trabajos,
+        `SELECT (SELECT COUNT(*) FROM ${T.catalogo_motivo}   WHERE activo = 1) AS motivos,
+                (SELECT COUNT(*) FROM ${T.catalogo_problema} WHERE activo = 1) AS problemas,
+                (SELECT COUNT(*) FROM ${T.catalogo_trabajo}  WHERE activo = 1) AS trabajos,
                 ${SQL_VERSION_ESQUEMA} AS esquema`
       );
     const catalogo = r.recordset[0];
@@ -71,6 +72,7 @@ export async function GET(req: NextRequest) {
       latenciaMs: Date.now() - inicio,
       sesionFirmada: Boolean(env("SESSION_SECRET")),
       esquema: {
+        nombre: esquemaVigente(),
         version,
         requerida: VERSION_ESQUEMA,
         alDia: esquemaAlDia,

@@ -4,14 +4,15 @@ import type { AvisoProblemas, ProblemaSinResolver } from "@/lib/contratos/visita
 import type { ResolucionActa } from "@/lib/contratos/acta";
 import { revisarAviso, revisarResoluciones } from "@/lib/validacion/aviso-problemas";
 import { ESTADO_PROBLEMA_AGENDADO, ESTADO_PROBLEMA_CIERRE, ESTADO_PROBLEMA_INICIAL } from "@/lib/ui/estado";
+import { T } from "@/lib/db/esquema";
 
 // El aviso de problemas sin resolver (migración 030).
 //
 // Al agendar o reprogramar una visita en una sucursal con problemas sin
 // resolver, el panel pregunta si la visita es para resolverlos. «Sí» vincula
-// los elegidos a la visita (dmc.problema_visita_resolucion) y los pasa a
+// los elegidos a la visita (tecnico.problema_visita_resolucion) y los pasa a
 // AGENDADO; «otra cosa» no vincula nada. En los dos casos queda registro del
-// aviso en dmc.visita_aviso_problema.
+// aviso en tecnico.visita_aviso_problema.
 //
 // Al cerrar el acta de esa visita el técnico dice si cada uno quedó
 // solucionado: RESUELTO si sí, de vuelta a ABIERTO si no. Si la visita se
@@ -30,7 +31,7 @@ const VISITA_VIGENTE = `v2.activo = 1 AND v2.estado IN ('PROGRAMADA','EN_CURSO',
  */
 const WHERE_SIN_RESOLVER = `
   v.sucursal_id = @sucursal AND v.activo = 1 AND p.estado <> '${ESTADO_PROBLEMA_CIERRE}'
-  AND (@excluir IS NULL OR NOT EXISTS (SELECT 1 FROM dmc.problema_visita_resolucion rx
+  AND (@excluir IS NULL OR NOT EXISTS (SELECT 1 FROM ${T.problema_visita_resolucion} rx
                                         WHERE rx.problema_id = p.id AND rx.visita_id = @excluir))`;
 
 /** Para el aviso del panel. Con `excluirFolio`, el de la visita que se reprograma. */
@@ -48,19 +49,19 @@ export async function problemasSinResolver(
     folio: string;
     agendado_en: string | null;
   }>(
-    `DECLARE @excluir bigint = (SELECT id FROM dmc.visita WHERE folio = @folio);
+    `DECLARE @excluir bigint = (SELECT id FROM ${T.visita} WHERE folio = @folio);
 
      SELECT p.id, ISNULL(cp.nombre, p.tipo_codigo) AS tipo, p.descripcion, p.estado,
             ISNULL(ce.nombre, p.estado) AS estado_nombre, ${F_TS("p.creado_en")} AS creado_en, v.folio,
             (SELECT TOP 1 v2.folio
-               FROM dmc.problema_visita_resolucion r
-               JOIN dmc.visita v2 ON v2.id = r.visita_id
+               FROM ${T.problema_visita_resolucion} r
+               JOIN ${T.visita} v2 ON v2.id = r.visita_id
               WHERE r.problema_id = p.id AND r.resultado IS NULL AND ${VISITA_VIGENTE}
               ORDER BY v2.fecha_programada DESC, v2.id DESC) AS agendado_en
-       FROM dmc.problema p
-       JOIN dmc.visita v ON v.id = p.visita_id
-       LEFT JOIN dmc.catalogo_problema cp ON cp.codigo = p.tipo_codigo
-       LEFT JOIN dmc.catalogo_problema_estado ce ON ce.codigo = p.estado
+       FROM ${T.problema} p
+       JOIN ${T.visita} v ON v.id = p.visita_id
+       LEFT JOIN ${T.catalogo_problema} cp ON cp.codigo = p.tipo_codigo
+       LEFT JOIN ${T.catalogo_problema_estado} ce ON ce.codigo = p.estado
       WHERE ${WHERE_SIN_RESOLVER}
       ORDER BY p.creado_en, p.id`,
     [
@@ -85,8 +86,8 @@ export async function sucursalesConProblemas(sucursalIds: number[]): Promise<num
   if (sucursalIds.length === 0) return [];
   const filas = await consultaCon<{ sucursal_id: number }>(
     `SELECT DISTINCT v.sucursal_id
-       FROM dmc.problema p
-       JOIN dmc.visita v ON v.id = p.visita_id
+       FROM ${T.problema} p
+       JOIN ${T.visita} v ON v.id = p.visita_id
       WHERE v.activo = 1 AND p.estado <> '${ESTADO_PROBLEMA_CIERRE}' AND v.sucursal_id IN ${subIds("ids")}`,
     [paramIds("ids", sucursalIds)]
   );
@@ -112,7 +113,7 @@ export async function registrarAvisoEn(
   const excluir = input.ocasion === "REAGENDAR" ? input.visitaId : null;
   const abiertos = (
     await ej.consulta<{ id: number }>(
-      `SELECT p.id FROM dmc.problema p JOIN dmc.visita v ON v.id = p.visita_id WHERE ${WHERE_SIN_RESOLVER}`,
+      `SELECT p.id FROM ${T.problema} p JOIN ${T.visita} v ON v.id = p.visita_id WHERE ${WHERE_SIN_RESOLVER}`,
       [
         ["sucursal", sql.BigInt, input.sucursalId],
         ["excluir", sql.BigInt, excluir],
@@ -125,7 +126,7 @@ export async function registrarAvisoEn(
   if (!revision.registrar || !input.aviso) return;
 
   const [aviso] = await ej.consulta<{ id: number }>(
-    `INSERT INTO dmc.visita_aviso_problema (visita_id, ocasion, respuesta, usuario_id)
+    `INSERT INTO ${T.visita_aviso_problema} (visita_id, ocasion, respuesta, usuario_id)
      VALUES (@visita, @ocasion, @respuesta, @usuario);
 
      SELECT CAST(SCOPE_IDENTITY() AS bigint) AS id;`,
@@ -137,8 +138,8 @@ export async function registrarAvisoEn(
     ]
   );
   await ej.ejecutar(
-    `INSERT INTO dmc.visita_aviso_problema_detalle (aviso_id, problema_id)
-     SELECT @aviso, p.id FROM dmc.problema p WHERE p.id IN ${subIds("ids")}`,
+    `INSERT INTO ${T.visita_aviso_problema_detalle} (aviso_id, problema_id)
+     SELECT @aviso, p.id FROM ${T.problema} p WHERE p.id IN ${subIds("ids")}`,
     [["aviso", sql.BigInt, num(aviso.id)], paramIds("ids", abiertos)]
   );
 
@@ -159,9 +160,9 @@ export async function vincularEn(
   usuarioId: number | null
 ): Promise<void> {
   await ej.ejecutar(
-    `IF NOT EXISTS (SELECT 1 FROM dmc.problema_visita_resolucion
+    `IF NOT EXISTS (SELECT 1 FROM ${T.problema_visita_resolucion}
                      WHERE problema_id = @problema AND visita_id = @visita)
-       INSERT INTO dmc.problema_visita_resolucion (problema_id, visita_id, agendado_por)
+       INSERT INTO ${T.problema_visita_resolucion} (problema_id, visita_id, agendado_por)
        VALUES (@problema, @visita, @usuario)`,
     [
       ["problema", sql.BigInt, problemaId],
@@ -186,12 +187,12 @@ export async function soltarAgendadosEn(
 ): Promise<void> {
   const filas = await ej.consulta<{ id: number }>(
     `SELECT p.id
-       FROM dmc.problema p
-       JOIN dmc.problema_visita_resolucion r ON r.problema_id = p.id
+       FROM ${T.problema} p
+       JOIN ${T.problema_visita_resolucion} r ON r.problema_id = p.id
       WHERE r.visita_id = @visita AND r.resultado IS NULL AND p.estado = '${ESTADO_PROBLEMA_AGENDADO}'
         AND NOT EXISTS (SELECT 1
-                          FROM dmc.problema_visita_resolucion r2
-                          JOIN dmc.visita v2 ON v2.id = r2.visita_id
+                          FROM ${T.problema_visita_resolucion} r2
+                          JOIN ${T.visita} v2 ON v2.id = r2.visita_id
                          WHERE r2.problema_id = p.id AND r2.visita_id <> @visita
                            AND r2.resultado IS NULL AND ${VISITA_VIGENTE})`,
     [["visita", sql.BigInt, visitaId]]
@@ -207,8 +208,8 @@ export async function soltarAgendadosEn(
 async function idsPorResolverEn(ej: Ejecutor, visitaId: number): Promise<number[]> {
   const filas = await ej.consulta<{ id: number }>(
     `SELECT p.id
-       FROM dmc.problema_visita_resolucion r
-       JOIN dmc.problema p ON p.id = r.problema_id
+       FROM ${T.problema_visita_resolucion} r
+       JOIN ${T.problema} p ON p.id = r.problema_id
       WHERE r.visita_id = @visita AND r.resultado IS NULL AND p.estado <> '${ESTADO_PROBLEMA_CIERRE}'
       ORDER BY p.creado_en, p.id`,
     [["visita", sql.BigInt, visitaId]]
@@ -229,11 +230,11 @@ export async function problemasPorResolver(visitaId: number): Promise<ProblemaSi
   }>(
     `SELECT p.id, ISNULL(cp.nombre, p.tipo_codigo) AS tipo, p.descripcion, p.estado,
             ISNULL(ce.nombre, p.estado) AS estado_nombre, ${F_TS("p.creado_en")} AS creado_en, v.folio
-       FROM dmc.problema_visita_resolucion r
-       JOIN dmc.problema p ON p.id = r.problema_id
-       JOIN dmc.visita   v ON v.id = p.visita_id
-       LEFT JOIN dmc.catalogo_problema cp ON cp.codigo = p.tipo_codigo
-       LEFT JOIN dmc.catalogo_problema_estado ce ON ce.codigo = p.estado
+       FROM ${T.problema_visita_resolucion} r
+       JOIN ${T.problema} p ON p.id = r.problema_id
+       JOIN ${T.visita}   v ON v.id = p.visita_id
+       LEFT JOIN ${T.catalogo_problema} cp ON cp.codigo = p.tipo_codigo
+       LEFT JOIN ${T.catalogo_problema_estado} ce ON ce.codigo = p.estado
       WHERE r.visita_id = @visita AND r.resultado IS NULL AND p.estado <> '${ESTADO_PROBLEMA_CIERRE}'
       ORDER BY p.creado_en, p.id`,
     [["visita", sql.BigInt, visitaId]]
@@ -282,7 +283,7 @@ export async function prepararResolucionesEn(
 
 async function responderEn(ej: Ejecutor, problemaId: number, visitaId: number, resultado: "RESUELTO" | "NO_RESUELTO") {
   await ej.ejecutar(
-    `UPDATE dmc.problema_visita_resolucion
+    `UPDATE ${T.problema_visita_resolucion}
         SET resultado = @resultado, respondido_en = SYSDATETIME()
       WHERE problema_id = @problema AND visita_id = @visita`,
     [
@@ -296,7 +297,7 @@ async function responderEn(ej: Ejecutor, problemaId: number, visitaId: number, r
 /**
  * Cambia el estado de un problema y lo deja en su bitácora.
  *
- * Se lee primero y se escribe después, sin OUTPUT: dmc.problema tiene trigger
+ * Se lee primero y se escribe después, sin OUTPUT: tecnico.problema tiene trigger
  * y un OUTPUT sin INTO revienta. resuelto_en va en el mismo UPDATE porque
  * ck_problema_resuelto se evalúa antes que el trigger (ver actualizarProblema).
  */
@@ -309,7 +310,7 @@ async function cambiarEstadoEn(
   condicion: { solo?: string; salvo?: string[] } = {}
 ): Promise<void> {
   const [actual] = await ej.consulta<{ estado: string }>(
-    `SELECT estado FROM dmc.problema WITH (UPDLOCK, ROWLOCK) WHERE id = @id`,
+    `SELECT estado FROM ${T.problema} WITH (UPDLOCK, ROWLOCK) WHERE id = @id`,
     [["id", sql.BigInt, problemaId]]
   );
   if (!actual || actual.estado === estado) return;
@@ -317,13 +318,13 @@ async function cambiarEstadoEn(
   if (condicion.salvo?.includes(actual.estado)) return;
 
   await ej.ejecutar(
-    `UPDATE dmc.problema
+    `UPDATE ${T.problema}
         SET estado = @estado,
             resuelto_en = CASE WHEN @estado = '${ESTADO_PROBLEMA_CIERRE}'
                                THEN COALESCE(resuelto_en, SYSDATETIME()) ELSE NULL END
       WHERE id = @id;
 
-     INSERT INTO dmc.problema_historial (problema_id, campo, valor_anterior, valor_nuevo, motivo, usuario_id)
+     INSERT INTO ${T.problema_historial} (problema_id, campo, valor_anterior, valor_nuevo, motivo, usuario_id)
      VALUES (@id, 'ESTADO', @antes, @estado, @motivo, @usuario);`,
     [
       ["id", sql.BigInt, problemaId],

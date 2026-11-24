@@ -3,6 +3,7 @@ import { consultaCon, enTransaccion, num, sql } from "@/lib/data/sql";
 import { escribirTrabajos, sincronizarMotivosCon } from "@/lib/data/visitas";
 import { DISPOSITIVO_PAPEL } from "@/lib/ui/papel";
 import type { InformePapel } from "@/lib/contratos/papel";
+import { T } from "@/lib/db/esquema";
 
 // "Visitas en papel": cargar los informes que se hicieron a mano en años
 // anteriores. Cada uno entra ya cerrado —COMPLETADA, con su acta y el nombre
@@ -27,7 +28,7 @@ export async function crearInformePapel(inf: InformePapel, usuarioId: number): P
 
   if (!inf.aunqueRepetida) {
     const [repetida] = await consultaCon<{ folio: string }>(
-      `SELECT TOP 1 folio FROM dmc.visita
+      `SELECT TOP 1 folio FROM ${T.visita}
         WHERE sucursal_id = @sucursal AND fecha_programada = @fecha AND activo = 1
         ORDER BY id`,
       [
@@ -45,24 +46,24 @@ export async function crearInformePapel(inf: InformePapel, usuarioId: number): P
   }
 
   return enTransaccion(async (ej) => {
-    // dmc.visita tiene trigger: el id se lee con SCOPE_IDENTITY y no con OUTPUT.
+    // tecnico.visita tiene trigger: el id se lee con SCOPE_IDENTITY y no con OUTPUT.
     // El trigger también deja la fila de historial COMPLETADA; acá se completa
     // con quién la cargó y desde dónde.
     const [fila] = await ej.consulta<{ id: number; folio: string }>(
-      `INSERT INTO dmc.visita
+      `INSERT INTO ${T.visita}
          (folio, cliente_id, sucursal_id, tecnico_id, tecnico_ayudante_id, motivo_codigo, estado,
           fecha_programada, trabajo_solicitado, responsable_nombre, responsable_rut, creada_por)
-       VALUES (CONCAT('V-', @anio, '-', FORMAT(NEXT VALUE FOR dmc.seq_folio_visita, '00000')),
+       VALUES (CONCAT('V-', @anio, '-', FORMAT(NEXT VALUE FOR ${T.seq_folio_visita}, '00000')),
                @cliente, @sucursal, @tecnico, @ayudante, @motivo, 'COMPLETADA',
                @fecha, @trabajo, @nombre, @rut, @usuario);
 
        DECLARE @id bigint = SCOPE_IDENTITY();
 
-       UPDATE dmc.visita_estado_historial
+       UPDATE ${T.visita_estado_historial}
           SET motivo = @nota, origen = 'WEB', usuario_id = @usuario
         WHERE visita_id = @id;
 
-       SELECT id, folio FROM dmc.visita WHERE id = @id;`,
+       SELECT id, folio FROM ${T.visita} WHERE id = @id;`,
       [
         ["anio", sql.VarChar(4), String(anio)],
         ["cliente", sql.BigInt, inf.clienteId],
@@ -83,14 +84,14 @@ export async function crearInformePapel(inf: InformePapel, usuarioId: number): P
     // El informe no trae horas: llegada y salida quedan a las 00:00 del día, y
     // el acta las muestra como «en papel» en vez de inventar un horario.
     await ej.ejecutar(
-      `INSERT INTO dmc.visita_ejecucion
+      `INSERT INTO ${T.visita_ejecucion}
          (visita_id, hora_inicio, hora_termino, responsable_nombre, responsable_rut,
           motivo_real_codigo, observaciones, dispositivo, sincronizado_en)
        VALUES (@id, CAST(@fecha AS datetime2(0)), CAST(@fecha AS datetime2(0)), @nombre, @rut,
                @motivo, @obs, @dispositivo, SYSDATETIME());
 
        -- La firma quedó en el papel: se guarda quién firmó, sin imagen.
-       INSERT INTO dmc.visita_firma (visita_id, rol, nombre, rut, imagen_url, contenido, firmado_en)
+       INSERT INTO ${T.visita_firma} (visita_id, rol, nombre, rut, imagen_url, contenido, firmado_en)
        VALUES (@id, 'TIENDA', @nombre, @rut, '', NULL, CAST(@fecha AS datetime2(0)));`,
       [
         ["id", sql.BigInt, id],

@@ -6,7 +6,7 @@ import type { EstadoProblema } from "@/lib/types";
 import type { ReservaAjena } from "@/lib/reserva";
 
 export interface ProblemaEdicion {
-  /** Id en dmc.problema si ya estaba en el acta; sin id, es uno nuevo. */
+  /** Id en tecnico.problema si ya estaba en el acta; sin id, es uno nuevo. */
   id?: number | null;
   tipoCodigo: string;
   descripcion: string | null;

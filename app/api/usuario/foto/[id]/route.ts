@@ -5,7 +5,7 @@ import { cabecerasEvidencia, mimeSeguro } from "@/lib/evidencia-http";
 import { enModoTecnico } from "@/lib/roles";
 
 // Foto de perfil de una cuenta (Mi cuenta, migración 034). Los bytes viven en
-// dmc.usuario_foto. Quien está en el panel ve la de cualquiera; el técnico,
+// tecnico.usuario_foto. Quien está en el panel ve la de cualquiera; el técnico,
 // solo la suya.
 
 export const dynamic = "force-dynamic";

@@ -5,8 +5,9 @@ import {
   SECCIONES_CONFIGURABLES,
   type SeccionesObligatorias,
 } from "@/lib/contratos/secciones-acta";
+import { T } from "@/lib/db/esquema";
 
-// Qué secciones del acta del técnico son obligatorias (dmc.acta_seccion_config,
+// Qué secciones del acta del técnico son obligatorias (tecnico.acta_seccion_config,
 // migración 042). Una fila por sección; si falta, vale el valor por defecto.
 
 interface FilaConfig {
@@ -16,7 +17,7 @@ interface FilaConfig {
 
 /** Las secciones configurables y si cada una es obligatoria. */
 export async function leerSeccionesObligatorias(): Promise<SeccionesObligatorias> {
-  const filas = await consulta<FilaConfig>(`SELECT clave, obligatoria FROM dmc.acta_seccion_config`);
+  const filas = await consulta<FilaConfig>(`SELECT clave, obligatoria FROM ${T.acta_seccion_config}`);
   const resultado = { ...OBLIGATORIAS_POR_DEFECTO };
   for (const f of filas) {
     if (f.clave in resultado) resultado[f.clave as keyof SeccionesObligatorias] = Boolean(f.obligatoria);
@@ -32,7 +33,7 @@ export async function guardarSeccionesObligatorias(
   await enTransaccion(async (ej) => {
     for (const { clave } of SECCIONES_CONFIGURABLES) {
       await ej.ejecutar(
-        `MERGE dmc.acta_seccion_config AS d
+        `MERGE ${T.acta_seccion_config} AS d
            USING (SELECT @clave AS clave) AS o ON d.clave = o.clave
            WHEN MATCHED THEN UPDATE SET obligatoria = @oblig, actualizado_en = SYSDATETIME(), actualizado_por = @usuario
            WHEN NOT MATCHED THEN INSERT (clave, obligatoria, actualizado_por) VALUES (@clave, @oblig, @usuario);`,

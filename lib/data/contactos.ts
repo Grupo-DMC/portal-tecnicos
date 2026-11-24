@@ -9,8 +9,9 @@ import {
   estadoActual,
   type ActorEstado,
 } from "@/lib/data/estado-activo";
+import { T } from "@/lib/db/esquema";
 
-// Contactos y sus cargos (migración 029): dmc.contacto y dmc.contacto_cargo.
+// Contactos y sus cargos (migración 029): tecnico.contacto y tecnico.contacto_cargo.
 //
 // El alcance de un cargo apunta a la tabla que corresponda según su tipo
 // (cliente, marca o sucursal por id; la región por texto). No hay FK, así que
@@ -43,14 +44,14 @@ export async function listarContactos(filtro: { ids?: number[] } = {}): Promise<
   const [contactos, cargos] = await Promise.all([
     consultaCon<FilaContacto>(
       `SELECT id, nombre, email, telefono, activo, motivo_inactivo, ${baja.columnas}
-         FROM dmc.contacto ct
+         FROM ${T.contacto} ct
          ${baja.apply}
         ${filtro.ids ? `WHERE id IN ${subIds("ids")}` : ""}
         ORDER BY nombre`,
       params
     ),
     consultaCon<FilaCargo>(
-      `SELECT id, contacto_id, cargo, alcance_tipo, alcance_id, alcance_texto FROM dmc.contacto_cargo
+      `SELECT id, contacto_id, cargo, alcance_tipo, alcance_id, alcance_texto FROM ${T.contacto_cargo}
         ${filtro.ids ? `WHERE contacto_id IN ${subIds("ids")}` : ""}
         ORDER BY id`,
       params
@@ -88,7 +89,7 @@ export async function getContacto(id: number): Promise<Contacto | undefined> {
 /** Ids de los contactos con algún cargo cuyo alcance cumple `condicion` (sobre `cc`). */
 async function idsDeContactos(condicion: string, params: Parametro[]): Promise<number[]> {
   const filas = await consultaCon<{ contacto_id: number }>(
-    `SELECT DISTINCT cc.contacto_id FROM dmc.contacto_cargo cc WHERE ${condicion}`,
+    `SELECT DISTINCT cc.contacto_id FROM ${T.contacto_cargo} cc WHERE ${condicion}`,
     params
   );
   return filas.map((f) => num(f.contacto_id));
@@ -123,7 +124,7 @@ export async function contactosCandidatos(t: UbicacionTienda): Promise<Contacto[
 export async function contactosPropiosDeSucursal(sucursalId: number): Promise<Contacto[]> {
   const ids = await idsDeContactos(
     `cc.alcance_tipo = 'SUCURSAL' AND cc.alcance_id = @sucursal
-      AND EXISTS (SELECT 1 FROM dmc.contacto ct WHERE ct.id = cc.contacto_id AND ct.activo = 1)`,
+      AND EXISTS (SELECT 1 FROM ${T.contacto} ct WHERE ct.id = cc.contacto_id AND ct.activo = 1)`,
     [["sucursal", sql.BigInt, sucursalId]]
   );
   return ids.length ? listarContactos({ ids }) : [];
@@ -136,13 +137,13 @@ export async function contactosPropiosDeSucursal(sucursalId: number): Promise<Co
  */
 export async function quitarCargoDeContacto(contactoId: number, cargoId: number): Promise<boolean> {
   return enTransaccion(async (ej) => {
-    const borradas = await ej.ejecutar(`DELETE FROM dmc.contacto_cargo WHERE id = @cargo AND contacto_id = @contacto`, [
+    const borradas = await ej.ejecutar(`DELETE FROM ${T.contacto_cargo} WHERE id = @cargo AND contacto_id = @contacto`, [
       ["cargo", sql.BigInt, cargoId],
       ["contacto", sql.BigInt, contactoId],
     ]);
     if (borradas === 0) return false;
     // Toca el contacto para que su fecha de actualización diga que cambió.
-    await ej.ejecutar(`UPDATE dmc.contacto SET nombre = nombre WHERE id = @contacto`, [["contacto", sql.BigInt, contactoId]]);
+    await ej.ejecutar(`UPDATE ${T.contacto} SET nombre = nombre WHERE id = @contacto`, [["contacto", sql.BigInt, contactoId]]);
     return true;
   });
 }
@@ -154,7 +155,7 @@ export async function quitarCargoDeContacto(contactoId: number, cargoId: number)
 export async function contactosDeCliente(clienteId: number): Promise<Contacto[]> {
   const ids = await idsDeContactos(
     `(cc.alcance_tipo = 'CLIENTE' AND cc.alcance_id = @cliente)
-      OR (cc.alcance_tipo = 'MARCA' AND cc.alcance_id IN (SELECT id FROM dmc.marca WHERE cliente_id = @cliente))`,
+      OR (cc.alcance_tipo = 'MARCA' AND cc.alcance_id IN (SELECT id FROM ${T.marca} WHERE cliente_id = @cliente))`,
     [["cliente", sql.BigInt, clienteId]]
   );
   return ids.length ? listarContactos({ ids }) : [];
@@ -193,7 +194,7 @@ export async function guardarContacto(id: number | null, d: DatosContacto, actor
       const ids = [...new Set(d.cargos.filter((c) => c.alcanceTipo === tipo).map((c) => c.alcanceId))];
       if (ids.length === 0) continue;
       const [fila] = await ej.consulta<{ n: number }>(
-        `SELECT COUNT(*) AS n FROM dmc.${TABLA_DE_ALCANCE[tipo]} WHERE id IN ${subIds("ids")}`,
+        `SELECT COUNT(*) AS n FROM ${T[TABLA_DE_ALCANCE[tipo]]} WHERE id IN ${subIds("ids")}`,
         [paramIds("ids", ids as number[])]
       );
       if (num(fila.n) !== ids.length) throw new AlcanceInexistente(tipo.toLowerCase());
@@ -212,7 +213,7 @@ export async function guardarContacto(id: number | null, d: DatosContacto, actor
       // Se recoge el id en una tabla de paso: OUTPUT sin INTO falla en tablas con triggers.
       const [fila] = await ej.consulta<{ id: number }>(
         `DECLARE @nuevo TABLE (id bigint);
-         INSERT INTO dmc.contacto (nombre, email, telefono, activo, motivo_inactivo)
+         INSERT INTO ${T.contacto} (nombre, email, telefono, activo, motivo_inactivo)
          OUTPUT INSERTED.id INTO @nuevo
          VALUES (@nombre, @email, @telefono, @activo, @motivo);
          SELECT id FROM @nuevo;`,
@@ -222,7 +223,7 @@ export async function guardarContacto(id: number | null, d: DatosContacto, actor
     } else {
       contactoId = id;
       const tocadas = await ej.ejecutar(
-        `UPDATE dmc.contacto
+        `UPDATE ${T.contacto}
             SET nombre = @nombre, email = @email, telefono = @telefono, activo = @activo, motivo_inactivo = @motivo
           WHERE id = @id`,
         [...params, ["id", sql.BigInt, id]]
@@ -231,10 +232,10 @@ export async function guardarContacto(id: number | null, d: DatosContacto, actor
     }
     await anotarCambioDeEstado(ej, { entidad: "contacto", id: contactoId, antes, despues: d.activo, motivo, actor });
 
-    await ej.ejecutar(`DELETE FROM dmc.contacto_cargo WHERE contacto_id = @id`, [["id", sql.BigInt, contactoId]]);
+    await ej.ejecutar(`DELETE FROM ${T.contacto_cargo} WHERE contacto_id = @id`, [["id", sql.BigInt, contactoId]]);
     if (d.cargos.length) {
       await ej.ejecutar(
-        `INSERT INTO dmc.contacto_cargo (contacto_id, cargo, alcance_tipo, alcance_id, alcance_texto)
+        `INSERT INTO ${T.contacto_cargo} (contacto_id, cargo, alcance_tipo, alcance_id, alcance_texto)
          SELECT @id, j.cargo, j.tipo, j.alcance_id, j.texto
            FROM OPENJSON(@cargos)
                 WITH (cargo nvarchar(80) '$.cargo', tipo varchar(10) '$.tipo',

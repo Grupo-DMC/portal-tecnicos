@@ -811,7 +811,7 @@ export default function ActaView({
                     title="Ver la foto en grande"
                   >
                     {/* Las fotos van en color: los bytes vienen de
-                        dmc.visita_foto.contenido vía /api/visita/foto/<id>. */}
+                        la columna visita_foto.contenido vía /api/visita/foto/<id>. */}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={f.archivoUrl}
@@ -830,7 +830,7 @@ export default function ActaView({
                 ) : null}
               </div>
 
-              {/* Los clips salen de dmc.visita_video vía /api/visita/video/<id>,
+              {/* Los clips salen de tecnico.visita_video vía /api/visita/video/<id>,
                   que responde por rangos: por eso se pueden adelantar sin que
                   el navegador se baje los 11 MB completos. */}
               <div className="flex items-center gap-3 flex-wrap mt-6.5 mb-3">

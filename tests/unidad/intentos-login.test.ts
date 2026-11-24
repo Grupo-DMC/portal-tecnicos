@@ -21,6 +21,7 @@ import {
   intentoBloqueado,
   registrarIntento,
 } from "@/lib/data/intentos-login";
+import { T } from "@/lib/db/esquema";
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -62,7 +63,7 @@ describe("intentoBloqueado", () => {
     consultaCon.mockResolvedValue([{ cuenta: 0, fallos_ip: 0 }]);
     expect(await intentoBloqueado(" ANA@example.com ", "10.0.0.1")).toBe(false);
     const [texto, params] = consultaCon.mock.calls[0];
-    expect(texto).toContain("dmc.intento_login");
+    expect(texto).toContain(`${T.intento_login}`);
     expect(params.map((p: unknown[]) => [p[0], p[2]])).toEqual([
       ["email", "ana@example.com"],
       ["ip", "10.0.0.1"],
@@ -93,7 +94,7 @@ describe("registrarIntento", () => {
     await registrarIntento(" Ana@Example.com", "10.0.0.1", false);
     expect(ejecutar).toHaveBeenCalledTimes(1);
     const [texto, params] = ejecutar.mock.calls[0];
-    expect(texto).toContain("INSERT INTO dmc.intento_login");
+    expect(texto).toContain(`INSERT INTO ${T.intento_login}`);
     expect(params.map((p: unknown[]) => p[2])).toEqual(["ana@example.com", "10.0.0.1", false]);
   });
 
@@ -101,7 +102,7 @@ describe("registrarIntento", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.01);
     await registrarIntento("a@example.com", null, true);
     expect(ejecutar).toHaveBeenCalledTimes(2);
-    expect(ejecutar.mock.calls[1][0]).toContain("DELETE TOP (1000) FROM dmc.intento_login");
+    expect(ejecutar.mock.calls[1][0]).toContain(`DELETE TOP (1000) FROM ${T.intento_login}`);
   });
 
   it("si el barrido falla, no rompe el login", async () => {

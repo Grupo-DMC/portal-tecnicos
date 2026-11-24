@@ -1,6 +1,7 @@
 import "server-only";
 import { ejecutar, sql } from "@/lib/data/sql";
 import { log } from "@/lib/log";
+import { T } from "@/lib/db/esquema";
 
 /**
  * Da de baja todos los navegadores suscritos a los avisos push de la cuenta.
@@ -11,7 +12,7 @@ import { log } from "@/lib/log";
  */
 export async function borrarSuscripcionesDeUsuario(usuarioId: number): Promise<void> {
   try {
-    await ejecutar(`DELETE FROM dmc.push_suscripcion WHERE usuario_id = @u`, [["u", sql.BigInt, usuarioId]]);
+    await ejecutar(`DELETE FROM ${T.push_suscripcion} WHERE usuario_id = @u`, [["u", sql.BigInt, usuarioId]]);
   } catch (err) {
     log.error("push.baja-usuario", { err, usuarioId });
   }

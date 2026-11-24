@@ -10,9 +10,10 @@ import {
   type ResultadoReserva,
 } from "@/lib/reserva";
 import type { EstadoVisita } from "@/lib/types";
+import { T } from "@/lib/db/esquema";
 
 /**
- * Reserva del acta — dmc.visita_reserva (migración 026).
+ * Reserva del acta — tecnico.visita_reserva (migración 026).
  *
  * Quien abre el acta la reserva; mientras trabaja la renueva; si pasa el plazo
  * sin actividad vence y el otro técnico de la visita puede tomarla. Las reglas
@@ -51,8 +52,8 @@ const SELECT_RESERVA = `
   SELECT r.usuario_id, r.tecnico_id, t.nombre_completo AS nombre,
          ${F_TS("r.tomada_en")} AS desde,
          DATEDIFF(SECOND, r.renovada_en, SYSDATETIME()) AS inactiva
-    FROM dmc.visita_reserva r
-    JOIN dmc.tecnico t ON t.id = r.tecnico_id
+    FROM ${T.visita_reserva} r
+    JOIN ${T.tecnico} t ON t.id = r.tecnico_id
    WHERE r.visita_id = @visita`;
 
 function comoLeida(fila: FilaReserva | undefined): ReservaLeida | null {
@@ -99,14 +100,14 @@ export async function tomarReservaEn(ej: Ejecutor, visitaId: number, quien: Quie
   ] as Parameters<Ejecutor["ejecutar"]>[1];
   if (estado.estado === "propia") {
     await ej.ejecutar(
-      `UPDATE dmc.visita_reserva SET renovada_en = SYSDATETIME(), usuario_id = @usuario WHERE visita_id = @visita`,
+      `UPDATE ${T.visita_reserva} SET renovada_en = SYSDATETIME(), usuario_id = @usuario WHERE visita_id = @visita`,
       params
     );
   } else {
     // Libre: la fila vencida (si la hay) se reemplaza por una nueva con "desde" de ahora.
     await ej.ejecutar(
-      `DELETE FROM dmc.visita_reserva WHERE visita_id = @visita;
-       INSERT INTO dmc.visita_reserva (visita_id, usuario_id, tecnico_id) VALUES (@visita, @usuario, @tecnico);`,
+      `DELETE FROM ${T.visita_reserva} WHERE visita_id = @visita;
+       INSERT INTO ${T.visita_reserva} (visita_id, usuario_id, tecnico_id) VALUES (@visita, @usuario, @tecnico);`,
       params
     );
   }
@@ -122,8 +123,8 @@ export async function tomarReservaEn(ej: Ejecutor, visitaId: number, quien: Quie
 export async function traspasarTomadaEn(ej: Ejecutor, visitaId: number, quien: QuienReserva): Promise<void> {
   await ej.ejecutar(
     `UPDATE h SET tecnico_id = @tecnico, usuario_id = @usuario
-       FROM dmc.visita_estado_historial h
-      WHERE h.id = (SELECT TOP 1 h2.id FROM dmc.visita_estado_historial h2
+       FROM ${T.visita_estado_historial} h
+      WHERE h.id = (SELECT TOP 1 h2.id FROM ${T.visita_estado_historial} h2
                      WHERE h2.visita_id = @visita AND h2.estado = 'EN_CURSO'
                      ORDER BY h2.id DESC)
         AND h.tecnico_id <> @tecnico`,
@@ -149,7 +150,7 @@ export async function tomarReserva(folio: string, quien: QuienReserva): Promise<
       tecnico_ayudante_id: number | null;
     }>(
       `SELECT v.id, v.estado, v.tecnico_id, v.tecnico_ayudante_id
-         FROM dmc.visita v WITH (UPDLOCK, ROWLOCK) WHERE v.folio = @folio AND v.activo = 1`,
+         FROM ${T.visita} v WITH (UPDLOCK, ROWLOCK) WHERE v.folio = @folio AND v.activo = 1`,
       [["folio", sql.VarChar(16), folio]]
     );
     const NO: ResultadoReserva = { ok: false, motivo: "no_disponible", error: "Esa visita no está abierta para ti." };
@@ -169,8 +170,8 @@ export async function tomarReserva(folio: string, quien: QuienReserva): Promise<
 export async function liberarReserva(folio: string, usuarioId: number): Promise<void> {
   try {
     await ejecutar(
-      `DELETE r FROM dmc.visita_reserva r
-         JOIN dmc.visita v ON v.id = r.visita_id
+      `DELETE r FROM ${T.visita_reserva} r
+         JOIN ${T.visita} v ON v.id = r.visita_id
         WHERE v.folio = @folio AND r.usuario_id = @usuario`,
       [
         ["folio", sql.VarChar(16), folio],
@@ -186,7 +187,7 @@ export async function liberarReserva(folio: string, usuarioId: number): Promise<
 /** Suelta todas las reservas de un usuario: al cerrar sesión. */
 export async function liberarReservasDelUsuario(usuarioId: number): Promise<void> {
   try {
-    await ejecutar(`DELETE FROM dmc.visita_reserva WHERE usuario_id = @usuario`, [["usuario", sql.BigInt, usuarioId]]);
+    await ejecutar(`DELETE FROM ${T.visita_reserva} WHERE usuario_id = @usuario`, [["usuario", sql.BigInt, usuarioId]]);
   } catch (err) {
     log.error("liberarReservasDelUsuario", { err });
   }
@@ -194,5 +195,5 @@ export async function liberarReservasDelUsuario(usuarioId: number): Promise<void
 
 /** Suelta la reserva de una visita, sea de quien sea, dentro de una transacción (cerrar el acta, liberarla). */
 export async function soltarReservaEn(ej: Ejecutor, visitaId: number): Promise<void> {
-  await ej.ejecutar(`DELETE FROM dmc.visita_reserva WHERE visita_id = @visita`, [["visita", sql.BigInt, visitaId]]);
+  await ej.ejecutar(`DELETE FROM ${T.visita_reserva} WHERE visita_id = @visita`, [["visita", sql.BigInt, visitaId]]);
 }

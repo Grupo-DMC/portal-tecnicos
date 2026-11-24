@@ -4,9 +4,10 @@ import { guardarUsuario, listarUsuarios, type DatosUsuario } from "@/lib/data/ma
 import { getUsuarioPorId } from "@/lib/data/usuarios";
 import { leerCuenta } from "@/lib/data/roles";
 import { hayBd, limpiarDatos, mensajeDeError, sembrarMundo, uno, type Mundo } from "./_ayuda";
+import { T } from "@/lib/db/esquema";
 
 // Varios roles por cuenta (migración 044) contra SQL Server de verdad: el MERGE
-// de dmc.usuario_rol y el orden en que guardarUsuario escribe, que tiene que
+// de tecnico.usuario_rol y el orden en que guardarUsuario escribe, que tiene que
 // dejar la cuenta válida ante los triggers en cada paso.
 describe.skipIf(!hayBd)("BD · roles por cuenta", () => {
   let m: Mundo;
@@ -25,11 +26,11 @@ describe.skipIf(!hayBd)("BD · roles por cuenta", () => {
   });
   const control = { actorId: 0, actorEmail: "admin@example.com", autorizar: () => null };
   const roles = async (id: number) =>
-    (await consulta<{ rol: string }>(`SELECT rol FROM dmc.usuario_rol WHERE usuario_id = ${id} ORDER BY rol`)).map((f) => f.rol);
+    (await consulta<{ rol: string }>(`SELECT rol FROM ${T.usuario_rol} WHERE usuario_id = ${id} ORDER BY rol`)).map((f) => f.rol);
   // bigint llega como texto: se pasa a número para comparar.
   const fila = async (id: number) => {
     const f = (await uno<{ tecnico_id: unknown; rol_id: unknown; sesion_version: unknown }>(
-      `SELECT tecnico_id, rol_id, sesion_version FROM dmc.usuario WHERE id = ${id}`
+      `SELECT tecnico_id, rol_id, sesion_version FROM ${T.usuario} WHERE id = ${id}`
     ))!;
     const n = (v: unknown) => (v === null ? null : Number(v));
     return { tecnico_id: n(f.tecnico_id), rol_id: n(f.rol_id), sesion_version: Number(f.sesion_version) };
@@ -40,11 +41,11 @@ describe.skipIf(!hayBd)("BD · roles por cuenta", () => {
     m = await sembrarMundo();
     tecnicoLibre = Number(
       (await uno<{ id: number }>(
-        `INSERT INTO dmc.tecnico (rut, nombres, apellido_paterno, email) VALUES ('55.555.555-5', N'Doble', N'Rol', 'doble@example.com');
+        `INSERT INTO ${T.tecnico} (rut, nombres, apellido_paterno, email) VALUES ('55.555.555-5', N'Doble', N'Rol', 'doble@example.com');
          SELECT CAST(SCOPE_IDENTITY() AS bigint) AS id`
       ))!.id
     );
-    rolPanel = Number((await uno<{ id: number }>(`SELECT TOP 1 id FROM dmc.rol WHERE es_sistema = 1 AND nombre <> N'Técnico'`))!.id);
+    rolPanel = Number((await uno<{ id: number }>(`SELECT TOP 1 id FROM ${T.rol} WHERE es_sistema = 1 AND nombre <> N'Técnico'`))!.id);
   });
   afterAll(() => limpiarDatos());
 
@@ -118,12 +119,12 @@ describe.skipIf(!hayBd)("BD · roles por cuenta", () => {
     await guardarUsuario(m.adminId, base({ email: "admin@example.com", roles: ["ADMIN", "TECNICO"], tecnicoId: tecnicoLibre }), control);
     const ids = (
       await consulta<{ id: number }>(
-        `SELECT u.id FROM dmc.usuario u
+        `SELECT u.id FROM ${T.usuario} u
           WHERE u.activo = 1
-            AND EXISTS (SELECT 1 FROM dmc.usuario_rol r WHERE r.usuario_id = u.id AND r.rol IN ('ADMIN', 'COORDINADOR'))`
+            AND EXISTS (SELECT 1 FROM ${T.usuario_rol} r WHERE r.usuario_id = u.id AND r.rol IN ('ADMIN', 'COORDINADOR'))`
       )
     ).map((f) => Number(f.id));
     expect(ids).toEqual([m.adminId]);
-    expect(await mensajeDeError(`SELECT rol FROM dmc.usuario`)).toMatch(/Invalid column name 'rol'|nombre de columna 'rol' no es válido/i);
+    expect(await mensajeDeError(`SELECT rol FROM ${T.usuario}`)).toMatch(/Invalid column name 'rol'|nombre de columna 'rol' no es válido/i);
   });
 });

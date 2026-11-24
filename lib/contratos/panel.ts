@@ -31,7 +31,7 @@ export interface VisitaDeLocal {
   observaciones: string | null;
 }
 
-/** Un cambio de estado o de tipo, tal como quedó en dmc.problema_historial. */
+/** Un cambio de estado o de tipo, tal como quedó en tecnico.problema_historial. */
 export interface CambioProblema {
   campo: "ESTADO" | "TIPO";
   antes: string;

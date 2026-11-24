@@ -6,8 +6,9 @@ import { getPool } from "@/lib/db/pool";
 import { hashearPassword, verificarPassword } from "@/lib/password";
 import { ordenarRoles } from "@/lib/roles";
 import type { Tecnico, Usuario } from "@/lib/types";
+import { T } from "@/lib/db/esquema";
 
-// Consultas contra dmc.usuario / dmc.tecnico para el inicio de sesión.
+// Consultas contra tecnico.usuario / tecnico.tecnico para el inicio de sesión.
 // El maestro de usuarios que edita el panel vive en lib/data/maestros.
 
 export interface UsuarioConHash {
@@ -24,7 +25,7 @@ interface FilaUsuario {
   id: number;
   email: string;
   password_hash: string;
-  /** Los roles separados por coma (dmc.usuario_rol). */
+  /** Los roles separados por coma (tecnico.usuario_rol). */
   roles: string | null;
   rol_id: number | null;
   tecnico_id: number | null;
@@ -45,7 +46,7 @@ interface FilaUsuario {
 
 const SELECT_USUARIO = `
   SELECT u.id, u.email, u.password_hash, u.rol_id, u.tecnico_id, u.activo, u.ultimo_acceso_en,
-         (SELECT STRING_AGG(r.rol, ',') FROM dmc.usuario_rol r WHERE r.usuario_id = u.id) AS roles,
+         (SELECT STRING_AGG(r.rol, ',') FROM ${T.usuario_rol} r WHERE r.usuario_id = u.id) AS roles,
          u.sesion_version, u.debe_cambiar_password,
          t.id               AS t_id,
          t.rut              AS t_rut,
@@ -56,8 +57,8 @@ const SELECT_USUARIO = `
          t.email            AS t_email,
          t.telefono         AS t_telefono,
          t.activo           AS t_activo
-  FROM dmc.usuario u
-  LEFT JOIN dmc.tecnico t ON t.id = u.tecnico_id
+  FROM ${T.usuario} u
+  LEFT JOIN ${T.tecnico} t ON t.id = u.tecnico_id
 `;
 
 function mapear(fila: FilaUsuario): UsuarioConHash {
@@ -127,17 +128,17 @@ export async function cambiarPasswordPropia(usuarioId: number, nueva: string): P
   if (await verificarPassword(nueva, actual.passwordHash)) return null;
 
   const pool = await getPool();
-  // Sin OUTPUT: dmc.usuario tiene trigger de actualización. La versión se relee
+  // Sin OUTPUT: tecnico.usuario tiene trigger de actualización. La versión se relee
   // en el mismo lote.
   const resultado = await pool
     .request()
     .input("id", sql.BigInt, usuarioId)
     .input("hash", sql.NVarChar(200), await hashearPassword(nueva))
     .query<{ sesion_version: number }>(
-      `UPDATE dmc.usuario
+      `UPDATE ${T.usuario}
           SET password_hash = @hash, debe_cambiar_password = 0, sesion_version = sesion_version + 1
         WHERE id = @id;
-       SELECT sesion_version FROM dmc.usuario WHERE id = @id;`
+       SELECT sesion_version FROM ${T.usuario} WHERE id = @id;`
     );
   await borrarSuscripcionesDeUsuario(usuarioId);
   return Number(resultado.recordset[0].sesion_version);
@@ -154,7 +155,7 @@ export async function revocarSesiones(usuarioId: number): Promise<void> {
   await pool
     .request()
     .input("id", sql.BigInt, usuarioId)
-    .query(`UPDATE dmc.usuario SET sesion_version = sesion_version + 1 WHERE id = @id`);
+    .query(`UPDATE ${T.usuario} SET sesion_version = sesion_version + 1 WHERE id = @id`);
 }
 
 /** Sella el último acceso. Un fallo aquí no debe tumbar el login. */
@@ -164,7 +165,7 @@ export async function registrarAcceso(usuarioId: number): Promise<void> {
     await pool
       .request()
       .input("id", sql.BigInt, usuarioId)
-      .query("UPDATE dmc.usuario SET ultimo_acceso_en = SYSDATETIME() WHERE id = @id");
+      .query(`UPDATE ${T.usuario} SET ultimo_acceso_en = SYSDATETIME() WHERE id = @id`);
   } catch (err) {
     log.error("no se pudo registrar el último acceso", { err });
   }

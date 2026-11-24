@@ -18,7 +18,7 @@ describe("catálogo de notificaciones", () => {
     expect(new Set(claves).size).toBe(claves.length);
     for (const t of TIPOS_NOTIFICACION) {
       expect(TODOS, t.clave).toContain(t.permiso);
-      expect(t.clave.length).toBeLessThanOrEqual(40); // dmc.actividad.tipo varchar(40)
+      expect(t.clave.length).toBeLessThanOrEqual(40); // tecnico.actividad.tipo varchar(40)
     }
   });
 

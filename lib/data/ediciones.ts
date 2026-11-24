@@ -26,6 +26,7 @@ import { problemaGestionado, textoGestionado } from "@/lib/data/problemas-visita
 import { rutLimpio } from "@/lib/ui/formato";
 import { SECCION_EDICION } from "@/lib/ui/edicion";
 import type { EstadoVisita, OrigenRegistro, Visita } from "@/lib/types";
+import { T } from "@/lib/db/esquema";
 
 // Edición del acta ya cerrada.
 //
@@ -36,7 +37,7 @@ import type { EstadoVisita, OrigenRegistro, Visita } from "@/lib/types";
 // 1. No se pierde nada. Lo que se quita queda inactivo (trabajos, fotos,
 //    videos) y lo que no se tocó no se reescribe. La firma de la tienda no se
 //    toca nunca: ni la imagen ni la hora en que se firmó.
-// 2. Todo queda anotado. Cada edición deja una fila en dmc.visita_edicion con
+// 2. Todo queda anotado. Cada edición deja una fila en tecnico.visita_edicion con
 //    quién, cuándo, qué partes, qué cambió exactamente y por qué. El "qué
 //    cambió" lo calcula el servidor comparando contra lo guardado: no depende
 //    de lo que el cliente diga que cambió.
@@ -444,9 +445,9 @@ export async function editarActa(entrada: EdicionActaEntrada, ctx: ContextoEdici
         `SELECT v.estado,
                 (SELECT CAST(CASE WHEN ${editableHastaSql("e")} >= SYSDATETIME()
                                   THEN 1 ELSE 0 END AS bit)
-                   FROM dmc.visita_ejecucion e WHERE e.visita_id = v.id) AS en_plazo,
-                (SELECT COUNT(*) FROM dmc.visita_edicion x WHERE x.visita_id = v.id) AS ediciones
-           FROM dmc.visita v WITH (UPDLOCK, ROWLOCK) WHERE v.id = @id AND v.activo = 1`,
+                   FROM ${T.visita_ejecucion} e WHERE e.visita_id = v.id) AS en_plazo,
+                (SELECT COUNT(*) FROM ${T.visita_edicion} x WHERE x.visita_id = v.id) AS ediciones
+           FROM ${T.visita} v WITH (UPDLOCK, ROWLOCK) WHERE v.id = @id AND v.activo = 1`,
         p()
       );
       if (!fila || fila.estado !== "COMPLETADA") {
@@ -457,7 +458,7 @@ export async function editarActa(entrada: EdicionActaEntrada, ctx: ContextoEdici
 
       // La habilitación de coordinación sirve para una sola corrección.
       if (!ctx.sinPlazo) {
-        await ej.ejecutar(`UPDATE dmc.visita_ejecucion SET edicion_tecnico_hasta = NULL WHERE visita_id = @id`, p());
+        await ej.ejecutar(`UPDATE ${T.visita_ejecucion} SET edicion_tecnico_hasta = NULL WHERE visita_id = @id`, p());
       }
 
       // Un problema que coordinación ya gestionó no se quita del acta: se
@@ -473,7 +474,7 @@ export async function editarActa(entrada: EdicionActaEntrada, ctx: ContextoEdici
       //     horas, el dispositivo y la sincronización son del cierre original.
       if (cambios.ejecucion) {
         await ej.ejecutar(
-          `UPDATE dmc.visita_ejecucion
+          `UPDATE ${T.visita_ejecucion}
               SET responsable_nombre   = @nombre,
                   responsable_rut      = @rut,
                   responsable_telefono = @telefono,
@@ -502,7 +503,7 @@ export async function editarActa(entrada: EdicionActaEntrada, ctx: ContextoEdici
       // firmó no se tocan.
       if (cambios.firma) {
         await ej.ejecutar(
-          `UPDATE dmc.visita_firma
+          `UPDATE ${T.visita_firma}
               SET nombre = COALESCE(@nombre, nombre), rut = COALESCE(@rut, rut), actualizado_en = SYSDATETIME()
             WHERE id = @firma AND visita_id = @id`,
           p([
@@ -520,12 +521,12 @@ export async function editarActa(entrada: EdicionActaEntrada, ctx: ContextoEdici
       // 3 · Problemas: cada uno se corrige en su misma fila, para que conserve
       //     su estado, su historial y lo que cuelgue de él.
       for (const problemaId of cambios.problemas.quitados) {
-        await ej.ejecutar(`DELETE FROM dmc.problema WHERE id = @p AND visita_id = @id`, p([["p", sql.BigInt, problemaId]]));
+        await ej.ejecutar(`DELETE FROM ${T.problema} WHERE id = @p AND visita_id = @id`, p([["p", sql.BigInt, problemaId]]));
       }
       for (const pr of cambios.problemas.modificados) {
         await ej.ejecutar(
-          `UPDATE dmc.problema SET tipo_codigo = @tipo, descripcion = @desc WHERE id = @p AND visita_id = @id;
-           DELETE FROM dmc.problema_item WHERE problema_id = @p;`,
+          `UPDATE ${T.problema} SET tipo_codigo = @tipo, descripcion = @desc WHERE id = @p AND visita_id = @id;
+           DELETE FROM ${T.problema_item} WHERE problema_id = @p;`,
           p([
             ["p", sql.BigInt, pr.id],
             ["tipo", sql.VarChar(40), pr.tipo],
@@ -546,7 +547,7 @@ export async function editarActa(entrada: EdicionActaEntrada, ctx: ContextoEdici
             );
           } else {
             await ej.ejecutar(
-              `UPDATE dmc.problema SET orden = @orden WHERE id = @p AND visita_id = @id AND orden <> @orden`,
+              `UPDATE ${T.problema} SET orden = @orden WHERE id = @p AND visita_id = @id AND orden <> @orden`,
               p([
                 ["p", sql.BigInt, pr.id],
                 ["orden", sql.SmallInt, i + 1],
@@ -563,7 +564,7 @@ export async function editarActa(entrada: EdicionActaEntrada, ctx: ContextoEdici
       //     Las listas de ids viajan como parámetro JSON.
       if (cambios.fotosQuitadas.length) {
         await ej.ejecutar(
-          `UPDATE dmc.visita_foto SET activo = 0
+          `UPDATE ${T.visita_foto} SET activo = 0
             WHERE visita_id = @id AND activo = 1 AND id IN ${subIds("quitadas")}`,
           p([paramIds("quitadas", cambios.fotosQuitadas)])
         );
@@ -572,7 +573,7 @@ export async function editarActa(entrada: EdicionActaEntrada, ctx: ContextoEdici
       // sirve no cambia, y el detalle y el PDF leen la imagen nueva.
       for (const g of cambios.fotosGiradas) {
         await ej.ejecutar(
-          `UPDATE dmc.visita_foto SET contenido = @contenido, mime = @mime, bytes = @bytes
+          `UPDATE ${T.visita_foto} SET contenido = @contenido, mime = @mime, bytes = @bytes
             WHERE id = @foto AND visita_id = @id AND activo = 1`,
           p([
             ["foto", sql.BigInt, g.id],
@@ -589,13 +590,13 @@ export async function editarActa(entrada: EdicionActaEntrada, ctx: ContextoEdici
       //      inactivos: recién acá entran al acta.
       if (cambios.videos.cambio) {
         await ej.ejecutar(
-          `UPDATE dmc.visita_video SET activo = 0
+          `UPDATE ${T.visita_video} SET activo = 0
             WHERE visita_id = @id AND activo = 1 AND id NOT IN ${subIds("vivos")}`,
           p([paramIds("vivos", cambios.videos.ids)])
         );
         for (const [i, videoId] of cambios.videos.ids.entries()) {
           await ej.ejecutar(
-            `UPDATE dmc.visita_video SET activo = 1, orden = @orden, interno = @interno
+            `UPDATE ${T.visita_video} SET activo = 1, orden = @orden, interno = @interno
               WHERE id = @video AND visita_id = @id AND subida_completa = 1
                 -- Un clip quitado hace tiempo ya perdió sus bytes en la purga: no vuelve al acta.
                 AND contenido IS NOT NULL`,
@@ -610,7 +611,7 @@ export async function editarActa(entrada: EdicionActaEntrada, ctx: ContextoEdici
 
       // 6 · El registro: quién, desde dónde, qué partes, qué cambió y por qué.
       await ej.ejecutar(
-        `INSERT INTO dmc.visita_edicion (visita_id, origen, usuario_id, tecnico_id, motivo, secciones, detalle)
+        `INSERT INTO ${T.visita_edicion} (visita_id, origen, usuario_id, tecnico_id, motivo, secciones, detalle)
          VALUES (@id, @origen, @usuario, @tecnico, @motivo, @secciones, @detalle)`,
         p([
           ["origen", sql.VarChar(6), ctx.origen],
@@ -640,8 +641,8 @@ export async function habilitarEdicionTecnico(folio: string): Promise<boolean> {
   const filas = await ejecutar(
     `UPDATE e SET edicion_tecnico_hasta = DATEADD(minute, ${MINUTOS_EDICION_HABILITADA}, SYSDATETIME()),
                   edicion_solicitada_en = NULL, edicion_solicitada_motivo = NULL
-       FROM dmc.visita_ejecucion e
-       JOIN dmc.visita v ON v.id = e.visita_id
+       FROM ${T.visita_ejecucion} e
+       JOIN ${T.visita} v ON v.id = e.visita_id
       WHERE v.folio = @folio AND v.activo = 1 AND v.estado = 'COMPLETADA'`,
     [["folio", sql.VarChar(16), folio]]
   );
@@ -657,8 +658,8 @@ export async function pedirEdicionActa(folio: string, tecnicoId: number, motivo:
   const filas = await ejecutar(
     `UPDATE e SET edicion_solicitada_en = COALESCE(e.edicion_solicitada_en, SYSDATETIME()),
                   edicion_solicitada_motivo = COALESCE(@motivo, e.edicion_solicitada_motivo)
-       FROM dmc.visita_ejecucion e
-       JOIN dmc.visita v ON v.id = e.visita_id
+       FROM ${T.visita_ejecucion} e
+       JOIN ${T.visita} v ON v.id = e.visita_id
       WHERE v.folio = @folio AND v.activo = 1 AND v.estado = 'COMPLETADA'
         AND (v.tecnico_id = @tecnico OR v.tecnico_ayudante_id = @tecnico)`,
     [

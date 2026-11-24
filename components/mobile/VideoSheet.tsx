@@ -18,7 +18,7 @@ export type ClipGrabado = ClipListo;
  * con un visor dentro de la página: el técnico tiene su enfoque, estabilización
  * y micrófono de siempre, y no hay que autorizar nada al navegador. Esa cámara
  * no conoce los topes de la base (ck_video_duracion y ck_video_resolucion en
- * dmc.visita_video), así que lo que entrega se mide de verdad y, si se pasó del
+ * tecnico.visita_video), así que lo que entrega se mide de verdad y, si se pasó del
  * minuto o de 720p, se recorta y se reescala antes de aceptarlo — igual que un
  * video traído de la galería.
  *

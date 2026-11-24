@@ -1,8 +1,9 @@
 import "server-only";
 import { consultaCon, ejecutar, num, sql, F_TS } from "@/lib/data/sql";
+import { T } from "@/lib/db/esquema";
 
 /**
- * Respaldo del acta a medio llenar — dmc.visita_borrador.
+ * Respaldo del acta a medio llenar — tecnico.visita_borrador.
  *
  * La copia que de verdad protege al técnico es la del propio celular
  * (lib/ui/borrador), porque funciona sin señal. Esta es la de arriba: cuando
@@ -27,19 +28,19 @@ export async function guardarBorrador(folio: string, usuarioId: number, payload:
   if (payload.length > LIMITE_PAYLOAD) return false;
 
   const [visita] = await consultaCon<{ id: number }>(
-    `SELECT id FROM dmc.visita WHERE folio = @folio AND activo = 1`,
+    `SELECT id FROM ${T.visita} WHERE folio = @folio AND activo = 1`,
     [["folio", sql.VarChar(16), folio]]
   );
   if (!visita) return false;
 
   // uq_borrador (visita_id, usuario_id): uno por técnico y visita, se pisa.
   await ejecutar(
-    `UPDATE dmc.visita_borrador
+    `UPDATE ${T.visita_borrador}
         SET payload = @payload, guardado_en = SYSDATETIME()
       WHERE visita_id = @visita AND usuario_id = @usuario;
 
      IF @@ROWCOUNT = 0
-       INSERT INTO dmc.visita_borrador (visita_id, usuario_id, payload)
+       INSERT INTO ${T.visita_borrador} (visita_id, usuario_id, payload)
        VALUES (@visita, @usuario, @payload);`,
     [
       ["visita", sql.BigInt, num(visita.id)],
@@ -53,8 +54,8 @@ export async function guardarBorrador(folio: string, usuarioId: number, payload:
 export async function leerBorrador(folio: string, usuarioId: number): Promise<BorradorGuardado | null> {
   const [fila] = await consultaCon<{ payload: string; guardado_en: string }>(
     `SELECT b.payload, ${F_TS("b.guardado_en")} AS guardado_en
-       FROM dmc.visita_borrador b
-       JOIN dmc.visita v ON v.id = b.visita_id
+       FROM ${T.visita_borrador} b
+       JOIN ${T.visita} v ON v.id = b.visita_id
       WHERE v.folio = @folio AND v.activo = 1 AND b.usuario_id = @usuario`,
     [
       ["folio", sql.VarChar(16), folio],
@@ -67,8 +68,8 @@ export async function leerBorrador(folio: string, usuarioId: number): Promise<Bo
 /** Al cerrar el acta el borrador ya no sirve: lo escrito quedó en las tablas. */
 export async function borrarBorrador(folio: string, usuarioId: number | null): Promise<void> {
   await ejecutar(
-    `DELETE b FROM dmc.visita_borrador b
-       JOIN dmc.visita v ON v.id = b.visita_id
+    `DELETE b FROM ${T.visita_borrador} b
+       JOIN ${T.visita} v ON v.id = b.visita_id
       WHERE v.folio = @folio AND (@usuario IS NULL OR b.usuario_id = @usuario)`,
     [
       ["folio", sql.VarChar(16), folio],

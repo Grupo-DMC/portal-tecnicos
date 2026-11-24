@@ -7,13 +7,14 @@ import type { ActaEntrada, EdicionActaEntrada, ProblemaEdicion } from "@/lib/con
 import type { DatosVisita } from "@/lib/contratos/visitas";
 import { hoyISO, sumarDias } from "@/lib/ui/fecha";
 import { hayBd, limpiarDatos, sembrarMundo, uno, type Mundo } from "./_ayuda";
+import { T, type Objeto } from "@/lib/db/esquema";
 
 // PNG de 1×1 píxel y un JPEG mínimo (solo importan los primeros bytes: así se reconoce el formato).
 const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 const JPEG = `data:image/jpeg;base64,${Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 16, 0x4a, 0x46, 0x49, 0x46, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0xff, 0xd9]).toString("base64")}`;
 
-const cuenta = async (tabla: string, donde = "1=1") =>
-  Number((await uno<{ n: number }>(`SELECT COUNT(*) AS n FROM dmc.${tabla} WHERE ${donde}`))!.n);
+const cuenta = async (tabla: Objeto, donde = "1=1") =>
+  Number((await uno<{ n: number }>(`SELECT COUNT(*) AS n FROM ${T[tabla]} WHERE ${donde}`))!.n);
 
 describe.skipIf(!hayBd)("BD · problemas anotados desde el panel y edición del acta", () => {
   let m: Mundo;
@@ -66,7 +67,7 @@ describe.skipIf(!hayBd)("BD · problemas anotados desde el panel y edición del 
 
   const filas = () =>
     consulta<{ id: number; tipo_codigo: string; descripcion: string | null; orden: number; registrado_en_panel: boolean }>(
-      `SELECT id, tipo_codigo, descripcion, orden, registrado_en_panel FROM dmc.problema ORDER BY orden, id`
+      `SELECT id, tipo_codigo, descripcion, orden, registrado_en_panel FROM ${T.problema} ORDER BY orden, id`
     );
 
   describe("guardarProblemasDeVisita (visita sin cerrar)", () => {
@@ -83,7 +84,7 @@ describe.skipIf(!hayBd)("BD · problemas anotados desde el panel y edición del 
         ["ANTENA_NO_DETECTA", 1, true],
         ["OTRO", 2, true],
       ]);
-      expect((await uno<{ cantidad: number }>(`SELECT cantidad FROM dmc.problema_item`))!.cantidad).toBe(3);
+      expect((await uno<{ cantidad: number }>(`SELECT cantidad FROM ${T.problema_item}`))!.cantidad).toBe(3);
       // La visita sigue PROGRAMADA: anotar problemas no la mueve de estado.
       expect((await getVisitaCompletaPorFolio(v.folio))!.estado).toBe("PROGRAMADA");
     });
@@ -111,7 +112,7 @@ describe.skipIf(!hayBd)("BD · problemas anotados desde el panel y edición del 
       expect(Number(lista[0].id)).toBe(Number(primero.id));
       expect(lista.some((f) => f.tipo_codigo === "OTRO")).toBe(false);
       const items = await consulta<{ etiqueta: string; cantidad: number }>(
-        `SELECT etiqueta, cantidad FROM dmc.problema_item WHERE problema_id = ${primero.id} ORDER BY etiqueta`
+        `SELECT etiqueta, cantidad FROM ${T.problema_item} WHERE problema_id = ${primero.id} ORDER BY etiqueta`
       );
       expect(items.map((i) => [i.etiqueta, Number(i.cantidad)])).toEqual([["Antena 2", 5], ["Antena 3", 1]]);
     });
@@ -132,19 +133,19 @@ describe.skipIf(!hayBd)("BD · problemas anotados desde el panel y edición del 
       const r = await guardarProblemasDeVisita(b.folio, [problema({ id: Number(deA.id), descripcion: "Otra cosa" })]);
       expect(r).toMatchObject({ ok: true, agregados: 1 });
       expect(await cuenta("problema")).toBe(2);
-      expect((await uno<{ d: string }>(`SELECT descripcion AS d FROM dmc.problema WHERE id = ${deA.id}`))!.d).toBe("Sin lectura");
+      expect((await uno<{ d: string }>(`SELECT descripcion AS d FROM ${T.problema} WHERE id = ${deA.id}`))!.d).toBe("Sin lectura");
     });
 
     it("no quita un problema que coordinación ya gestionó, y no deja nada a medias", async () => {
       const v = await crearVisita(datos(), m.adminId);
       await guardarProblemasDeVisita(v.folio, [problema(), problema({ descripcion: "Otro" })]);
       const [primero, segundo] = await filas();
-      await consulta(`UPDATE dmc.problema SET estado = 'RESUELTO', resuelto_en = SYSDATETIME() WHERE id = ${primero.id}`);
+      await consulta(`UPDATE ${T.problema} SET estado = 'RESUELTO', resuelto_en = SYSDATETIME() WHERE id = ${primero.id}`);
 
       const r = await guardarProblemasDeVisita(v.folio, [problema({ id: Number(segundo.id), descripcion: "Cambiado" })]);
       expect(r).toMatchObject({ ok: false, error: expect.stringMatching(/ya lo gestionó coordinación/) });
       expect(await cuenta("problema")).toBe(2);
-      expect((await uno<{ d: string }>(`SELECT descripcion AS d FROM dmc.problema WHERE id = ${segundo.id}`))!.d).toBe("Otro");
+      expect((await uno<{ d: string }>(`SELECT descripcion AS d FROM ${T.problema} WHERE id = ${segundo.id}`))!.d).toBe("Otro");
     });
 
     it("una visita con el acta cerrada se corrige desde «Editar el acta»", async () => {
@@ -227,8 +228,8 @@ describe.skipIf(!hayBd)("BD · problemas anotados desde el panel y edición del 
       );
       expect(r2.ok).toBe(true);
       expect(await cuenta("problema", `visita_id = ${v.id}`)).toBe(1);
-      expect((await uno<{ c: number }>(`SELECT cantidad AS c FROM dmc.problema_item`))!.c).toBe(7);
-      const detalle = (await uno<{ d: string }>(`SELECT TOP 1 detalle AS d FROM dmc.visita_edicion ORDER BY id DESC`))!.d;
+      expect((await uno<{ c: number }>(`SELECT cantidad AS c FROM ${T.problema_item}`))!.c).toBe(7);
+      const detalle = (await uno<{ d: string }>(`SELECT TOP 1 detalle AS d FROM ${T.visita_edicion} ORDER BY id DESC`))!.d;
       expect(detalle).toMatch(/Problema modificado/);
       expect(detalle).toMatch(/Problema quitado/);
     });
@@ -236,14 +237,14 @@ describe.skipIf(!hayBd)("BD · problemas anotados desde el panel y edición del 
     it("una foto girada reemplaza la imagen de su misma fila: mismo id, misma ruta, bytes nuevos", async () => {
       const { v, completa, base } = await cerradaConFoto();
       const foto = completa.fotos![0];
-      const antes = (await uno<{ b: number; mime: string }>(`SELECT bytes AS b, mime FROM dmc.visita_foto WHERE id = ${foto.id}`))!;
+      const antes = (await uno<{ b: number; mime: string }>(`SELECT bytes AS b, mime FROM ${T.visita_foto} WHERE id = ${foto.id}`))!;
       expect(antes.mime).toBe("image/png");
 
       const r = await editarActa({ ...base, fotosGiradas: [{ id: foto.id, dataUrl: JPEG }] }, ctxAdmin());
       expect(r).toMatchObject({ ok: true, secciones: ["Fotos y video"] });
 
       const despues = (await uno<{ b: number; mime: string; url: string; activo: boolean }>(
-        `SELECT bytes AS b, mime, archivo_url AS url, activo FROM dmc.visita_foto WHERE id = ${foto.id}`
+        `SELECT bytes AS b, mime, archivo_url AS url, activo FROM ${T.visita_foto} WHERE id = ${foto.id}`
       ))!;
       expect(despues.mime).toBe("image/jpeg");
       expect(despues.b).not.toBe(antes.b);
@@ -251,21 +252,21 @@ describe.skipIf(!hayBd)("BD · problemas anotados desde el panel y edición del 
       expect(despues.activo).toBe(true);
       // No se duplicó ni se desactivó ninguna.
       expect(await cuenta("visita_foto", `visita_id = ${v.id}`)).toBe(1);
-      const detalle = (await uno<{ d: string }>(`SELECT TOP 1 detalle AS d FROM dmc.visita_edicion ORDER BY id DESC`))!.d;
+      const detalle = (await uno<{ d: string }>(`SELECT TOP 1 detalle AS d FROM ${T.visita_edicion} ORDER BY id DESC`))!.d;
       expect(detalle).toMatch(/Fotos del trabajo giradas: 1 \(n\.º \d+\)/);
     });
 
     it("solo giran las fotos que siguen en el acta: una quitada o ajena se ignora", async () => {
       const { v, completa, base } = await cerradaConFoto();
       const foto = completa.fotos![0];
-      const bytes = (await uno<{ b: number }>(`SELECT bytes AS b FROM dmc.visita_foto WHERE id = ${foto.id}`))!.b;
+      const bytes = (await uno<{ b: number }>(`SELECT bytes AS b FROM ${T.visita_foto} WHERE id = ${foto.id}`))!.b;
       // Girada pero quitada en la misma edición, y otra de un id que no es del acta.
       const r = await editarActa(
         { ...base, fotosConservadas: [], fotosGiradas: [{ id: foto.id, dataUrl: JPEG }, { id: 999999, dataUrl: JPEG }] },
         ctxAdmin()
       );
       expect(r.ok).toBe(true);
-      const f = (await uno<{ b: number; activo: boolean }>(`SELECT bytes AS b, activo FROM dmc.visita_foto WHERE id = ${foto.id}`))!;
+      const f = (await uno<{ b: number; activo: boolean }>(`SELECT bytes AS b, activo FROM ${T.visita_foto} WHERE id = ${foto.id}`))!;
       expect(f.activo).toBe(false);
       expect(f.b).toBe(bytes);
       expect(v.folio).toBeTruthy();

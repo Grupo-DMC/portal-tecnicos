@@ -1,4 +1,5 @@
 "use client";
+import Espera from "@/components/ui/Espera";
 
 import { useState, useTransition } from "react";
 import { guardarAvisosCuentaAction } from "@/app/actions/notificaciones";
@@ -72,7 +73,7 @@ export default function AvisosCuenta({ datos, aviso }: { datos: DatosAvisosCuent
   return (
     <section id="avisos" className="bg-[var(--color-surface-3)] border border-[var(--color-line-soft)] scroll-mt-6">
       <header className="px-5 md:px-6 pt-5 md:pt-6">
-        <h2 className="font-extrabold text-lead tracking-[-.01em]">Avisos</h2>
+        <h2 className="font-semibold text-lead tracking-[-.01em]">Avisos</h2>
         <p className="text-meta text-[var(--color-muted)] mt-1 max-w-[65ch]">
           De lo que hacen los demás, qué te llega y por dónde. El push llega a los navegadores donde activaste los avisos desde
           la campanita. Los correos van a <strong>{datos.email}</strong>.
@@ -89,7 +90,7 @@ export default function AvisosCuenta({ datos, aviso }: { datos: DatosAvisosCuent
               onChange={(e) => setAjustes((a) => ({ ...a, activo: e.target.checked }))}
             />
             <span>
-              <span className="block text-ui font-extrabold">Recibir avisos por correo</span>
+              <span className="block text-ui font-semibold">Recibir avisos por correo</span>
               <span className="block text-meta text-[var(--color-muted)]">
                 Apagado, no te llega ningún correo de avisos, elijas lo que elijas abajo.
               </span>
@@ -195,7 +196,7 @@ export default function AvisosCuenta({ datos, aviso }: { datos: DatosAvisosCuent
           ) : null}
           <div className="flex sm:justify-end">
             <button type="button" className="btn btn-primary" disabled={pendiente} onClick={guardar}>
-              {pendiente ? "Guardando…" : "Guardar avisos"}
+              <Espera activo={pendiente} accion="Guardando">Guardar avisos</Espera>
             </button>
           </div>
         </div>

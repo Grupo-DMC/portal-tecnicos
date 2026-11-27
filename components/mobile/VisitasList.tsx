@@ -3,10 +3,11 @@
 import { useFiltroRecordado } from "@/lib/ui/filtro-recordado";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import Tag from "@/components/Tag";
+import Icono from "@/components/ui/Icono";
+import TarjetaVisita from "@/components/mobile/TarjetaVisita";
 import NuevaVisitaSheet from "@/components/mobile/NuevaVisitaSheet";
 import { Toast, useToast } from "@/components/ui/Toast";
-import { ESTADO_VISITA_BARRA, ESTADO_VISITA_LABEL, ESTADO_VISITA_TAG, textoMotivos } from "@/lib/ui/estado";
+import { ESTADO_VISITA_LABEL } from "@/lib/ui/estado";
 import { actasEnCola, haceCuanto, migrarClavesViejas, sacarDeCola, type ActaEnCola } from "@/lib/ui/borrador";
 import { useUsuarioLocal } from "@/lib/ui/usuario-local";
 import { estaCancelada } from "@/lib/ui/estado";
@@ -26,11 +27,6 @@ const ESTADOS: EstadoVisita[] = [
 
 const PENDIENTES: EstadoVisita[] = ["PROGRAMADA", "EN_CURSO", "PENDIENTE"];
 
-/** '2026-10-05' → "5 oct". */
-function diaCorto(fecha: string): string {
-  return new Date(`${fecha}T00:00:00`).toLocaleDateString("es-CL", { day: "numeric", month: "short" });
-}
-
 export default function VisitasList({
   visitas,
   hoy,
@@ -43,7 +39,6 @@ export default function VisitasList({
 }) {
   const router = useRouter();
   const { toast, aviso } = useToast();
-  const [filtroAbierto, setFiltroAbierto] = useState(false);
   const [estado, setEstado] = useFiltroRecordado("estado");
   const [nueva, setNueva] = useState(false);
   const ref = useReferencias();
@@ -162,133 +157,69 @@ export default function VisitasList({
   );
 
   const tarjeta = (v: Visita) => (
-    <button
+    <TarjetaVisita
       key={v.id}
-      onClick={() => router.push(`/tecnico/visitas/${v.folio}`)}
-      className="block w-full min-w-0 text-left bg-[var(--color-surface)] border border-[var(--color-divider)] px-3.5 pt-3.5 pb-3 hover:bg-[rgba(31,28,33,.05)]"
-      style={{ borderLeft: `4px solid ${ESTADO_VISITA_BARRA[v.estado]}` }}
-    >
-      <div className="flex items-baseline gap-2.5">
-        <span className="font-extrabold text-h3 tabular-nums">{v.horaProgramada ?? "—"}</span>
-        <span className="text-cap tabular-nums tracking-[.06em] opacity-62">{v.folio}</span>
-        <Tag variant={ESTADO_VISITA_TAG[v.estado]} className="ml-auto">
-          {ESTADO_VISITA_LABEL[v.estado]}
-        </Tag>
-      </div>
-      <div className="font-extrabold text-lead leading-[1.2] mt-2.5 truncate">{v.sucursal?.nombre}</div>
-      <div className="text-meta opacity-60 mt-0.5 truncate">{v.cliente?.nombreFantasia}</div>
-      <div className="text-meta opacity-60 truncate">{v.sucursal?.direccion}</div>
-      {/* Los datos de la visita en una línea de texto, cortada con "…": un
-          motivo largo no agranda la tarjeta y nada se confunde con un botón. */}
-      <div className="flex items-center gap-2 mt-2 min-w-0 text-meta">
-        <span className="min-w-0 truncate">
-          {[
-            textoMotivos(v),
-            v.fechaHasta ? `hasta el ${diaCorto(v.fechaHasta)}` : null,
-            v.tecnicoId === tecnicoId && v.tecnicoAyudante ? `con ${v.tecnicoAyudante.nombreCompleto}` : null,
-            v.responsableNombre ? `recibe ${v.responsableNombre}` : null,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-        </span>
-        {v.tecnicoId !== tecnicoId ? <span className="tag tag-dark flex-none">Ayudante</span> : null}
-      </div>
-    </button>
+      visita={v}
+      tecnicoId={tecnicoId}
+      atrasada={v.estado === "PROGRAMADA" && diaDeVisita(v, hoy) < hoy}
+    />
   );
 
   return (
-    <div className="px-4 pt-5 pb-[26px] animate-fade-in">
-      <h1 className="font-extrabold text-h1 leading-[1.06] tracking-[-.03em] m-0 mb-1">Mis visitas</h1>
-      <p className="m-0 mb-3.5 text-meta opacity-66">asignadas a ti y en las que vas de ayudante</p>
+    <div className="tp-main">
+      <div>
+        <h1 className="tp-h1">Mis visitas</h1>
+        <p className="tp-sub">Asignadas a ti y en las que vas de ayudante</p>
+      </div>
 
       {/* Actas que se llenaron sin señal: hay que entrar a la visita para que se
           manden. Se avisa acá porque en la lista la visita se ve "en curso" y
           nada delataba que el acta ya estaba lista y guardada en el equipo. */}
       {pendientes.length > 0 ? (
-        <div className="mb-4 px-3.5 py-3 bg-[var(--color-accent-200)] border border-[var(--color-accent-300)]">
-          <div className="text-cap text-[var(--color-accent-800)]">
-            {pendientes.length === 1 ? "Un acta espera señal" : `${pendientes.length} actas esperan señal`}
-          </div>
-          <div className="text-meta leading-[1.45] text-[var(--color-accent-800)] mt-1.5">
-            Están completas y guardadas en este celular. Abre la visita y se manda sola; no hay que llenarla de nuevo.
-          </div>
-          <div className="flex flex-col gap-1.5 mt-2.5">
-            {pendientes.map((a) => (
-              <button
-                key={a.folio}
-                onClick={() =>
-                  router.push(
-                    // Si el otro técnico ya cerró la visita no hay formulario: el aviso está en su ficha.
-                    visitas.find((v) => v.folio === a.folio)?.estado === "COMPLETADA"
-                      ? `/tecnico/visitas/${a.folio}`
-                      : `/tecnico/visitas/${a.folio}/formulario`
-                  )
-                }
-                className="w-full min-h-[44px] flex items-center gap-2 px-3 bg-[var(--color-bg)] border border-[var(--color-accent)] text-[var(--color-accent-800)] font-extrabold text-meta cursor-pointer text-left"
-              >
-                <span className="tabular-nums">{a.folio}</span>
-                <span className="font-normal opacity-70">
-                  · cerrada {haceCuanto(a.capturadaEn)}
-                  {visitas.find((v) => v.folio === a.folio)?.estado === "COMPLETADA" ? " · ya la cerró el otro técnico" : ""}
-                </span>
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  className="ml-auto flex-none"
-                >
-                  <path d="M5 12h14M13 6l6 6-6 6" />
-                </svg>
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      <div className="flex gap-2 items-center mb-3.5">
-        <button onClick={() => setFiltroAbierto((v) => !v)} className={`tag ${estado ? "tag-accent" : "tag-neutral"} min-h-[34px] border border-[var(--color-divider)] cursor-pointer gap-1.5 px-3 text-cap `}>
-          <span>Filtrar por estado</span>
-        </button>
-        {estado ? (
-          <button onClick={() => setEstado("")} className="tag tag-accent min-h-[34px] border-0 cursor-pointer gap-1.5 px-2.5 text-cap tracking-[.06em]">
-            <span>{ESTADO_VISITA_LABEL[estado as EstadoVisita]}</span>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-              <path d="M6 6l12 12M18 6L6 18" />
-            </svg>
-          </button>
-        ) : null}
-        {puede(ref, "celular.crearVisita") ? (
-        <button
-          onClick={() => setNueva(true)}
-          aria-label="Agregar visita"
-          className="ml-auto w-[34px] h-[34px] flex-none grid place-items-center bg-[var(--color-accent)] text-[var(--color-bg)] border-0 cursor-pointer hover:bg-[var(--color-accent-hover)]"
-        >
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-        </button>
-        ) : null}
-      </div>
-
-      {filtroAbierto ? (
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 mb-4.5">
-          {ESTADOS.map((e) => (
+        <div className="tp-espera">
+          <b>{pendientes.length === 1 ? "Un acta espera señal" : `${pendientes.length} actas esperan señal`}</b>
+          <p>Están completas y guardadas en este celular. Abre la visita y se manda sola; no hay que llenarla de nuevo.</p>
+          {pendientes.map((a) => (
             <button
-              key={e}
-              onClick={() => {
-                setEstado(e);
-                setFiltroAbierto(false);
-              }}
-              className={`tag ${estado === e ? "tag-accent" : "tag-neutral"} flex-none min-h-[34px] border border-[var(--color-divider)] cursor-pointer text-cap px-3`}
+              key={a.folio}
+              type="button"
+              className="btn-out"
+              onClick={() =>
+                router.push(
+                  // Si el otro técnico ya cerró la visita no hay formulario: el aviso está en su ficha.
+                  visitas.find((v) => v.folio === a.folio)?.estado === "COMPLETADA"
+                    ? `/tecnico/visitas/${a.folio}`
+                    : `/tecnico/visitas/${a.folio}/formulario`
+                )
+              }
             >
-              {ESTADO_VISITA_LABEL[e]}
+              <span>{a.folio}</span>
+              <span>
+                · cerrada {haceCuanto(a.capturadaEn)}
+                {visitas.find((v) => v.folio === a.folio)?.estado === "COMPLETADA" ? " · ya la cerró el otro técnico" : ""}
+              </span>
             </button>
           ))}
         </div>
       ) : null}
+
+      <div className="tp-tools">
+        <div className="tp-chips" role="group" aria-label="Filtrar por estado">
+          <button type="button" aria-pressed={estado === ""} onClick={() => setEstado("")}>
+            Todas
+          </button>
+          {ESTADOS.filter((e) => e === estado || visitas.some((v) => v.estado === e)).map((e) => (
+            <button key={e} type="button" aria-pressed={estado === e} onClick={() => setEstado(estado === e ? "" : e)}>
+              {ESTADO_VISITA_LABEL[e]} <span>{visitas.filter((v) => v.estado === e).length}</span>
+            </button>
+          ))}
+        </div>
+        {puede(ref, "celular.crearVisita") ? (
+          <button type="button" className="tp-add" onClick={() => setNueva(true)} aria-label="Agregar visita">
+            <Icono nombre="mas" />
+          </button>
+        ) : null}
+      </div>
 
       {(() => {
         const dia = (g: (typeof porHacer)[number], claveSeccion: string, abiertoPorDefecto: boolean) => {
@@ -300,11 +231,11 @@ export default function VisitasList({
             type="button"
             aria-expanded={diaDesplegado}
             onClick={() => setDiasTocados((prev) => ({ ...prev, [clave]: !diaDesplegado }))}
-            className="w-full min-h-[44px] flex items-center gap-2 pb-2 pt-2 bg-transparent border-0 border-b-2 border-[var(--color-divider)] cursor-pointer text-[var(--color-text)] text-left"
+            className="w-full min-h-[44px] flex items-center gap-2 pb-2 pt-2 bg-transparent border-0 border-b border-[var(--color-line)] cursor-pointer text-[var(--color-text)] text-left"
           >
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-extrabold text-cap capitalize">{g.titulo}</span>
+                <span className="font-semibold text-cap capitalize">{g.titulo}</span>
                 <span className="text-cap tabular-nums opacity-60">
                   {g.n} {g.n === 1 ? "visita" : "visitas"}
                 </span>
@@ -336,7 +267,7 @@ export default function VisitasList({
               return (
                 <div
                   key={claveMall}
-                  className="border border-[var(--color-divider)] bg-[var(--color-surface)]"
+                  className="border border-[var(--color-line)] rounded-[10px] bg-[var(--color-surface)]"
                 >
                   <button
                     type="button"
@@ -345,7 +276,7 @@ export default function VisitasList({
                     className="w-full min-h-[64px] flex items-center gap-3 px-3.5 py-3 bg-transparent border-0 cursor-pointer text-[var(--color-text)] text-left"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="font-extrabold text-lead leading-[1.2] truncate">{b.mall.nombre}</div>
+                      <div className="font-semibold text-lead leading-[1.2] truncate">{b.mall.nombre}</div>
                       <div className="text-meta opacity-60 mt-0.5 truncate">
                         {[b.mall.direccion, b.mall.comuna].filter(Boolean).join(", ")}
                       </div>
@@ -384,7 +315,7 @@ export default function VisitasList({
           <>
             {porHacer.length > 0 ? (
               <>
-                <h2 className="font-extrabold text-lead m-0 mb-2">Por hacer</h2>
+                <h2 className="font-semibold text-lead m-0 mb-2">Por hacer</h2>
                 {porHacer.map((g) => dia(g, "p", g.fecha === diaAbierto))}
               </>
             ) : estado === "" ? (
@@ -392,10 +323,10 @@ export default function VisitasList({
             ) : null}
 
             <div className="flex items-baseline gap-2 mt-7 mb-2.5">
-              <h2 className="font-extrabold text-lead m-0">Historial</h2>
+              <h2 className="font-semibold text-lead m-0">Historial</h2>
               <span className="text-cap opacity-62">solo los días en que hubo visitas</span>
             </div>
-            <div className="grid grid-cols-3 gap-1.5 mb-4">
+            <div className="tp-seg mb-4">
               {(
                 [
                   ["semana", "7 días"],
@@ -410,12 +341,6 @@ export default function VisitasList({
                     setDiasVisibles(7);
                   }}
                   aria-pressed={periodo === c}
-                  className="min-h-11 px-2.5 font-extrabold text-cap leading-none cursor-pointer"
-                  style={{
-                    background: periodo === c ? "var(--color-accent)" : "transparent",
-                    color: periodo === c ? "#fff" : "var(--color-text)",
-                    border: `1px solid ${periodo === c ? "var(--color-accent)" : "rgba(31,28,33,.35)"}`,
-                  }}
                 >
                   {label}
                 </button>
@@ -425,7 +350,7 @@ export default function VisitasList({
             {historial.length > diasVisibles ? (
               <button
                 onClick={() => setDiasVisibles((n) => n + 7)}
-                className="w-full min-h-[48px] mb-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer hover:bg-black/[.07]"
+                className="w-full min-h-[48px] mb-4 bg-transparent border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] font-semibold text-ui cursor-pointer hover:bg-black/[.07]"
               >
                 Ver más días ({historial.length - diasVisibles})
               </button>

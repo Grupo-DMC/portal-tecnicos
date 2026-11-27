@@ -158,6 +158,10 @@ export interface PaginaVisitas {
   /** La que se trajo: si la pedida ya no existe, la última. */
   pagina: number;
   paginas: number;
+  /** Cuántas hay en cada estado con los demás filtros puestos: las pestañas. */
+  porEstado?: Partial<Record<Visita["estado"], number>>;
+  /** Cuántas hay en cada día de la página, contando todas las páginas. */
+  porDia?: Record<string, number>;
 }
 
 export interface OpcionesFiltroVisitas {

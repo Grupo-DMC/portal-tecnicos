@@ -169,7 +169,7 @@ export default function LoginForm({ version, expirada = false }: { version: stri
             </div>
 
             <Boton cargando={pending} flecha>
-              {pending ? "Ingresando…" : "Iniciar sesión"}
+              Iniciar sesión
             </Boton>
           </form>
 
@@ -254,7 +254,7 @@ function OlvideMiPassword({ onVolver }: { onVolver: () => void }) {
           />
         </div>
 
-        <Boton cargando={pending}>{pending ? "Enviando…" : "Pedir contraseña nueva"}</Boton>
+        <Boton cargando={pending}>Pedir contraseña nueva</Boton>
       </form>
 
       {volver}

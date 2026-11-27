@@ -222,7 +222,7 @@ export default function PendientesView({ datos }: { datos: DatosPendientes }) {
       <div className="pb-10 animate-fade-in">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 px-4 md:px-7 pt-5">
           {resumen.map((r) => (
-            <div key={String(r.label)} className="px-4 py-3 border border-black/[.3] bg-[var(--color-surface)]">
+            <div key={String(r.label)} className="px-4 py-3 border border-[var(--color-line)] rounded-[10px] bg-[var(--color-surface)]">
               <div
                 className="num font-bold text-h2 leading-none tabular-nums"
                 style={"alarma" in r && r.alarma && r.n > 0 ? { color: "var(--color-danger)" } : undefined}
@@ -321,7 +321,7 @@ export default function PendientesView({ datos }: { datos: DatosPendientes }) {
 
           {filtrados.length === 0 ? (
             <div className="py-14 text-center">
-              <div className="font-extrabold text-lead mb-1.5">
+              <div className="font-semibold text-lead mb-1.5">
                 {pendientes.length === 0 ? "No hay visitas reagendadas ni pendientes" : "Nada que mostrar"}
               </div>
               <div className="text-meta opacity-66">
@@ -334,8 +334,8 @@ export default function PendientesView({ datos }: { datos: DatosPendientes }) {
         </div>
 
         {seleccionando ? (
-          <div className="sticky bottom-0 z-10 mt-4 flex items-center gap-2.5 flex-wrap px-4 md:px-7 py-3 bg-[var(--color-bg)] border-t-2 border-[var(--color-divider)]">
-            <div className="font-extrabold text-meta tabular-nums">
+          <div className="sticky bottom-0 z-10 mt-4 flex items-center gap-2.5 flex-wrap px-4 md:px-7 py-3 bg-[var(--color-bg)] border-t border-[var(--color-line)]">
+            <div className="font-semibold text-meta tabular-nums">
               {seleccionadas.length === 0
                 ? "Marca las visitas con su casilla"
                 : `${seleccionadas.length} ${seleccionadas.length === 1 ? "visita marcada" : "visitas marcadas"}`}
@@ -477,28 +477,28 @@ function Tarjeta({
 
   return (
     <div
-      className="border-2 border-[var(--color-text)] mt-6"
+      className="border border-[var(--color-line)] rounded-[14px] mt-6"
       style={seleccion?.marcada ? { outline: "3px solid var(--color-accent)", outlineOffset: 2 } : undefined}
     >
       {/* Cabecera: qué visita es y cuánto lleva esperando */}
-      <div className="flex items-center gap-3 flex-wrap px-5 py-4 bg-[var(--color-surface-2)] border-b-2 border-[var(--color-text)]">
+      <div className="flex items-center gap-3 flex-wrap px-5 py-4 bg-[var(--color-surface-2)] border-b border-[var(--color-line)]">
         {seleccion ? (
           <Casilla marcada={seleccion.marcada} onAlternar={seleccion.onAlternar} label={`Marcar ${v.folio}`} />
         ) : null}
         <div className="min-w-0">
-          <div className="font-extrabold text-lead leading-[1.2]">{v.sucursal?.nombre}</div>
+          <div className="font-semibold text-lead leading-[1.2]">{v.sucursal?.nombre}</div>
           <div className="text-meta opacity-60 mt-0.5">
             {[v.cliente?.nombreFantasia, v.sucursal?.comuna, v.sucursal?.direccion].filter(Boolean).join(" · ")}
           </div>
         </div>
         <div className="ml-auto flex items-center gap-2 flex-wrap">
           <Tag variant={ESTADO_VISITA_TAG[v.estado]}>{ESTADO_VISITA_LABEL[v.estado]}</Tag>
-          <span className={`tag ${atrasada ? "tag-accent" : "tag-neutral border border-black/[.2]"} tabular-nums`}>
+          <span className={`tag ${atrasada ? "tag-accent" : "tag-neutral border border-[var(--color-line)] rounded-[10px]"} tabular-nums`}>
             {textoEspera(dias)}
           </span>
           <button
             onClick={() => router.push(`/admin/visitas/${v.folio}`)}
-            className="min-h-8 px-2.5 bg-transparent border border-black/[.3] text-cap leading-none cursor-pointer hover:bg-black/[.07]"
+            className="min-h-8 px-2.5 bg-transparent border border-[var(--color-line)] rounded-[10px] text-cap leading-none cursor-pointer hover:bg-black/[.07]"
           >
             {v.folio}
           </button>
@@ -559,9 +559,9 @@ function Tarjeta({
         </div>
 
         {/* Checklist de gestión */}
-        <div className="mt-4 pt-3.5 border-t border-black/[.18]">
+        <div className="mt-4 pt-3.5 border-t border-[var(--color-line)]">
           <div className="flex items-baseline gap-2.5 flex-wrap mb-2">
-            <div className="font-extrabold text-meta ">Gestión</div>
+            <div className="font-semibold text-meta ">Gestión</div>
             {pasos.length ? (
               <div className="text-cap opacity-62 tabular-nums">
                 {marcas.length} de {pasos.length} {pasos.length === 1 ? "paso" : "pasos"}
@@ -614,15 +614,14 @@ function Tarjeta({
               })}
             </div>
           ) : (
-            <div className="px-3.5 py-2.5 border border-dashed border-black/[.35] text-meta opacity-70 max-w-[80ch]">
-              Todavía no hay pasos de gestión. Agrégalos en Maestros › Checklist › Lista 5 «Gestión de pendientes» y
-              aparecen acá para marcarlos en cada visita.
+            <div className="px-3.5 py-2.5 border border-dashed border-[var(--color-line)] text-meta opacity-70 max-w-[80ch]">
+              No hay pasos de gestión configurados para las visitas pendientes.
             </div>
           )}
         </div>
 
         {/* Acciones */}
-        <div className="flex items-center gap-2.5 flex-wrap mt-4 pt-3 border-t border-black/[.18]">
+        <div className="flex items-center gap-2.5 flex-wrap mt-4 pt-3 border-t border-[var(--color-line)]">
           {puede(ref, "visitas.reprogramar") ? (
             <button onClick={onReprogramar} className="btn btn-primary min-h-[34px] px-3 gap-2 text-meta">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -651,7 +650,7 @@ function Tarjeta({
           <button
             onClick={onHistorial}
             aria-expanded={historialAbierto}
-            className="ml-auto min-h-[34px] flex items-center gap-2 px-3 bg-transparent border border-black/[.35] text-cap cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
+            className="ml-auto min-h-[34px] flex items-center gap-2 px-3 bg-transparent border border-[var(--color-line)] rounded-[10px] text-cap cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
           >
             <span>
               {historialAbierto ? "Ocultar historial del local" : "Historial del local"}
@@ -677,7 +676,7 @@ function Tarjeta({
 
         {/* Historial del local */}
         {historialAbierto ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-3 px-3.5 py-3.5 bg-[var(--color-surface)] border border-black/[.25]">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-3 px-3.5 py-3.5 bg-[var(--color-surface)] border border-[var(--color-line)] rounded-[10px]">
             <div className="min-w-0">
               <div className="text-cap opacity-62 mb-2">
                 Problemas levantados en el local ({problemas.length})
@@ -695,13 +694,13 @@ function Tarjeta({
                         style={{ borderLeft: `4px solid ${resuelto ? "var(--color-neutral-600)" : "var(--color-danger)"}` }}
                       >
                         <div className="flex items-center gap-2 flex-wrap">
-                          <div className="font-extrabold text-ui leading-[1.25]">
+                          <div className="font-semibold text-ui leading-[1.25]">
                             {nombreProblema(ref.problemas, pr.tipoCodigo)}
                           </div>
                           <EstadoProblemaTag estado={pr.estado} />
                           <button
                             onClick={() => router.push(`/admin/visitas/${pr.folio}`)}
-                            className="ml-auto min-h-7 px-2 bg-transparent border border-black/[.3] text-cap leading-none cursor-pointer hover:bg-black/[.07]"
+                            className="ml-auto min-h-7 px-2 bg-transparent border border-[var(--color-line)] rounded-[10px] text-cap leading-none cursor-pointer hover:bg-black/[.07]"
                           >
                             {pr.folio}
                           </button>
@@ -715,7 +714,7 @@ function Tarjeta({
                             {pr.items.map((it) => (
                               <span
                                 key={it.etiqueta}
-                                className="px-2 py-0.5 bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap leading-[1.3] tabular-nums"
+                                className="px-2 py-0.5 bg-[var(--color-text)] text-[var(--color-bg)] font-semibold text-cap leading-[1.3] tabular-nums"
                               >
                                 {it.etiqueta} × {it.cantidad}
                               </span>
@@ -725,7 +724,7 @@ function Tarjeta({
                         {pr.descripcion ? <div className="text-meta leading-[1.45] mt-1.5">{pr.descripcion}</div> : null}
                         {pr.solucion ? (
                           <div className="text-meta leading-[1.45] mt-1">
-                            <strong className="font-extrabold">{resuelto ? "Se realizó:" : "Sugerencia:"}</strong>{" "}
+                            <strong className="font-semibold">{resuelto ? "Se realizó:" : "Sugerencia:"}</strong>{" "}
                             {pr.solucion}
                           </div>
                         ) : null}
@@ -745,13 +744,13 @@ function Tarjeta({
               ) : (
                 <div className="flex flex-col gap-2">
                   {otrasVisitas.slice(0, VISITAS_VISIBLES).map((x) => (
-                    <div key={x.folio} className="px-3 py-2.5 bg-white border border-[var(--color-line)]">
+                    <div key={x.folio} className="px-3 py-2.5 bg-white border border-[var(--color-line)] rounded-[10px]">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <div className="font-extrabold text-ui tabular-nums">{fechaCL(x.fecha)}</div>
+                        <div className="font-semibold text-ui tabular-nums">{fechaCL(x.fecha)}</div>
                         <Tag variant={ESTADO_VISITA_TAG[x.estado]}>{ESTADO_VISITA_LABEL[x.estado]}</Tag>
                         <button
                           onClick={() => router.push(`/admin/visitas/${x.folio}`)}
-                          className="ml-auto min-h-7 px-2 bg-transparent border border-black/[.3] text-cap leading-none cursor-pointer hover:bg-black/[.07]"
+                          className="ml-auto min-h-7 px-2 bg-transparent border border-[var(--color-line)] rounded-[10px] text-cap leading-none cursor-pointer hover:bg-black/[.07]"
                         >
                           {x.folio}
                         </button>
@@ -761,14 +760,14 @@ function Tarjeta({
                       </div>
                       {x.trabajosCodigos.length > 0 ? (
                         <div className="text-meta leading-[1.45] mt-1.5">
-                          <strong className="font-extrabold">Trabajo:</strong>{" "}
+                          <strong className="font-semibold">Trabajo:</strong>{" "}
                           {x.trabajosCodigos.map((c) => nombreTrabajo(ref.trabajos, c)).join(" · ")}
                         </div>
                       ) : null}
                       {x.observaciones ? <div className="text-meta leading-[1.45] mt-1">{x.observaciones}</div> : null}
                       {x.motivoTecnico ? (
                         <div className="text-meta leading-[1.45] mt-1">
-                          <strong className="font-extrabold">No se hizo:</strong> {x.motivoTecnico}
+                          <strong className="font-semibold">No se hizo:</strong> {x.motivoTecnico}
                         </div>
                       ) : null}
                     </div>

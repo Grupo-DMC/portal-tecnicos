@@ -76,7 +76,7 @@ export default function CampoTelefono({
       <div className="flex items-stretch">
         <span
           aria-hidden="true"
-          className={`flex-none flex items-center px-3 select-none tabular-nums font-extrabold text-[var(--color-muted)] bg-[var(--color-surface)] border border-r-0 ${
+          className={`flex-none flex items-center px-3 select-none tabular-nums font-semibold text-[var(--color-muted)] bg-[var(--color-surface)] border border-r-0 ${
             movil ? "text-lead border-[var(--color-divider)]" : "text-ui border-[var(--color-line-control)]"
           }`}
         >

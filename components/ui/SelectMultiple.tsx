@@ -96,13 +96,13 @@ export default function SelectMultiple({
         stroke="var(--color-text)"
         strokeWidth="2.2"
         className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
-        style={{ transform: `translateY(-50%) rotate(${abierto ? 180 : 0}deg)` }}
+        style={{ transform: `rotate(${abierto ? 180 : 0}deg)` }}
       >
         <path d="M6 9l6 6 6-6" />
       </svg>
 
       {abierto ? (
-        <div className="absolute left-0 right-0 top-full z-30 bg-[var(--color-bg)] border-2 border-[var(--color-text)] shadow-[0_6px_18px_rgba(0,0,0,.18)]">
+        <div className="absolute left-0 right-0 top-full z-30 bg-[var(--color-bg)] border border-[var(--color-line)] rounded-[14px] shadow-[0_6px_18px_rgba(0,0,0,.18)]">
           {opciones.length >= 7 ? (
             <input
               autoFocus

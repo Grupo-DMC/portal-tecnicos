@@ -28,6 +28,7 @@ vi.mock("@/app/actions/maestros", () => ({
   guardarSucursalAction: vi.fn(),
 }));
 
+import { textoPeriodo } from "@/components/ui/DatePicker";
 import VisitaDialogo, { camposFecha, errorMargen, fechaHastaDe } from "@/components/admin/VisitaDialogos";
 import { hoyISO } from "@/lib/ui/fecha";
 import { pintar, visitaFalsa } from "../helpers/componentes";
@@ -90,7 +91,8 @@ describe("Nueva visita (panel)", () => {
     expect(dlg().getByRole("combobox", { name: "Cliente" })).toHaveAttribute("placeholder", "Cliente Uno");
     expect(dlg().getByRole("combobox", { name: "Sucursal" })).toHaveAttribute("placeholder", "Tienda Centro");
     expect(dlg().getByRole("combobox", { name: "Técnico asignado" })).toHaveAttribute("placeholder", "Ana Pérez");
-    expect(dlg().getByLabelText("Fecha programada")).toHaveValue(hoyISO());
+    // La fecha va en el DatePicker: el campo muestra «27 nov 2026».
+    expect(dlg().getByLabelText("Fecha programada")).toHaveTextContent(textoPeriodo(hoyISO(), hoyISO()));
     expect(screen.getByText("Nueva visita")).toBeInTheDocument();
   });
 
@@ -292,7 +294,7 @@ describe("Editar visita", () => {
     const { u } = abrir({ visita });
     expect(screen.getByText("Editar visita V-0042")).toBeInTheDocument();
     expect(dlg().getByRole("combobox", { name: "Sucursal" })).toHaveAttribute("placeholder", "Tienda Norte");
-    expect(dlg().getByLabelText("Fecha programada")).toHaveValue("2026-11-03");
+    expect(dlg().getByLabelText("Fecha programada")).toHaveTextContent("3 nov 2026");
     expect(dlg().getByLabelText("Qué se necesita hacer")).toHaveValue("Calibrar antenas");
 
     await u.click(dlg().getByRole("button", { name: "Guardar cambios" }));
@@ -306,8 +308,8 @@ describe("Editar visita", () => {
 
   it("una visita con margen de días abre con la casilla marcada y sus dos fechas", () => {
     abrir({ visita: visitaFalsa({ fechaProgramada: "2026-11-02", fechaHasta: "2026-11-06" }) });
-    expect(dlg().getByLabelText("Desde")).toHaveValue("2026-11-02");
-    expect(dlg().getByLabelText("Hasta")).toHaveValue("2026-11-06");
+    expect(dlg().getByLabelText("Desde")).toHaveTextContent("2 nov 2026");
+    expect(dlg().getByLabelText("Hasta")).toHaveTextContent("6 nov 2026");
   });
 });
 

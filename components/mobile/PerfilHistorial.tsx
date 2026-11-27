@@ -16,6 +16,7 @@ import {
 import { sumarDias, fechaCL } from "@/lib/ui/fecha";
 import { nombreProblema, nombreTrabajo, useReferencias } from "@/lib/ui/referencias";
 import type { Visita } from "@/lib/types";
+import { ocultarRut } from "@/lib/ui/reservado";
 
 type Filtro = "hoy" | "semana" | "mes";
 
@@ -138,8 +139,8 @@ export default function PerfilHistorial({
 
   return (
     <div className="mt-7">
-      <div className="flex items-baseline gap-2.5 flex-wrap pb-2 mb-3 border-b-2 border-[var(--color-divider)]">
-        <h2 className="font-extrabold text-h3 leading-[1.15] tracking-[-.02em] m-0">Mis visitas realizadas</h2>
+      <div className="flex items-baseline gap-2.5 flex-wrap pb-2 mb-3 border-b border-[var(--color-line)]">
+        <h2 className="font-semibold text-h3 leading-[1.15] tracking-[-.02em] m-0">Mis visitas realizadas</h2>
         <span className="text-cap leading-[1.3] opacity-62 ml-auto">{cfg.leyenda}</span>
       </div>
 
@@ -151,7 +152,7 @@ export default function PerfilHistorial({
               key={f.c}
               onClick={() => setFiltro(f.c)}
               aria-pressed={activo}
-              className="min-h-11 px-2.5 font-extrabold text-cap leading-none cursor-pointer hover:brightness-95"
+              className="min-h-11 px-2.5 font-semibold text-cap leading-none cursor-pointer hover:brightness-95"
               style={{
                 background: activo ? "var(--color-accent)" : "transparent",
                 color: activo ? "#fff" : "var(--color-text)",
@@ -172,10 +173,10 @@ export default function PerfilHistorial({
             className={`px-3 py-2.5 border ${
               c.alerta
                 ? "bg-[var(--color-danger-100)] border-[var(--color-danger-400)] text-[var(--color-danger-800)]"
-                : "bg-[var(--color-surface)] border-black/[.2]"
+                : "bg-[var(--color-surface)] border-[var(--color-line)]"
             }`}
           >
-            <div className="font-extrabold text-h2 leading-[1.1] tracking-[-.02em] tabular-nums">
+            <div className="font-semibold text-h2 leading-[1.1] tracking-[-.02em] tabular-nums">
               {String(c.v)
                 .split(/(\d+)/)
                 .map((t, i) => (/^\d+$/.test(t) ? <span key={i} className="num font-bold">{t}</span> : t))}
@@ -188,7 +189,7 @@ export default function PerfilHistorial({
       {grupos.map((g) => (
         <div key={g.fecha} className="mb-5">
           <div className="flex items-center gap-2 pb-2">
-            <div className="font-extrabold text-cap ">{g.titulo}</div>
+            <div className="font-semibold text-cap ">{g.titulo}</div>
             <div className="text-cap tabular-nums opacity-60">{g.items.length}</div>
           </div>
           <div className="flex flex-col gap-2.5">
@@ -201,17 +202,17 @@ export default function PerfilHistorial({
                 <button
                   key={v.id}
                   onClick={() => setAbierta(v)}
-                  className="block w-full min-w-0 text-left border border-[var(--color-divider)] bg-[var(--color-surface-3)] px-3.5 pt-3 pb-3 cursor-pointer text-[var(--color-text)] hover:bg-[var(--color-surface)]"
+                  className="block w-full min-w-0 text-left border border-[var(--color-line)] rounded-[10px] bg-[var(--color-surface-3)] px-3.5 pt-3 pb-3 cursor-pointer text-[var(--color-text)] hover:bg-[var(--color-surface)]"
                   style={{ borderLeft: `4px solid ${ESTADO_VISITA_BARRA[v.estado]}` }}
                 >
                   <div className="flex items-baseline gap-2.5">
-                    <span className="font-extrabold text-lead leading-[1.2] tabular-nums">{textoHorario(v)}</span>
+                    <span className="font-semibold text-lead leading-[1.2] tabular-nums">{textoHorario(v)}</span>
                     <span className="num text-cap tabular-nums opacity-62 truncate">{v.folio}</span>
                     <Tag variant={ESTADO_VISITA_TAG[v.estado]} className="ml-auto flex-none">
                       {ESTADO_VISITA_LABEL[v.estado]}
                     </Tag>
                   </div>
-                  <div className="font-extrabold text-lead leading-[1.25] mt-2 truncate">{v.sucursal?.nombre}</div>
+                  <div className="font-semibold text-lead leading-[1.25] mt-2 truncate">{v.sucursal?.nombre}</div>
                   <div className="text-meta opacity-66 mt-0.5 truncate">
                     {v.cliente?.nombreFantasia} · {textoMotivos(v)}
                   </div>
@@ -247,7 +248,7 @@ export default function PerfilHistorial({
         </div>
       ))}
       {listadas.length === 0 ? (
-        <div className="py-6.5 px-4 text-center text-ui opacity-62 border border-dashed border-black/[.3]">
+        <div className="py-6.5 px-4 text-center text-ui opacity-62 border border-dashed border-[var(--color-line)]">
           No hay visitas cerradas en este período.
         </div>
       ) : null}
@@ -260,8 +261,8 @@ export default function PerfilHistorial({
 function Seccion({ titulo, cuenta, children }: { titulo: string; cuenta?: number; children: React.ReactNode }) {
   return (
     <div className="pt-5">
-      <div className="flex items-center gap-2 pb-2 mb-3 border-b-2 border-[var(--color-divider)]">
-        <div className="font-extrabold text-meta ">{titulo}</div>
+      <div className="flex items-center gap-2 pb-2 mb-3 border-b border-[var(--color-line)]">
+        <div className="font-semibold text-meta ">{titulo}</div>
         {cuenta !== undefined ? <div className="text-cap tabular-nums opacity-60">{cuenta}</div> : null}
       </div>
       {children}
@@ -269,7 +270,7 @@ function Seccion({ titulo, cuenta, children }: { titulo: string; cuenta?: number
   );
 }
 
-const chip = "px-2 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap leading-[1.2] tabular-nums";
+const chip = "px-2 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-semibold text-cap leading-[1.2] tabular-nums";
 
 function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId: number; onCerrar: () => void }) {
   const { problemas: catalogoProblema, trabajos: catalogoTrabajo, motivos } = useReferencias();
@@ -344,8 +345,8 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
               { k: problemas.length === 1 ? "Problema" : "Problemas", v: problemas.length },
               { k: fotosTrabajo.length === 1 ? "Foto" : "Fotos", v: fotosTrabajo.length },
             ].map((c) => (
-              <div key={c.k} className="px-3 py-2.5 bg-[var(--color-surface)] border border-black/[.2]">
-                <div className="font-extrabold text-h3 leading-[1.1] tabular-nums">{c.v}</div>
+              <div key={c.k} className="px-3 py-2.5 bg-[var(--color-surface)] border border-[var(--color-line)] rounded-[10px]">
+                <div className="font-semibold text-h3 leading-[1.1] tabular-nums">{c.v}</div>
                 <div className="text-cap opacity-62 mt-1">{c.k}</div>
               </div>
             ))}
@@ -359,7 +360,7 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
           ) : null}
 
           {reagenda ? (
-            <div className="mt-3 p-3.5 bg-[var(--color-surface)] border border-[var(--color-line-control)]">
+            <div className="mt-3 p-3.5 bg-[var(--color-surface)] border border-[var(--color-line)] rounded-[10px]">
               <div className="text-cap opacity-62 mb-1.5">Reagendada</div>
               <div className="text-ui leading-[1.5]">
                 <span className="tabular-nums">
@@ -373,9 +374,9 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
             </div>
           ) : null}
 
-          <div className="mt-3 border border-[var(--color-divider)] bg-[var(--color-surface-3)] px-3.5">
+          <div className="mt-3 border border-[var(--color-line)] rounded-[10px] bg-[var(--color-surface-3)] px-3.5">
             {filas.map((f, i) => (
-              <div key={f.k} className={`flex gap-3 py-3 ${i > 0 ? "border-t border-black/[.15]" : ""}`}>
+              <div key={f.k} className={`flex gap-3 py-3 ${i > 0 ? "border-t border-[var(--color-line)]" : ""}`}>
                 <div className="text-cap leading-[1.6] opacity-62 w-[96px] flex-none">{f.k}</div>
                 <div className="text-ui min-w-0">{f.v}</div>
               </div>
@@ -394,15 +395,15 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
             ) : (
               <div className="flex flex-col gap-2">
                 {trabajos.map((t, i) => (
-                  <div key={t.id} className="flex gap-3 px-3 py-3 bg-[var(--color-surface-3)] border border-black/[.2]">
-                    <div className="font-extrabold text-meta leading-[1.45] tabular-nums opacity-45 flex-none">
+                  <div key={t.id} className="flex gap-3 px-3 py-3 bg-[var(--color-surface-3)] border border-[var(--color-line)] rounded-[10px]">
+                    <div className="font-semibold text-meta leading-[1.45] tabular-nums opacity-45 flex-none">
                       {String(i + 1).padStart(2, "0")}
                     </div>
                     <div className="min-w-0">
                       {t.motivoCodigo ? (
                         <div className="text-cap opacity-62">{nombreMotivo(t.motivoCodigo)}</div>
                       ) : null}
-                      <div className="font-extrabold text-body leading-[1.25]">
+                      <div className="font-semibold text-body leading-[1.25]">
                         {nombreTrabajo(catalogoTrabajo, t.trabajoCodigo)}
                       </div>
                       {t.subtrabajos.length > 0 ? (
@@ -422,7 +423,7 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
               </div>
             )}
             {ejec?.observaciones ? (
-              <div className="mt-3 px-3.5 py-3 bg-[var(--color-surface)] border border-[var(--color-line-control)]">
+              <div className="mt-3 px-3.5 py-3 bg-[var(--color-surface)] border border-[var(--color-line)] rounded-[10px]">
                 <div className="text-cap opacity-62 mb-1.5">Observación escrita</div>
                 <div className="text-ui leading-[1.5]">{ejec.observaciones}</div>
               </div>
@@ -437,7 +438,7 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
                 {problemas.map((p) => (
                   <div key={p.id} className="px-3 py-3 bg-[var(--color-accent-200)] border border-[var(--color-accent-300)]">
                     <div className="flex items-baseline gap-2 flex-wrap">
-                      <div className="font-extrabold text-ui leading-[1.25] text-[var(--color-accent-800)]">
+                      <div className="font-semibold text-ui leading-[1.25] text-[var(--color-accent-800)]">
                         {nombreProblema(catalogoProblema, p.tipoCodigo)}
                       </div>
                       <EstadoProblemaTag estado={p.estado} className="ml-auto" />
@@ -455,7 +456,7 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
                       <div className="text-meta leading-[1.5] text-[var(--color-accent-800)] mt-2">{p.descripcion}</div>
                     ) : null}
                     {p.solucion ? (
-                      <div className="text-meta leading-[1.5] text-[var(--color-accent-800)] mt-2 pt-2 border-t border-black/[.15]">
+                      <div className="text-meta leading-[1.5] text-[var(--color-accent-800)] mt-2 pt-2 border-t border-[var(--color-line)]">
                         <b>{p.estado === "RESUELTO" ? "Se realizó: " : "Sugerido: "}</b>
                         {p.solucion}
                       </div>
@@ -478,7 +479,7 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
                     type="button"
                     onClick={() => visor.abrir(i)}
                     aria-label={`Ver la foto ${i + 1} en grande`}
-                    className="relative aspect-square p-0 border border-black/[.3] overflow-hidden bg-[var(--color-neutral-300)] cursor-zoom-in"
+                    className="relative aspect-square p-0 border border-[var(--color-line)] rounded-[10px] overflow-hidden bg-[var(--color-neutral-300)] cursor-zoom-in"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -506,7 +507,7 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
           {/* Comentario interno: lo ve coordinación, no el cliente ni el PDF. */}
           {ejec?.comentarioInterno || internos.length || fotosInternas.length || videosInternos.length ? (
             <Seccion titulo="Comentario interno">
-              <div className="px-3 py-3 bg-[var(--color-surface)] border border-[var(--color-line-control)]">
+              <div className="px-3 py-3 bg-[var(--color-surface)] border border-[var(--color-line)] rounded-[10px]">
                 <div className="text-cap opacity-62">No lo ve el cliente</div>
                 {internos.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5 mt-2">
@@ -526,7 +527,7 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
                         type="button"
                         onClick={() => visor.abrir(fotosTrabajo.length + i)}
                         aria-label="Ver la foto interna en grande"
-                        className="relative aspect-square p-0 border border-black/[.3] overflow-hidden cursor-zoom-in"
+                        className="relative aspect-square p-0 border border-[var(--color-line)] rounded-[10px] overflow-hidden cursor-zoom-in"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={f.archivoUrl} alt="Foto interna" className="w-full h-full object-cover" loading="lazy" />
@@ -560,7 +561,7 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
                 <div className="h-px bg-[var(--color-text)] mt-1" />
                 <div className="text-cap mt-1.5">
                   {firma.nombre}
-                  {firma.rut ? ` · ${firma.rut}` : ""}
+                  {firma.rut ? ` · ${ocultarRut(firma.rut)}` : ""}
                 </div>
                 <div className="text-cap opacity-62">
                   Firmó a las {hhmm(firma.firmadoEn)}
@@ -572,7 +573,7 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
           </Seccion>
 
           {ejec?.registradoOffline ? (
-            <div className="mt-5 px-3.5 py-2.5 bg-[var(--color-surface)] border border-[var(--color-line-control)] text-meta leading-[1.45]">
+            <div className="mt-5 px-3.5 py-2.5 bg-[var(--color-surface)] border border-[var(--color-line)] rounded-[10px] text-meta leading-[1.45]">
               Se llenó sin señal y se sincronizó
               {ejec.sincronizadoEn ? ` el ${ejec.sincronizadoEn.slice(0, 16).replace("T", " a las ")}` : " al recuperar cobertura"}.
             </div>
@@ -583,7 +584,7 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
               <a
                 href={`/api/visita/acta/${encodeURIComponent(visita.folio)}`}
                 download={`Acta ${visita.folio}.pdf`}
-                className="w-full min-h-[52px] flex items-center justify-between px-4 bg-[var(--color-accent)] text-[var(--color-bg)] font-extrabold text-ui hover:bg-[var(--color-accent-hover)]"
+                className="w-full min-h-[52px] flex items-center justify-between px-4 bg-[var(--color-accent)] text-[var(--color-bg)] font-semibold text-ui hover:bg-[var(--color-accent-hover)]"
               >
                 <span>Descargar PDF</span>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -593,7 +594,7 @@ function ActaSheet({ visita, tecnicoId, onCerrar }: { visita: Visita; tecnicoId:
             ) : null}
             <Link
               href={`/tecnico/visitas/${encodeURIComponent(visita.folio)}`}
-              className="w-full min-h-[50px] flex items-center justify-between px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui hover:bg-black/[.07]"
+              className="w-full min-h-[50px] flex items-center justify-between px-4 bg-transparent border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] font-semibold text-ui hover:bg-black/[.07]"
             >
               <span>Abrir la visita</span>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">

@@ -13,6 +13,7 @@ vi.mock("@/app/actions/adjuntos", accionFalsa);
 vi.mock("@/app/actions/visitas-papel", accionFalsa);
 
 import VisitasTable from "@/components/admin/VisitasTable";
+import { hoyISO } from "@/lib/ui/fecha";
 import { ReferenciasProvider, REFERENCIAS_VACIAS } from "@/lib/ui/referencias";
 import { SIN_FILTROS, type FiltrosVisitas, type OpcionesFiltroVisitas } from "@/lib/ui/filtros-visitas";
 import { pintar, router, visitaFalsa } from "../helpers/componentes";
@@ -49,15 +50,18 @@ function tabla(f: Partial<FiltrosVisitas> = {}, visitas = [visitaFalsa()], extra
 
 const PERMISOS_TOTALES = ["visitas.ver", "visitas.crear", "visitas.editar", "visitas.cancelar", "visitas.eliminar", "visitas.masivo"];
 
+/** Las filas de visita, sin las que encabezan cada día. */
+const filasDeVisita = () => screen.getAllByRole("row").filter((r) => r.classList.contains("v-row"));
+
 /** Despliega los selectores de la barra de filtros. */
 async function abrirFiltros(u: ReturnType<typeof userEvent.setup>) {
-  await u.click(screen.getByRole("button", { name: /Colocar filtro|Editar filtros/ }));
+  await u.click(screen.getByRole("button", { name: /^Filtros/ }));
 }
 
 describe("listado de visitas", () => {
   it("muestra cada visita con folio, cliente, sucursal, técnico, motivo y estado", () => {
     pintar(tabla({}, [visitaFalsa({ folio: "V-0100", estado: "COMPLETADA" }), visitaFalsa({ folio: "V-0101", estado: "EN_CURSO" })]));
-    const filas = screen.getAllByRole("row").slice(1);
+    const filas = filasDeVisita();
     expect(filas).toHaveLength(2);
     expect(within(filas[0]).getByText("V-0100")).toBeInTheDocument();
     expect(within(filas[0]).getByText("Completada")).toBeInTheDocument();
@@ -70,17 +74,32 @@ describe("listado de visitas", () => {
 
   it("cuenta los registros en singular y plural", () => {
     const { unmount } = pintar(tabla({}, [visitaFalsa()]));
-    expect(screen.getByText("1 registro")).toBeInTheDocument();
+    expect(screen.getByText("1–1 de 1 registro")).toBeInTheDocument();
     unmount();
     pintar(tabla({}, [visitaFalsa(), visitaFalsa()]));
-    expect(screen.getByText("2 registros")).toBeInTheDocument();
+    expect(screen.getByText("1–2 de 2 registros")).toBeInTheDocument();
   });
 
-  it("con margen de días muestra el rango; la tabla ya no tiene columna Hora", () => {
-    pintar(tabla({}, [visitaFalsa({ horaProgramada: null, fechaHasta: "2026-10-30" })]));
-    expect(screen.getByText("26/10/2026 → 30/10/2026")).toBeInTheDocument();
-    expect(screen.queryByRole("columnheader", { name: "Hora" })).not.toBeInTheDocument();
-    expect(screen.queryByText("Sin hora")).not.toBeInTheDocument();
+  it("agrupa por día: la fecha encabeza sus visitas y no se repite en cada fila", () => {
+    pintar(tabla({}, [visitaFalsa(), visitaFalsa(), visitaFalsa({ fechaProgramada: "2026-10-20" })]));
+    const dias = screen.getAllByRole("rowheader");
+    expect(dias).toHaveLength(2);
+    expect(dias[0]).toHaveTextContent("26 de octubre");
+    expect(dias[1]).toHaveTextContent("20 de octubre");
+  });
+
+  it("«Llegada» muestra las horas reales, la acordada, el margen o todo el día", () => {
+    pintar(
+      tabla({}, [
+        visitaFalsa({ ejecucion: { horaInicio: "2026-10-26T09:02:00", horaTermino: "2026-10-26T09:47:00" } }),
+        visitaFalsa({ horaProgramada: "15:00" }),
+        visitaFalsa({ horaProgramada: null, fechaHasta: "2026-10-30" }),
+        visitaFalsa({ horaProgramada: null }),
+      ])
+    );
+    for (const texto of ["09:02 a 09:47", "15:00", "Hasta 30/10", "Todo el día"]) {
+      expect(screen.getByText(texto)).toBeInTheDocument();
+    }
   });
 
   it("marca las visitas eliminadas y las editadas", () => {
@@ -94,7 +113,7 @@ describe("listado de visitas", () => {
     expect(screen.getByText("Editada")).toHaveAttribute("title", expect.stringContaining("Tipeo"));
   });
 
-  it("hacer clic en una fila (o en el ojo) abre el acta", async () => {
+  it("hacer clic en una fila (o en su flecha) abre el acta", async () => {
     const u = userEvent.setup();
     pintar(tabla({}, [visitaFalsa({ folio: "V-0200" })]));
     await u.click(screen.getByText("V-0200"));
@@ -106,7 +125,8 @@ describe("listado de visitas", () => {
 
   it("los técnicos ayudantes se muestran junto al titular", () => {
     pintar(tabla({}, [visitaFalsa({ tecnicoAyudante: { id: 2, nombreCompleto: "Beto Soto" } })]));
-    expect(screen.getByText("Ana Pérez + Beto Soto")).toBeInTheDocument();
+    expect(screen.getByText("Ana Pérez")).toBeInTheDocument();
+    expect(screen.getByText("+ Beto Soto")).toBeInTheDocument();
   });
 });
 
@@ -139,18 +159,56 @@ describe("filtros del listado (viven en la URL: cambiar uno es navegar)", () => 
     expect(router.replace.mock.calls[0][0]).toContain("q=V-05");
   });
 
-  it("filtrar por estado: marca varios y navega una sola vez al cerrar", async () => {
+  it("las pestañas filtran por estado y «Canceladas» junta las dos formas de cancelar", async () => {
+    const u = userEvent.setup();
+    pintar(
+      <VisitasTable
+        title="Visitas"
+        filtros={SIN_FILTROS}
+        pagina={{ visitas: [visitaFalsa()], total: 6, pagina: 1, paginas: 1, porEstado: { PROGRAMADA: 3, CANCELADA: 1, CANCELADA_ADMIN: 2 } }}
+        opciones={opciones}
+      />
+    );
+    expect(screen.getByRole("tab", { name: "Todas 6" })).toHaveAttribute("aria-selected", "true");
+    // Pendientes y Reagendadas solo aparecen cuando tienen visitas.
+    expect(screen.queryByRole("tab", { name: /Pendientes/ })).toBeNull();
+    await u.click(screen.getByRole("tab", { name: "Canceladas 3" }));
+    const url = new URL(router.replace.mock.calls[0][0] as string, "http://x");
+    expect(url.searchParams.getAll("estado")).toEqual(["CANCELADA", "CANCELADA_ADMIN"]);
+  });
+
+  it("una mezcla de estados que no es una pestaña queda como filtros puestos", () => {
+    pintar(tabla({ estados: ["COMPLETADA", "PENDIENTE"] }));
+    expect(screen.getByRole("button", { name: "Quitar Estado: Completada" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Quitar Estado: Pendiente" })).toBeInTheDocument();
+  });
+
+  it("el período se elige en el DatePicker y viaja con «Ver resultados», siempre ordenado", async () => {
     const u = userEvent.setup();
     pintar(tabla());
     await abrirFiltros(u);
-    await u.click(screen.getByRole("combobox", { name: /Estado de la visita/ }));
-    await u.click(screen.getByRole("option", { name: /Completada/ }));
-    await u.click(screen.getByRole("option", { name: /Pendiente/ }));
-    expect(router.replace).not.toHaveBeenCalled();
+    await u.click(screen.getByLabelText("Período"));
+    // El calendario abre en el mes de hoy: se mueve hasta octubre de 2026.
+    const [a, m] = hoyISO().split("-").map(Number);
+    const saltos = (a - 2026) * 12 + (m - 10);
+    for (let i = 0; i < Math.abs(saltos); i++) await u.click(screen.getByRole("button", { name: saltos > 0 ? "Ver mes anterior" : "Ver mes siguiente" }));
+    // Dos clics en cualquier orden: el rango queda ordenado (no existe un «hasta» anterior al «desde»).
+    await u.click(screen.getByRole("button", { name: /^30 de octubre de 2026/ }));
+    await u.click(screen.getByRole("button", { name: /^20 de octubre de 2026/ }));
+    await u.click(screen.getByRole("button", { name: /^30 de octubre de 2026/ }));
     await u.click(screen.getByRole("button", { name: "Aplicar" }));
-    expect(router.replace).toHaveBeenCalledTimes(1);
+    expect(router.replace).not.toHaveBeenCalled();
+    await u.click(screen.getByRole("button", { name: "Ver resultados" }));
     const url = new URL(router.replace.mock.calls[0][0] as string, "http://x");
-    expect(url.searchParams.getAll("estado")).toEqual(["COMPLETADA", "PENDIENTE"]);
+    expect(url.searchParams.get("desde")).toBe("2026-10-20");
+    expect(url.searchParams.get("hasta")).toBe("2026-10-30");
+  });
+
+  it("«/» lleva a la búsqueda", async () => {
+    const u = userEvent.setup();
+    pintar(tabla());
+    await u.keyboard("/");
+    expect(screen.getByLabelText(/Buscar folio, cliente, sucursal/)).toHaveFocus();
   });
 
   it("filtrar por cliente muestra los filtros de marca y sucursal; sin cliente no existen", async () => {
@@ -203,7 +261,7 @@ describe("filtros del listado (viven en la URL: cambiar uno es navegar)", () => 
     const { container } = pintar(tabla({ clienteIds: ["1"] }));
     await abrirFiltros(u);
     const orden = [...container.querySelectorAll("label")].map((l) => l.textContent);
-    const cadena = ["Zona (región)", "Mall", "Cliente", "Marca", "Sucursal"];
+    const cadena = ["Zona", "Mall", "Cliente", "Marca", "Sucursal"];
     expect(orden.filter((t) => cadena.includes(t ?? ""))).toEqual(cadena);
     expect(container.querySelector("#fv-semana")).toBeNull();
     expect(screen.queryByText(/Semana/)).toBeNull();
@@ -250,7 +308,6 @@ describe("filtros del listado (viven en la URL: cambiar uno es navegar)", () => 
       })
     );
     for (const chip of [
-      "Estado: Completada",
       "Cliente: Cliente Dos",
       "Marca: Marca Sur",
       "Tienda: Tienda Centro",
@@ -288,16 +345,17 @@ describe("filtros del listado (viven en la URL: cambiar uno es navegar)", () => 
 
   it("el botón de filtros cuenta cuántos hay puestos", () => {
     pintar(tabla({ estados: ["COMPLETADA"], regiones: ["Valparaíso"] }));
-    expect(screen.getByRole("button", { name: "Editar filtros (2)" })).toBeInTheDocument();
+    // El estado es la pestaña: no cuenta como filtro puesto.
+    expect(screen.getByRole("button", { name: "Filtros, 1 puesto" })).toBeInTheDocument();
   });
 
   it("«Eliminadas» solo se ofrece al administrador y va sola (excluye los demás estados)", async () => {
     const u = userEvent.setup();
+    const { unmount } = pintar(tabla({ estados: ["COMPLETADA"] }));
+    expect(screen.queryByRole("tab", { name: /Eliminadas/ })).toBeNull();
+    unmount();
     pintar(tabla({ estados: ["COMPLETADA"] }, [visitaFalsa()], { eliminadas: 4 }));
-    await abrirFiltros(u);
-    await u.click(screen.getByRole("combobox", { name: /Estado de la visita|Completada/ }));
-    await u.click(screen.getByRole("option", { name: /Eliminadas \(4\)/ }));
-    await u.click(screen.getByRole("button", { name: "Aplicar" }));
+    await u.click(screen.getByRole("tab", { name: "Eliminadas 4" }));
     const url = new URL(router.replace.mock.calls[0][0] as string, "http://x");
     expect(url.searchParams.getAll("estado")).toEqual(["ELIMINADAS"]);
   });
@@ -344,7 +402,8 @@ describe("botones según permisos", () => {
 describe("sin resultados y rol", () => {
   it("sin visitas muestra 0 registros y la tabla vacía", () => {
     pintar(tabla({}, []));
-    expect(screen.getByText("0 registros")).toBeInTheDocument();
+    expect(screen.getByText("0–0 de 0 registros")).toBeInTheDocument();
+    expect(screen.getByText("Todavía no hay visitas")).toBeInTheDocument();
     expect(screen.getAllByRole("row")).toHaveLength(1);
   });
 
@@ -354,6 +413,6 @@ describe("sin resultados y rol", () => {
         {tabla()}
       </ReferenciasProvider>
     );
-    expect(screen.getByText("1 registro")).toBeInTheDocument();
+    expect(screen.getByText("1–1 de 1 registro")).toBeInTheDocument();
   });
 });

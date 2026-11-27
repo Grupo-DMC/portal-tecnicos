@@ -4,10 +4,13 @@ import { useFiltroRecordado } from "@/lib/ui/filtro-recordado";
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Tag from "@/components/Tag";
-import AdminHeader from "@/components/admin/AdminHeader";
+import Icono from "@/components/ui/Icono";
+import { PILL_VISITA } from "@/lib/ui/lista-visitas";
+import { plural } from "@/lib/ui/plural";
+import { esDatoDePrueba } from "@/lib/ui/pruebas";
+import { ocultarCredenciales } from "@/lib/ui/reservado";
 import FiltrosBar from "@/components/admin/FiltrosBar";
-import { ESTADO_VISITA_COLOR, ESTADO_VISITA_LABEL, ESTADO_VISITA_TAG } from "@/lib/ui/estado";
+import { ESTADO_VISITA_LABEL } from "@/lib/ui/estado";
 import { textoFechaVisita, fechaCL } from "@/lib/ui/fecha";
 import { sinTildes } from "@/lib/ui/formato";
 import type { DatoFicha, FilaFicha } from "@/components/admin/maestros/FichaPartes";
@@ -23,6 +26,16 @@ const ESTADOS: EstadoVisita[] = [
   "CANCELADA_ADMIN",
 ];
 const EN_ESPERA: EstadoVisita[] = ["PROGRAMADA", "EN_CURSO", "PENDIENTE", "REAGENDADA"];
+const COLOR_ESTADO: Record<EstadoVisita, string> = {
+  PROGRAMADA: "var(--lilac)",
+  EN_CURSO: "var(--purple)",
+  COMPLETADA: "var(--green)",
+  PENDIENTE: "var(--red)",
+  REAGENDADA: "var(--amber-bar)",
+  CANCELADA: "var(--grey)",
+  CANCELADA_ADMIN: "var(--muted)",
+};
+
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
 export interface TiendaFicha {
@@ -46,6 +59,7 @@ export default function FichaVisitas({
   activo,
   volver,
   acciones,
+  accionExtra,
   datos,
   notas,
   filas,
@@ -61,6 +75,8 @@ export default function FichaVisitas({
   activo: boolean;
   volver: { href: string; label: string };
   acciones?: { href: string; label: string }[];
+  /** Un botón propio al final de las acciones («Agendar visita» en la sucursal). */
+  accionExtra?: React.ReactNode;
   datos: DatoFicha[];
   notas: string | null;
   filas: FilaFicha[];
@@ -99,7 +115,7 @@ export default function FichaVisitas({
   // ── Gráficos ──────────────────────────────────────────────────────────────
   const porEstado = ESTADOS.map((e) => {
     const n = filas.filter((f) => f.estado === e).length;
-    return { estado: e, label: ESTADO_VISITA_LABEL[e], n, pct: pct(n, total), color: ESTADO_VISITA_COLOR[e] };
+    return { estado: e, label: ESTADO_VISITA_LABEL[e], n, pct: pct(n, total), color: COLOR_ESTADO[e] };
   }).filter((e) => e.n > 0);
 
   const meses = useMemo(() => {
@@ -174,59 +190,84 @@ export default function FichaVisitas({
   }
 
   return (
-    <>
-      <AdminHeader title={titulo}>
-        <Tag variant={activo ? "accent" : "neutral"}>{activo ? (modo === "sucursal" ? "Activa" : "Activo") : modo === "sucursal" ? "Inactiva" : "Inactivo"}</Tag>
-        {acciones?.map((a) => (
-          <Link key={a.href} href={a.href} className="btn btn-secondary">
-            {a.label}
+    <div className="dmc pagina">
+      <div className="wrap cd">
+        <header className="vd-head">
+          <Link href={volver.href} className="back">
+            <Icono nombre="atras" />
+            {volver.label}
           </Link>
-        ))}
-        <Link href={volver.href} className="btn btn-ghost">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-            <path d="M19 12H5M11 6l-6 6 6 6" />
-          </svg>
-          <span>{volver.label}</span>
-        </Link>
-      </AdminHeader>
+          <div className="vd-bar">
+            <div>
+              <div className="vd-title">
+                <h1>{titulo}</h1>
+                <span className={`pill ${activo ? "ok" : "off"}`}>
+                  {activo ? (modo === "sucursal" ? "Activa" : "Activo") : modo === "sucursal" ? "Inactiva" : "Inactivo"}
+                </span>
+                {esDatoDePrueba(titulo, subtitulo) ? <span className="flag test">Prueba</span> : null}
+              </div>
+              <p className="vd-meta">{subtitulo}</p>
+            </div>
+            <div className="vd-ops">
+              {acciones?.map((a) => (
+                <Link key={a.href} href={a.href} className="btn-out">
+                  {a.label}
+                </Link>
+              ))}
+              {accionExtra}
+            </div>
+          </div>
+        </header>
 
-      <div className="pb-10 animate-fade-in">
-        <div className="px-4 md:px-7 py-3 text-meta opacity-70 border-b border-[var(--color-divider-soft)]">{subtitulo}</div>
-
-        {/* Cifras */}
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 border-b-2 border-[var(--color-divider)]">
+        <section className="pv-strip cinco" aria-label="Resumen">
           <Kpi label="Visitas" n={verVisitas ? total : "—"} sub={verVisitas ? `${enElAnio} en los últimos 12 meses` : "Sin permiso para verlas"} />
           <Kpi label="Completadas" n={verVisitas ? `${pct(completadas, total)}%` : "—"} sub={`${completadas} de ${total}`} />
-          <Kpi
-            label="En espera"
-            n={verVisitas ? enEspera : "—"}
-            sub={proxima ? `Próxima: ${fechaCL(proxima.fecha)} · ${proxima.folio}` : "Nada agendado"}
-          />
-          <Kpi
-            label="Problemas sin resolver"
-            n={verVisitas ? problemasAbiertos : "—"}
-            sub={`de ${problemas} registrados`}
-            color={problemasAbiertos ? "var(--color-danger)" : undefined}
-          />
+          <Kpi label="En espera" n={verVisitas ? enEspera : "—"} sub={proxima ? `Próxima: ${fechaCL(proxima.fecha)} · ${proxima.folio}` : "Nada agendado"} />
+          <Kpi label="Problemas sin resolver" n={verVisitas ? problemasAbiertos : "—"} sub={`de ${problemas} registrados`} rojo={problemasAbiertos > 0} />
           <Kpi
             label="Última visita hecha"
-            n={<span className="text-h2 md:text-h1">{ultima ? ultima.fecha : "—"}</span>}
+            n={ultima ? fechaCL(ultima.fecha) : "—"}
             sub={ultima ? `hace ${diasEntre(ultima.fecha, hoy)} días · ${ultima.folio}` : "Todavía ninguna"}
           />
-        </div>
+        </section>
 
-        {secciones}
+        <div className="pv-grid">
+          <GraficoMeses meses={meses} max={maxMes} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2">
-          {/* Datos */}
-          <Panel titulo={esCliente ? "Datos del cliente" : esMall ? "Datos del mall" : "Datos de la tienda"} borde="r">
-            <dl className="m-0 mt-2">
+          <Panel titulo="Visitas por estado" extra={plural(total, "visita", "visitas")} clase="s4">
+            {porEstado.length ? (
+              <>
+                <div className="pv-stack" role="img" aria-label={porEstado.map((e) => `${e.label}: ${e.n}`).join(", ")}>
+                  {porEstado.map((e) => (
+                    <span key={e.estado} style={{ flexGrow: e.n, background: e.color }} />
+                  ))}
+                </div>
+                <ul className="pv-states">
+                  {porEstado.map((e) => (
+                    <li key={e.estado}>
+                      <button type="button" onClick={() => verEstado(e.estado)} title="Ver esas visitas abajo">
+                        <span className="dot" style={{ background: e.color }} aria-hidden="true" />
+                        <span>{e.label}</span>
+                        <b>{e.n}</b>
+                        <small>{e.pct}%</small>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <Vacio texto="Todavía no hay visitas." />
+            )}
+          </Panel>
+
+          <Panel titulo={esCliente ? "Datos del cliente" : esMall ? "Datos del mall" : "Datos de la tienda"} clase="s4">
+            <dl className="facts">
               {datos.map((d) => (
-                <div key={d.label} className="flex gap-4 py-2.5 border-b border-black/[.1]">
-                  <dt className="text-cap opacity-62 w-[150px] flex-none pt-0.5">{d.label}</dt>
-                  <dd className="m-0 text-ui min-w-0 break-words font-semibold">
+                <div key={d.label}>
+                  <dt>{d.label}</dt>
+                  <dd>
                     {d.href ? (
-                      <Link href={d.href} className="underline underline-offset-2">
+                      <Link href={d.href} className="enlace">
                         {d.valor}
                       </Link>
                     ) : (
@@ -236,133 +277,94 @@ export default function FichaVisitas({
                 </div>
               ))}
             </dl>
-            {notas ? (
-              <div className="mt-4 px-3 py-2.5 text-meta border border-[var(--color-divider)] bg-[var(--color-surface)] whitespace-pre-line">
-                {notas}
-              </div>
-            ) : null}
+            {notas ? <p className="cd-notas">{ocultarCredenciales(notas)}</p> : null}
           </Panel>
 
-          {/* Estados */}
-          <Panel titulo="Visitas por estado" extra={`${total} visitas`}>
-            {porEstado.length ? (
-              <>
-                <div className="flex h-3.5 mt-4 border border-[var(--color-divider)]">
-                  {porEstado.map((e) => (
-                    <div key={e.estado} style={{ width: `${e.pct}%`, background: e.color }} className="border-r border-black/[.15]" />
-                  ))}
-                </div>
-                <p className="mt-3 mb-0 text-cap opacity-62">Haz clic en un estado para ver esas visitas abajo.</p>
-                <div className="mt-1.5">
-                  {porEstado.map((e) => (
-                    <button
-                      key={e.estado}
-                      type="button"
-                      onClick={() => verEstado(e.estado)}
-                      className="w-full flex items-center gap-2.5 py-2.5 border-b border-black/[.1] hover:bg-black/5 bg-transparent text-left cursor-pointer"
-                    >
-                      <span className="w-2.5 h-2.5 shrink-0 border border-black/[.35]" style={{ background: e.color }} />
-                      <span className="text-meta">{e.label}</span>
-                      <span className="ml-auto font-extrabold text-ui tabular-nums">{e.n}</span>
-                      <span className="w-11 text-right text-cap opacity-62 tabular-nums">{e.pct}%</span>
-                    </button>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <Vacio texto="Todavía no hay visitas." />
-            )}
+          <Panel titulo="Motivos más frecuentes" extra="Histórico" clase="s4">
+            <Barras filas={motivos} vacio="Sin motivos registrados." />
           </Panel>
 
-          {/* Por mes */}
-          <GraficoMeses meses={meses} max={maxMes} />
-
-          {/* Motivos */}
-          <Panel titulo="Motivos más frecuentes" extra="histórico">
-            <Barras filas={motivos} color="var(--color-accent)" vacio="Sin motivos registrados." />
-          </Panel>
-
-          {/* Quién va / dónde */}
           {esCliente ? (
-            <Panel titulo="Visitas por mall" extra={`${malls.length} ${malls.length === 1 ? "lugar" : "lugares"}`} borde="r">
-              <Barras filas={malls} color="var(--color-text)" vacio="Sin visitas todavía." />
+            <Panel titulo="Visitas por mall" extra={plural(malls.length, "lugar", "lugares")} clase="s4">
+              <Barras filas={malls} vacio="Sin visitas todavía." />
             </Panel>
           ) : esMall ? (
-            <Panel titulo="Visitas por cliente" extra={`${clientes.length} ${clientes.length === 1 ? "cliente" : "clientes"}`} borde="r">
-              <Barras filas={clientes} color="var(--color-text)" vacio="Sin visitas todavía." />
+            <Panel titulo="Visitas por cliente" extra={plural(clientes.length, "cliente", "clientes")} clase="s4">
+              <Barras filas={clientes} vacio="Sin visitas todavía." />
             </Panel>
           ) : (
-            <Panel titulo="Técnicos que han ido" extra="histórico" borde="r">
-              <Barras filas={tecnicos} color="var(--color-text)" vacio="Sin visitas todavía." />
+            <Panel titulo="Técnicos que han ido" extra="Histórico" clase="s4">
+              <Barras filas={tecnicos} vacio="Sin visitas todavía." />
             </Panel>
           )}
 
-          {/* Problemas y tiempo */}
-          <Panel titulo="Problemas y tiempo en sitio">
-            <div className="grid grid-cols-2 gap-6 mt-3">
+          <Panel titulo="Problemas y tiempo en sitio" clase="s12">
+            <dl className="cd-dos">
               <div>
-                <div className="text-cap opacity-66">Problemas registrados</div>
-                <div className="flex items-baseline gap-2 mt-2">
-                  <div className="num font-bold text-display leading-none tracking-[-.03em] tabular-nums">{problemas}</div>
-                  <div className="text-meta opacity-62">en {filas.filter((f) => f.problemas).length} visitas</div>
-                </div>
-                <div className="h-2 mt-4 bg-[var(--color-neutral-300)]">
-                  <div className="h-2 bg-[var(--color-text)]" style={{ width: `${pct(problemas - problemasAbiertos, problemas)}%` }} />
-                </div>
-                <div className="text-cap opacity-66 mt-1.5">
-                  {problemas ? `${pct(problemas - problemasAbiertos, problemas)}% resueltos · ${problemasAbiertos} sin resolver` : "Ninguno"}
-                </div>
+                <dt>Problemas registrados</dt>
+                <dd>
+                  <b>{problemas}</b> en {plural(filas.filter((f) => f.problemas).length, "visita", "visitas")}
+                </dd>
+                <dd>{problemas ? `${pct(problemas - problemasAbiertos, problemas)}% resueltos · ${problemasAbiertos} sin resolver` : "Ninguno"}</dd>
               </div>
               <div>
-                <div className="text-cap opacity-66">Tiempo en sitio</div>
-                <div className="flex items-baseline gap-1.5 mt-2">
-                  <div className="num font-bold text-display leading-none tracking-[-.03em] tabular-nums">{minutosProm ?? "—"}</div>
-                  <div className="text-meta opacity-62">min prom.</div>
-                </div>
-                <div className="text-cap opacity-66 mt-4">
-                  {conTiempo.length ? `Según ${conTiempo.length} actas con hora de inicio y término.` : "Sin actas con hora de término."}
-                </div>
+                <dt>Tiempo en sitio</dt>
+                <dd>
+                  <b>{minutosProm ?? "—"}</b> min promedio
+                </dd>
+                <dd>{conTiempo.length ? `Según ${conTiempo.length} actas con hora de inicio y término.` : "Sin actas con hora de término."}</dd>
               </div>
-            </div>
+            </dl>
           </Panel>
         </div>
 
-        {/* Tiendas del cliente */}
+        {secciones ? <div className="cd-secciones">{secciones}</div> : null}
+
         {tiendas ? (
-          <section className="border-b-2 border-[var(--color-divider)]">
-            <Cabecera titulo="Sus tiendas" extra={`${tiendas.filter((t) => t.activo).length} activas de ${tiendas.length}`} />
+          <section className="v-card" aria-labelledby="cd-tiendas">
+            <div className="cd-cab">
+              <h2 id="cd-tiendas">Sus tiendas</h2>
+              <span className="pv-tag">
+                {tiendas.filter((t) => t.activo).length} activas de {tiendas.length}
+              </span>
+            </div>
             {tiendasOrdenadas.length ? (
-              <div className="px-4 md:px-7 overflow-x-auto">
-                <table className="table min-w-[640px]">
+              <div className="tabla-caja">
+                <table className="vt fichas">
                   <thead>
                     <tr>
-                      <th>Tienda</th>
-                      <th>{esMall ? "Cliente" : "Mall"}</th>
-                      <th>Comuna</th>
-                      <th style={{ width: 220 }}>Visitas</th>
-                      <th>Última hecha</th>
-                      <th>Estado</th>
+                      <th scope="col">Tienda</th>
+                      <th scope="col">{esMall ? "Cliente" : "Mall"}</th>
+                      <th scope="col">Comuna</th>
+                      <th scope="col">Visitas</th>
+                      <th scope="col">Última hecha</th>
+                      <th scope="col">Estado</th>
                     </tr>
                   </thead>
                   <tbody>
                     {tiendasOrdenadas.map((t) => {
                       const v = visitasPorTienda.get(t.id);
                       return (
-                        <tr key={t.id} onClick={() => router.push(`/admin/sucursales/${t.id}`)} className="cursor-pointer hover:bg-black/5">
-                          <td className="font-semibold">{t.nombre}</td>
-                          <td className="opacity-70">{esMall ? t.cliente : (t.mall ?? "—")}</td>
-                          <td className="opacity-70">{t.comuna}</td>
-                          <td>
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 h-2 bg-[var(--color-neutral-300)]">
-                                <div className="h-2 bg-[var(--color-text)]" style={{ width: `${pct(v?.n ?? 0, maxTienda)}%` }} />
-                              </div>
-                              <span className="w-7 text-right font-extrabold text-meta tabular-nums">{v?.n ?? 0}</span>
-                            </div>
+                        <tr key={t.id} className="v-row" onClick={() => router.push(`/admin/sucursales/${t.id}`)}>
+                          <td className="celda">
+                            <Link href={`/admin/sucursales/${t.id}`} onClick={(e) => e.stopPropagation()}>
+                              <b>{t.nombre}</b>
+                            </Link>
+                            {esDatoDePrueba(t.nombre, t.cliente) ? <span className="flag test">Prueba</span> : null}
                           </td>
-                          <td className="tabular-nums opacity-65 whitespace-nowrap">{v?.ultima ?? "—"}</td>
-                          <td>
-                            <Tag variant={t.activo ? "accent" : "neutral"}>{t.activo ? "Activa" : "Inactiva"}</Tag>
+                          <td data-label={esMall ? "Cliente" : "Mall"}>{esMall ? t.cliente : (t.mall ?? "—")}</td>
+                          <td data-label="Comuna">{t.comuna}</td>
+                          <td data-label="Visitas">
+                            <span className="cd-barra">
+                              <span aria-hidden="true">
+                                <i style={{ width: `${pct(v?.n ?? 0, maxTienda)}%` }} />
+                              </span>
+                              <b>{v?.n ?? 0}</b>
+                            </span>
+                          </td>
+                          <td data-label="Última hecha">{v?.ultima ? fechaCL(v.ultima) : "—"}</td>
+                          <td data-label="Estado">
+                            <span className={`pill ${t.activo ? "ok" : "off"}`}>{t.activo ? "Activa" : "Inactiva"}</span>
                           </td>
                         </tr>
                       );
@@ -376,9 +378,11 @@ export default function FichaVisitas({
           </section>
         ) : null}
 
-        {/* Historial */}
-        <section ref={historial} className="scroll-mt-24">
-          <Cabecera titulo="Historial de visitas" extra={verVisitas ? `${total} en total` : ""} />
+        <section ref={historial} className="v-card cd-historial" aria-labelledby="cd-historial">
+          <div className="cd-cab">
+            <h2 id="cd-historial">Historial de visitas</h2>
+            {verVisitas ? <span className="pv-tag">{total} en total</span> : null}
+          </div>
           {verVisitas ? (
             <>
               <FiltrosBar
@@ -419,131 +423,111 @@ export default function FichaVisitas({
                   setFAnio("");
                   setFTienda("");
                 }}
-                conteo={`${filtradas.length} ${filtradas.length === 1 ? "visita" : "visitas"}`}
+                conteo={plural(filtradas.length, "visita", "visitas")}
               />
-              <div className="px-4 md:px-7 overflow-x-auto">
-                <table className="table min-w-[760px]">
+              <div className="tabla-caja">
+                <table className="vt fichas">
                   <thead>
                     <tr>
-                      <th>Folio</th>
-                      <th>Fecha</th>
-                      <th>Hora</th>
-                      {conTiendas ? <th>Tienda</th> : null}
-                      {esMall ? <th>Cliente</th> : <th>Mall</th>}
-                      <th>Técnico</th>
-                      <th>Motivo</th>
-                      <th>Problemas</th>
-                      <th>Estado</th>
+                      <th scope="col">Folio</th>
+                      <th scope="col">Fecha</th>
+                      <th scope="col">Hora</th>
+                      {conTiendas ? <th scope="col">Tienda</th> : null}
+                      <th scope="col">{esMall ? "Cliente" : "Mall"}</th>
+                      <th scope="col">Técnico</th>
+                      <th scope="col">Motivo</th>
+                      <th scope="col">Problemas</th>
+                      <th scope="col">Estado</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filtradas.map((f) => (
-                      <tr key={f.id} onClick={() => router.push(`/admin/visitas/${encodeURIComponent(f.folio)}`)} className="cursor-pointer hover:bg-black/5">
-                        <td className="font-semibold tabular-nums whitespace-nowrap">{f.folio}</td>
-                        <td className="tabular-nums opacity-65 whitespace-nowrap">{textoFechaVisita({ fechaProgramada: f.fecha, fechaHasta: f.fechaHasta })}</td>
-                        <td className={`tabular-nums whitespace-nowrap ${f.hora ? "opacity-90" : "opacity-45"}`}>{f.hora ?? "Sin hora"}</td>
-                        {conTiendas ? <td className="font-semibold">{f.tienda}</td> : null}
-                        <td className="opacity-70">{esMall ? f.cliente : (f.mall ?? "—")}</td>
-                        <td className="opacity-70">{f.ayudante ? `${f.tecnico} + ${f.ayudante}` : f.tecnico}</td>
-                        <td className="opacity-70 max-w-[260px]">{f.motivos}</td>
-                        <td className="tabular-nums">
+                      <tr key={f.id} className="v-row" onClick={() => router.push(`/admin/visitas/${encodeURIComponent(f.folio)}`)}>
+                        <td className="celda">
+                          <Link href={`/admin/visitas/${encodeURIComponent(f.folio)}`} onClick={(e) => e.stopPropagation()}>
+                            <b>{f.folio}</b>
+                          </Link>
+                        </td>
+                        <td data-label="Fecha">{textoFechaVisita({ fechaProgramada: f.fecha, fechaHasta: f.fechaHasta })}</td>
+                        <td data-label="Hora">{f.hora ?? "Sin hora"}</td>
+                        {conTiendas ? <td data-label="Tienda">{f.tienda}</td> : null}
+                        <td data-label={esMall ? "Cliente" : "Mall"}>{esMall ? f.cliente : (f.mall ?? "—")}</td>
+                        <td data-label="Técnico">{f.ayudante ? `${f.tecnico} + ${f.ayudante}` : f.tecnico}</td>
+                        <td data-label="Motivo">{f.motivos}</td>
+                        <td data-label="Problemas">
                           {f.problemas ? (
-                            <span className={f.problemasAbiertos ? "tag tag-accent" : "tag tag-outline"}>
+                            <span className={`pill ${f.problemasAbiertos ? "open" : "ok"}`}>
                               {f.problemasAbiertos ? `${f.problemasAbiertos} sin resolver` : `${f.problemas} resueltos`}
                             </span>
                           ) : (
-                            <span className="opacity-45">—</span>
+                            "—"
                           )}
                         </td>
-                        <td>
-                          <Tag variant={ESTADO_VISITA_TAG[f.estado]}>{ESTADO_VISITA_LABEL[f.estado]}</Tag>
+                        <td data-label="Estado">
+                          <span className={`pill ${PILL_VISITA[f.estado]}`}>{ESTADO_VISITA_LABEL[f.estado]}</span>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-                {filtradas.length === 0 ? (
-                  <div className="py-14 text-center">
-                    <div className="font-extrabold text-lead mb-1.5">Nada que mostrar</div>
-                    <div className="text-meta opacity-66">{total ? "Ajusta la búsqueda o los filtros." : "Todavía no hay visitas registradas."}</div>
-                  </div>
-                ) : null}
               </div>
+              {filtradas.length === 0 ? (
+                <div className="v-empty">
+                  <b>Nada que mostrar</b>
+                  <span>{total ? "Ajusta la búsqueda o los filtros." : "Todavía no hay visitas registradas."}</span>
+                </div>
+              ) : null}
             </>
           ) : (
             <Vacio texto="Tu rol no tiene acceso a las visitas." />
           )}
         </section>
       </div>
-    </>
-  );
-}
-
-function Kpi({ label, n, sub, color = "var(--color-text)" }: { label: string; n: React.ReactNode; sub: string; color?: string }) {
-  return (
-    <div className="px-4 md:px-6 pt-4 md:pt-[22px] pb-4.5 border-r border-b xl:border-b-0 border-black/[.2] min-w-0">
-      <div className="text-cap opacity-66">{label}</div>
-      <div className="num font-bold text-h1 md:text-display leading-none tracking-[-.03em] tabular-nums mt-3" style={{ color }}>
-        {n}
-      </div>
-      <div className="text-cap opacity-66 mt-2.5 truncate">{sub}</div>
     </div>
   );
 }
 
-function Panel({
-  titulo,
-  extra,
-  borde,
-  children,
-}: {
-  titulo: string;
-  extra?: string;
-  /** "r": lleva la línea a la derecha en pantalla ancha (es el de la izquierda). */
-  borde?: "r";
-  children: React.ReactNode;
-}) {
+function Kpi({ label, n, sub, rojo }: { label: string; n: React.ReactNode; sub: string; rojo?: boolean }) {
   return (
-    <div className={`p-4 md:p-6 border-b border-black/[.12] ${borde === "r" ? "lg:border-r" : ""}`}>
-      <div className="flex items-baseline gap-2.5">
-        <h2 className="font-extrabold text-lead m-0">{titulo}</h2>
-        {extra ? <span className="ml-auto text-cap opacity-60">{extra}</span> : null}
-      </div>
+    <div className={rojo ? "pv-kpi red" : "pv-kpi"}>
+      <span className="pv-k-l">{label}</span>
+      <span className="pv-k-v">{n}</span>
+      <span className="pv-k-n">{sub}</span>
+    </div>
+  );
+}
+
+function Panel({ titulo, extra, clase, children }: { titulo: string; extra?: string; clase: string; children: React.ReactNode }) {
+  return (
+    <section className={`pv-card ${clase}`}>
+      <header className="pv-head">
+        <h2>{titulo}</h2>
+        {extra ? <span className="pv-tag">{extra}</span> : null}
+      </header>
       {children}
-    </div>
+    </section>
   );
 }
 
-function Cabecera({ titulo, extra }: { titulo: string; extra?: string }) {
-  return (
-    <div className="flex items-baseline gap-2.5 px-4 md:px-7 pt-6 pb-3">
-      <h2 className="font-extrabold text-h3 tracking-[-.02em] m-0">{titulo}</h2>
-      {extra ? <span className="ml-auto text-cap opacity-60">{extra}</span> : null}
-    </div>
-  );
-}
-
-function Barras({ filas, color, vacio }: { filas: { nombre: string; n: number; pct: number }[]; color: string; vacio: string }) {
+function Barras({ filas, vacio }: { filas: { nombre: string; n: number; pct: number }[]; vacio: string }) {
   if (!filas.length) return <Vacio texto={vacio} />;
   return (
-    <div className="mt-2.5">
+    <ul className="cd-barras">
       {filas.map((f) => (
-        <div key={f.nombre} className="py-2.5 border-b border-black/[.1]">
-          <div className="flex items-baseline gap-2.5">
-            <span className="text-meta min-w-0 truncate">{f.nombre}</span>
-            <span className="ml-auto font-extrabold text-ui tabular-nums">{f.n}</span>
-          </div>
-          <div className="h-2 mt-1.5 bg-[var(--color-neutral-300)]">
-            <div className="h-2" style={{ width: `${f.pct}%`, background: color }} />
-          </div>
-        </div>
+        <li key={f.nombre}>
+          <span>{f.nombre}</span>
+          <b>{f.n}</b>
+          <span className="cd-linea" aria-hidden="true">
+            <i style={{ width: `${f.pct}%` }} />
+          </span>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }
 
 function Vacio({ texto }: { texto: string }) {
-  return <div className="px-4 md:px-7 py-6 text-meta opacity-66">{texto}</div>;
+  return <p className="pv-vacio cd-vacio">{texto}</p>;
 }
 
 /** Una barra por mes de los últimos 12: el total, y en oscuro lo completado. */
@@ -556,68 +540,51 @@ function GraficoMeses({
 }) {
   const [hover, setHover] = useState<string | null>(null);
   const mes = meses.find((m) => m.clave === hover) ?? null;
-  const ultimo = meses[meses.length - 1]?.clave;
 
   return (
-    <div className="p-4 md:p-6 border-b border-black/[.12] lg:border-r">
-      <div className="flex items-baseline gap-2.5">
-        <h2 className="font-extrabold text-lead m-0">Visitas por mes</h2>
-        <span className="ml-auto text-cap opacity-60">últimos 12 meses</span>
-      </div>
-
-      <div
-        className="mt-3.5 px-3 py-2.5 text-cap min-h-5 border"
-        style={{
-          background: mes ? "var(--color-accent-200)" : "var(--color-surface)",
-          borderColor: mes ? "var(--color-accent)" : "var(--color-divider)",
-        }}
-      >
-        {mes
-          ? `${mes.label} ${mes.anio} · ${mes.total} ${mes.total === 1 ? "visita" : "visitas"} · ${mes.completadas} completadas`
-          : "Toca o pasa el mouse por un mes para ver su detalle."}
-      </div>
-
-      <div className="flex items-end gap-1.5 md:gap-2.5 h-[140px] mt-3.5 border-b-2 border-[var(--color-divider)]">
-        {meses.map((m) => {
-          const activo = hover === m.clave;
-          return (
-            <div
-              key={m.clave}
+    <section className="pv-card s8">
+      <header className="pv-head">
+        <div>
+          <h2>Actividad</h2>
+          <p aria-live="polite">
+            {mes
+              ? `${mes.label} ${mes.anio}: ${plural(mes.total, "visita", "visitas")}, ${mes.completadas} completadas.`
+              : "Visitas por mes, últimos 12 meses. Toca un mes para ver su detalle."}
+          </p>
+        </div>
+      </header>
+      <ol className="cd-meses">
+        {meses.map((m) => (
+          <li key={m.clave}>
+            <button
+              type="button"
+              className={hover === m.clave ? "activo" : undefined}
+              aria-label={`${m.label} ${m.anio}: ${m.total} visitas, ${m.completadas} completadas`}
               onMouseEnter={() => setHover(m.clave)}
               onMouseLeave={() => setHover(null)}
-              className="flex-1 flex flex-col justify-end items-stretch h-full"
-              style={{ background: activo ? "rgba(31,28,33,.07)" : "transparent" }}
+              onFocus={() => setHover(m.clave)}
+              onClick={() => setHover(m.clave)}
             >
-              <div className="text-cap font-extrabold text-center tabular-nums mb-1" style={{ opacity: m.total ? (activo ? 1 : 0.55) : 0 }}>
-                {m.total}
-              </div>
-              <div className="flex flex-col justify-end" style={{ height: `${(m.total / max) * 100}%` }}>
-                <div style={{ flex: m.total - m.completadas, background: activo ? "var(--color-accent-active)" : "var(--color-accent-400)" }} />
-                <div style={{ flex: m.completadas, background: activo ? "var(--color-text)" : "var(--color-neutral-800)" }} />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div className="flex gap-1.5 md:gap-2.5 mt-1.5">
-        {meses.map((m) => (
-          <div
-            key={m.clave}
-            className="flex-1 text-center text-cap "
-            style={{ opacity: hover === m.clave || m.clave === ultimo ? 1 : 0.5, fontWeight: hover === m.clave || m.clave === ultimo ? 800 : 400 }}
-          >
-            {m.label}
-          </div>
+              <b>{m.total || ""}</b>
+              <span className="cd-col" style={{ height: `${(m.total / max) * 100}%` }}>
+                <i className="otras" style={{ flex: m.total - m.completadas }} />
+                <i className="hechas" style={{ flex: m.completadas }} />
+              </span>
+              <small>{m.label}</small>
+            </button>
+          </li>
         ))}
-      </div>
-      <div className="flex gap-4 mt-3 text-cap opacity-75">
-        <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 bg-[var(--color-neutral-800)]" /> Completadas
+      </ol>
+      <div className="t-legend" aria-hidden="true">
+        <span>
+          <i className="lg-dot" />
+          Completadas
         </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 bg-[var(--color-accent-400)]" /> Otras
+        <span>
+          <i className="lg-dot otras" />
+          Otras
         </span>
       </div>
-    </div>
+    </section>
   );
 }

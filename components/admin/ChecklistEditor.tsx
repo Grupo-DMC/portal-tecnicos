@@ -1,6 +1,11 @@
 "use client";
+import Espera from "@/components/ui/Espera";
 
+import { useState } from "react";
 import AdminHeader from "@/components/admin/AdminHeader";
+import Pestanas from "@/components/admin/Pestanas";
+import VistaTecnico from "@/components/admin/checklist/VistaTecnico";
+import { PestanaChecklist } from "@/components/admin/checklist/piezas";
 import Confirmar from "@/components/ui/Confirmar";
 import { Toast } from "@/components/ui/Toast";
 import { Introduccion, ListasSimples, PieGuardar, PlantillaPropia } from "@/components/admin/checklist/listas-simples";
@@ -29,32 +34,53 @@ export default function ChecklistEditor({
 }: Parameters<typeof useChecklistEditor>[0] & { seccionesActaIniciales: SeccionesObligatorias }) {
   const fv = useChecklistEditor(props);
   const { toast, aviso, confirmar, setConfirmar, guardando, soloLectura, sucio, pedirGuardar } = fv;
+  const [pestana, setPestana] = useState("motivos");
+  const [vista, setVista] = useState(false);
+  // Al buscar se miran todas las listas a la vez.
+  const activa = fv.busqueda.trim() ? null : pestana;
   return (
     <>
-      <AdminHeader title="Checklist">
-        <button className="btn btn-primary" onClick={pedirGuardar} disabled={guardando || !sucio || soloLectura}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-            <path d="M4 12l5 5L20 6" />
-          </svg>
-          <span>
-            {soloLectura ? "Solo lectura" : guardando ? "Guardando…" : sucio ? "Guardar cambios" : "Sin cambios"}
-          </span>
+      <AdminHeader
+        title="Checklist"
+        pestanas={<Pestanas pestanas={PESTANAS} activa={activa ?? ""} onCambiar={(c) => { fv.setBusqueda(""); setPestana(c); }} />}
+      >
+        <button type="button" className="btn-out" onClick={() => setVista(true)}>
+          Así lo ve el técnico
+        </button>
+        <button type="button" className="btn-pri" onClick={pedirGuardar} disabled={guardando || !sucio || soloLectura}>
+          {soloLectura ? "Solo lectura" : <Espera activo={guardando} accion="Guardando">{sucio ? "Guardar cambios" : "Sin cambios"}</Espera>}
         </button>
       </AdminHeader>
 
-      <div className="px-4 md:px-7 pt-6 pb-12 animate-fade-in max-w-[1000px]">
+      <div className="wrap tras-cabecera ck">
         <Introduccion fv={fv} />
-        <SeccionesObligatoriasActa iniciales={seccionesActaIniciales} soloLectura={soloLectura} aviso={aviso} />
-        <ListaMotivos fv={fv} />
-        <ListaTiposProblema fv={fv} />
-        <ListaTrabajos fv={fv} />
-        <ListasSimples fv={fv} />
+        <PestanaChecklist.Provider value={activa}>
+          <div className="ck-bloque" hidden={activa !== null && activa !== "acta"}>
+            <SeccionesObligatoriasActa iniciales={seccionesActaIniciales} soloLectura={soloLectura} aviso={aviso} />
+          </div>
+          <ListaMotivos fv={fv} />
+          <ListaTiposProblema fv={fv} />
+          <ListaTrabajos fv={fv} />
+          <ListasSimples fv={fv} />
+        </PestanaChecklist.Provider>
         <PlantillaPropia fv={fv} />
         <PieGuardar fv={fv} />
       </div>
 
+      {vista ? <VistaTecnico fv={fv} onCerrar={() => setVista(false)} /> : null}
       {confirmar ? <Confirmar cfg={confirmar} onCerrar={() => setConfirmar(null)} /> : null}
       <Toast texto={toast} variante="panel" />
     </>
   );
 }
+
+const PESTANAS = [
+  { clave: "motivos", label: "Motivos" },
+  { clave: "problemas", label: "Tipos de problema" },
+  { clave: "trabajos", label: "Trabajos" },
+  { clave: "interno", label: "Comentario interno" },
+  { clave: "gestion", label: "Gestión de problemas" },
+  { clave: "estados", label: "Estados" },
+  { clave: "cargos", label: "Cargos" },
+  { clave: "acta", label: "Acta" },
+];

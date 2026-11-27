@@ -1,5 +1,7 @@
 "use client";
+import Espera from "@/components/ui/Espera";
 
+import DatePicker from "@/components/ui/DatePicker";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Sheet from "./Sheet";
@@ -18,17 +20,16 @@ import { pedirEdicionActaAction } from "@/app/actions/ediciones";
 import { hayDireccion, urlMapa, urlTel } from "@/lib/ui/formato";
 import type { HistorialVista } from "@/lib/contratos/panel";
 import type { EstadoVisita, Visita } from "@/lib/types";
-import { fechaCL } from "@/lib/ui/fecha";
+import { dmyAIso, fechaCL, hoyISO, isoADmy } from "@/lib/ui/fecha";
 
 type AccionEstado = "reagendar" | "pendiente" | "cancelar";
 
 const SHEETS: Record<
   AccionEstado,
-  { titulo: string; ayuda: string; pideFecha: boolean; labelMotivo: string; ph: string; cta: string; estado: EstadoVisita }
+  { titulo: string; ayuda?: string; pideFecha: boolean; labelMotivo: string; ph: string; cta: string; estado: EstadoVisita }
 > = {
   reagendar: {
     titulo: "Reagendar visita",
-    ayuda: "Queda registrada la fecha anterior y el motivo; coordinación lo ve al instante.",
     pideFecha: true,
     labelMotivo: "Motivo del reagendamiento",
     ph: "La tienda está en inventario y no puede parar el acceso.",
@@ -194,7 +195,7 @@ export default function DetalleVisita({
           <Tag variant={ESTADO_VISITA_TAG[visita.estado]}>{ESTADO_VISITA_LABEL[visita.estado]}</Tag>
           {esAyudante ? <Tag variant="neutral">Ayudante</Tag> : null}
         </div>
-        <h1 className="font-extrabold text-h1 leading-[1.06] tracking-[-.03em] mt-2.5 mb-0.5">{visita.sucursal?.nombre}</h1>
+        <h1 className="font-semibold text-h1 leading-[1.06] tracking-[-.01em] mt-2.5 mb-0.5">{visita.sucursal?.nombre}</h1>
         <div className="text-ui opacity-60">{visita.cliente?.nombreFantasia}</div>
         <div className="h-0.5 bg-[var(--color-divider)] mt-4" />
       </div>
@@ -204,9 +205,9 @@ export default function DetalleVisita({
         <button
           onClick={() => setOpenDatos((v) => !v)}
           aria-expanded={openDatos}
-          className="w-full min-h-[54px] flex items-center gap-2.5 p-0 bg-transparent border-0 border-b border-black/[.25] cursor-pointer text-[var(--color-text)] text-left hover:opacity-75"
+          className="w-full min-h-[54px] flex items-center gap-2.5 p-0 bg-transparent border-0 border-b border-[var(--color-line)] cursor-pointer text-[var(--color-text)] text-left hover:opacity-75"
         >
-          <span className="font-extrabold text-meta flex-1">Datos de la visita</span>
+          <span className="font-semibold text-meta flex-1">Datos de la visita</span>
           <span className="text-cap tabular-nums opacity-66">{visita.horaProgramada ?? "Sin hora"}</span>
           <svg
             width="16"
@@ -224,7 +225,7 @@ export default function DetalleVisita({
         {openDatos ? (
           <div className="flex flex-col">
             {filas.map((f) => (
-              <div key={f.k} className="flex gap-3 py-3.5 border-b border-black/[.25]">
+              <div key={f.k} className="flex gap-3 py-3.5 border-b border-[var(--color-line)]">
                 <div className="text-cap leading-[1.6] opacity-62 min-w-[96px] flex-none">{f.k}</div>
                 <div className="text-ui min-w-0">{f.v}</div>
               </div>
@@ -240,7 +241,7 @@ export default function DetalleVisita({
               target="_blank"
               rel="noreferrer"
               title={textoDireccion}
-              className="flex-1 min-h-[50px] flex items-center gap-2 px-3.5 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-meta hover:bg-black/[.07]"
+              className="flex-1 min-h-[50px] flex items-center gap-2 px-3.5 bg-transparent border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] font-semibold text-meta hover:bg-black/[.07]"
             >
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1116 0z" />
@@ -252,7 +253,7 @@ export default function DetalleVisita({
             <button
               type="button"
               onClick={() => aviso("Esta sucursal no tiene dirección cargada. Avisa a coordinación.")}
-              className="flex-1 min-h-[50px] flex items-center gap-2 px-3.5 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-meta opacity-55 cursor-pointer"
+              className="flex-1 min-h-[50px] flex items-center gap-2 px-3.5 bg-transparent border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] font-semibold text-meta opacity-55 cursor-pointer"
             >
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1116 0z" />
@@ -263,7 +264,7 @@ export default function DetalleVisita({
           )}
           <a
             href={urlTel(visita.responsableTelefono)}
-            className="flex-1 min-h-[50px] flex items-center gap-2 px-3.5 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-meta hover:bg-black/[.07]"
+            className="flex-1 min-h-[50px] flex items-center gap-2 px-3.5 bg-transparent border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] font-semibold text-meta hover:bg-black/[.07]"
           >
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M5 4h4l2 5-3 2a12 12 0 005 5l2-3 5 2v4a1 1 0 01-1 1A16 16 0 014 5a1 1 0 011-1z" />
@@ -274,8 +275,8 @@ export default function DetalleVisita({
 
         {/* ── Qué hay que hacer ── */}
         {visita.trabajoSolicitado ? (
-          <div className="mt-4 px-4 pt-4 pb-4.5 bg-[var(--color-surface)] border border-[var(--color-line-control)]">
-            <div className="font-extrabold text-meta mb-2.5">Qué hay que hacer</div>
+          <div className="mt-4 px-4 pt-4 pb-4.5 bg-[var(--color-surface)] border border-[var(--color-line)] rounded-[10px]">
+            <div className="font-semibold text-meta mb-2.5">Qué hay que hacer</div>
             <div className="text-lead leading-[1.55]">{visita.trabajoSolicitado}</div>
             {visita.adjuntos?.length ? (
               <div className="mt-3">
@@ -286,14 +287,14 @@ export default function DetalleVisita({
         ) : null}
 
         {/* ── Última visita al local (desplegable) ── */}
-        <div className="mt-3 border border-black/[.35] bg-[var(--color-surface-3)]">
+        <div className="mt-3 border border-[var(--color-line)] rounded-[10px] bg-[var(--color-surface-3)]">
           <button
             onClick={() => setOpenHistorial((v) => !v)}
             aria-expanded={openHistorial}
             className="w-full min-h-[54px] flex items-center gap-2.5 flex-wrap px-3.5 bg-transparent border-0 cursor-pointer text-[var(--color-text)] text-left hover:bg-black/[.04]"
             style={{ borderBottom: openHistorial ? "1px solid rgba(31,28,33,.25)" : "0" }}
           >
-            <span className="font-extrabold text-meta flex-1">Última visita al local</span>
+            <span className="font-semibold text-meta flex-1">Última visita al local</span>
             <span className="text-cap tabular-nums opacity-66">{historial.encabezado}</span>
             <svg
               width="16"
@@ -318,7 +319,7 @@ export default function DetalleVisita({
                     <div className="text-cap opacity-62 mb-2">Trabajo realizado</div>
                     <div className="flex flex-wrap gap-1.5">
                       {historial.trabajos.map((t) => (
-                        <span key={t} className="px-2.5 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap leading-[1.2]">
+                        <span key={t} className="px-2.5 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-semibold text-cap leading-[1.2]">
                           {t}
                         </span>
                       ))}
@@ -334,7 +335,7 @@ export default function DetalleVisita({
                         {historial.problemas.map((p) => (
                           <div key={p.tipo} className="px-3 py-3 bg-[var(--color-accent-200)] border border-[var(--color-accent-300)]">
                             <div className="flex items-baseline gap-2 flex-wrap">
-                              <div className="font-extrabold text-ui leading-[1.25] text-[var(--color-accent-800)]">{p.tipo}</div>
+                              <div className="font-semibold text-ui leading-[1.25] text-[var(--color-accent-800)]">{p.tipo}</div>
                               <Tag variant={p.tag} className="ml-auto">
                                 {p.estado}
                               </Tag>
@@ -380,7 +381,7 @@ export default function DetalleVisita({
             <button
               onClick={iniciar}
               disabled={pendiente}
-              className="w-full min-h-[62px] flex items-center justify-between px-4.5 mt-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)] active:bg-[var(--color-accent-active)] disabled:opacity-60"
+              className="w-full min-h-[62px] flex items-center justify-between px-4.5 mt-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-semibold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)] active:bg-[var(--color-accent-active)] disabled:opacity-60"
             >
               <span>{visita.estado === "EN_CURSO" ? "Continuar formulario" : "Iniciar visita"}</span>
               <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -388,9 +389,8 @@ export default function DetalleVisita({
               </svg>
             </button>
             <p className="mt-2.5 mb-0 text-cap opacity-66">
-              Al iniciar se registra la hora en el acta. El formulario guarda sección por sección.
               {visita.tecnicoAyudante
-                ? ` Van dos técnicos: quien abre el acta la reserva, y si pasan ${minutosDelPlazo(reservaPlazoSeg)} minutos sin actividad la puede tomar el otro.`
+                ? `Van dos técnicos: quien abre el acta la reserva, y si pasan ${minutosDelPlazo(reservaPlazoSeg)} minutos sin actividad la puede tomar el otro.`
                 : ""}
             </p>
 
@@ -402,7 +402,7 @@ export default function DetalleVisita({
               aria-expanded={openAcciones}
               className="w-full min-h-[50px] flex items-center gap-2.5 px-1 mt-5 bg-transparent border-0 cursor-pointer text-[var(--color-text)] text-left hover:opacity-75"
             >
-              <span className="font-extrabold text-meta leading-none ">
+              <span className="font-semibold text-meta leading-none ">
                 {openAcciones ? "Ocultar otras acciones" : "Otras acciones de la visita"}
               </span>
               <svg
@@ -422,7 +422,7 @@ export default function DetalleVisita({
               <div className="flex flex-col gap-2.5 mt-1.5 mb-3">
                 <button
                   onClick={() => abrirSheet("reagendar")}
-                  className="w-full min-h-[50px] flex items-center justify-between px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
+                  className="w-full min-h-[50px] flex items-center justify-between px-4 bg-transparent border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] font-semibold text-ui cursor-pointer text-left hover:bg-black/[.07]"
                 >
                   <span>Reagendar visita</span>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -432,7 +432,7 @@ export default function DetalleVisita({
                 </button>
                 <button
                   onClick={() => abrirSheet("pendiente")}
-                  className="w-full min-h-[50px] flex items-center justify-between px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
+                  className="w-full min-h-[50px] flex items-center justify-between px-4 bg-transparent border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] font-semibold text-ui cursor-pointer text-left hover:bg-black/[.07]"
                 >
                   <span>No se pudo realizar</span>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -460,7 +460,7 @@ export default function DetalleVisita({
                 <button
                   type="button"
                   onClick={() => router.push(`/tecnico/visitas/${encodeURIComponent(visita.folio)}/editar`)}
-                  className="w-full min-h-[54px] flex items-center justify-between px-4 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-ui cursor-pointer text-left hover:bg-[var(--color-accent-hover)]"
+                  className="w-full min-h-[54px] flex items-center justify-between px-4 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-semibold text-ui cursor-pointer text-left hover:bg-[var(--color-accent-hover)]"
                 >
                   <span>Editar acta</span>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
@@ -474,7 +474,7 @@ export default function DetalleVisita({
               </>
             ) : completada ? (
               edicionPedidaEn ? (
-                <div className="px-3.5 py-3 bg-[var(--color-surface)] border border-[var(--color-line-control)] text-meta leading-[1.45]">
+                <div className="px-3.5 py-3 bg-[var(--color-surface)] border border-[var(--color-line)] rounded-[10px] text-meta leading-[1.45]">
                   Pediste editar esta acta. Coordinación te la habilita y te avisamos aquí: vuelve a abrir la visita en
                   unos minutos.
                 </div>
@@ -484,9 +484,9 @@ export default function DetalleVisita({
                     type="button"
                     onClick={() => void pedirEdicion()}
                     disabled={pidiendoEdicion}
-                    className="w-full min-h-[54px] flex items-center justify-between px-4 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-ui cursor-pointer text-left hover:bg-[var(--color-accent-hover)] disabled:opacity-60"
+                    className="w-full min-h-[54px] flex items-center justify-between px-4 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-semibold text-ui cursor-pointer text-left hover:bg-[var(--color-accent-hover)] disabled:opacity-60"
                   >
-                    <span>{pidiendoEdicion ? "Enviando…" : "Pedir edición a coordinación"}</span>
+                    <Espera activo={pidiendoEdicion} accion="Enviando">Pedir edición a coordinación</Espera>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
                       <path d="M4 20h4l10-10-4-4L4 16v4z" />
                       <path d="M14 6l4 4" />
@@ -503,7 +503,7 @@ export default function DetalleVisita({
               <a
                 href={`/api/visita/acta/${encodeURIComponent(visita.folio)}`}
                 download={nombreArchivoActa(visita)}
-                className="w-full min-h-[54px] flex items-center justify-between px-4 border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui hover:bg-black/[.07]"
+                className="w-full min-h-[54px] flex items-center justify-between px-4 border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] font-semibold text-ui hover:bg-black/[.07]"
               >
                 <span>Descargar PDF</span>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
@@ -514,7 +514,7 @@ export default function DetalleVisita({
             <button
               type="button"
               onClick={() => router.push(`/tecnico/visitas/${encodeURIComponent(visita.folio)}/revisar`)}
-              className="w-full min-h-[54px] flex items-center justify-between px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
+              className="w-full min-h-[54px] flex items-center justify-between px-4 bg-transparent border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] font-semibold text-ui cursor-pointer text-left hover:bg-black/[.07]"
             >
               <span>Ver acta</span>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
@@ -535,7 +535,7 @@ export default function DetalleVisita({
       {cfg ? (
         <Sheet titulo={cfg.titulo} onClose={() => setSheet(null)}>
           <div className="p-4 flex flex-col gap-3.5">
-            <p className="m-0 text-meta opacity-65">{cfg.ayuda}</p>
+            {cfg.ayuda ? <p className="m-0 text-meta opacity-65">{cfg.ayuda}</p> : null}
             {cfg.pideFecha ? (
               <>
                 <div className="flex gap-3">
@@ -543,13 +543,8 @@ export default function DetalleVisita({
                     <label htmlFor="rg-fecha" className="block text-cap opacity-60 mb-1.5">
                       Nueva fecha
                     </label>
-                    <input
-                      id="rg-fecha"
-                      type="date"
-                      value={fecha}
-                      onChange={(e) => setFecha(e.target.value)}
-                      className={campo}
-                    />
+                    {/* Reagendar no permite fechas pasadas. */}
+                    <DatePicker modo="single" id="rg-fecha" valor={isoADmy(fecha)} minimo={isoADmy(hoyISO())} onChange={(v) => setFecha(dmyAIso(v))} className={campo} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <label htmlFor="rg-hora" className="block text-cap opacity-60 mb-1.5">
@@ -558,7 +553,6 @@ export default function DetalleVisita({
                     <input id="rg-hora" type="time" value={hora} onChange={(e) => setHora(e.target.value)} className={campo} />
                   </div>
                 </div>
-                <p className="-mt-1 mb-0 text-cap opacity-66">Si no pones hora, la visita queda para cualquier momento de ese día.</p>
               </>
             ) : null}
             <div>
@@ -578,13 +572,13 @@ export default function DetalleVisita({
             <button
               onClick={confirmarEstado}
               disabled={pendiente}
-              className="w-full min-h-[58px] flex items-center justify-between px-4.5 border-0 font-extrabold text-lead cursor-pointer text-left hover:brightness-95 disabled:opacity-60"
+              className="w-full min-h-[58px] flex items-center justify-between px-4.5 border-0 font-semibold text-lead cursor-pointer text-left hover:brightness-95 disabled:opacity-60"
               style={{
                 background: motivo.trim() ? "var(--color-accent)" : "var(--color-neutral-500)",
                 color: motivo.trim() ? "var(--color-bg)" : "var(--color-surface-3)",
               }}
             >
-              <span>{pendiente ? "Guardando…" : cfg.cta}</span>
+              <Espera activo={pendiente} accion="Guardando">{cfg.cta}</Espera>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
                 <path d="M4 12l5 5L20 6" />
               </svg>
@@ -599,4 +593,4 @@ export default function DetalleVisita({
 }
 
 const campo =
-  "w-full min-h-[54px] px-3.5 py-3 text-lead tabular-nums bg-[var(--color-surface)] border border-[var(--color-divider)] text-[var(--color-text)] caret-[var(--color-accent)] rounded-none focus-visible:border-[var(--color-accent)] focus-visible:outline-none";
+  "w-full min-h-[54px] px-3.5 py-3 text-lead tabular-nums bg-[var(--color-surface)] border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] caret-[var(--color-accent)] rounded-none focus-visible:border-[var(--color-accent)] focus-visible:outline-none";

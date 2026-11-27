@@ -5,6 +5,8 @@ import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import MaestroTable from "@/components/admin/MaestroTable";
+import Icono from "@/components/ui/Icono";
+import { esDatoDePrueba } from "@/lib/ui/pruebas";
 import { useSucursalForm } from "@/components/admin/maestros/useSucursalForm";
 import SucursalesLoteDialogo from "@/components/admin/maestros/SucursalesLoteDialogo";
 import { Toast, useToast } from "@/components/ui/Toast";
@@ -101,6 +103,8 @@ export default function SucursalesTable({
     [fCliente, fMall, fRegion, fComuna, fGarantia, fRemota, fCalibracion, clientes, hoy]
   );
 
+  const activas = sucursales.filter((s) => s.activo);
+
   const tabla = (
     <MaestroTable<Sucursal>
       accionesCabecera={
@@ -191,24 +195,57 @@ export default function SucursalesTable({
         },
       }}
       accionFila={(s) => (
-        <Link
-          href={`/admin/sucursales/${s.id}`}
-          className="btn btn-icon w-8 h-8 border border-black/[.3]"
-          aria-label={`Ficha de ${s.nombre}`}
-          title="Ver ficha y visitas"
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7" />
-          </svg>
+        <Link href={`/admin/sucursales/${s.id}`} className="btn-icono" aria-label={`Ficha de ${s.nombre}`} title="Ver ficha y visitas">
+          <Icono nombre="ficha" />
         </Link>
       )}
       searchKeys={(s) => `${s.nombre} ${s.codigo ?? ""} ${s.comuna} ${s.direccion} ${nombreCliente(s.clienteId)} ${nombreMarca(s.marcaId) ?? ""} ${s.region} ${nombreMall(s.mallId)}`}
+      resumen={
+        <section className="pv-strip" aria-label="Resumen de sucursales">
+          <div className="pv-kpi">
+            <span className="pv-k-l">Sucursales activas</span>
+            <span className="pv-k-v">{activas.length.toLocaleString("es-CL")}</span>
+            <span className="pv-k-n">{sucursales.length - activas.length} inactivas</span>
+          </div>
+          <button type="button" className="pv-kpi" aria-pressed={fMall === "sin"} onClick={() => setFMall(fMall === "sin" ? "" : "sin")}>
+            <span className="pv-k-l">A la calle</span>
+            <span className="pv-k-v">{activas.filter((s) => !s.mallId).length.toLocaleString("es-CL")}</span>
+            <span className="pv-k-n">{activas.filter((s) => s.mallId).length} en un mall</span>
+          </button>
+          <button type="button" className="pv-kpi" aria-pressed={fGarantia === "si"} onClick={() => setFGarantia(fGarantia === "si" ? "" : "si")}>
+            <span className="pv-k-l">En garantía</span>
+            <span className="pv-k-v">
+              {activas.filter((s) => garantiaParaFiltro(s, clientes.find((c) => c.id === s.clienteId), hoy) === true).length}
+            </span>
+            <span className="pv-k-n">Activas con garantía vigente</span>
+          </button>
+          <button type="button" className="pv-kpi" aria-pressed={fCalibracion === "si"} onClick={() => setFCalibracion(fCalibracion === "si" ? "" : "si")}>
+            <span className="pv-k-l">En plan de calibración</span>
+            <span className="pv-k-v">{activas.filter((s) => calibracion(s).valor === true).length}</span>
+            <span className="pv-k-n">Por su cliente o por su cuenta</span>
+          </button>
+        </section>
+      }
       columns={[
         {
           key: "nombre",
           label: "Sucursal",
-          render: (s) =>
-            nombreLocal({ cliente: nombreCliente(s.clienteId), marca: nombreMarca(s.marcaId), sucursal: s.nombre, mall: nombreMall(s.mallId) }),
+          render: (s) => {
+            const nombre = nombreLocal({
+              cliente: nombreCliente(s.clienteId),
+              marca: nombreMarca(s.marcaId),
+              sucursal: s.nombre,
+              mall: nombreMall(s.mallId),
+            });
+            return (
+              <div className="celda">
+                <Link href={`/admin/sucursales/${s.id}`}>
+                  <b>{nombre}</b>
+                </Link>
+                {esDatoDePrueba(nombre, s.nombre) ? <span className="flag test">Prueba</span> : null}
+              </div>
+            );
+          },
         },
         { key: "cliente", label: "Cliente", render: (s) => nombreCliente(s.clienteId) },
         { key: "mall", label: "Mall", render: (s) => nombreMall(s.mallId) || "—" },

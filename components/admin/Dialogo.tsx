@@ -1,6 +1,9 @@
 "use client";
+import Espera from "@/components/ui/Espera";
 
-import { useEffect, useState } from "react";
+import DatePicker from "@/components/ui/DatePicker";
+import { dmyAIso, isoADmy } from "@/lib/ui/fecha";
+import { Fragment, useEffect, useRef, useState } from "react";
 import SelectBuscable from "@/components/ui/SelectBuscable";
 import SelectConAlta, { type TipoAlta } from "@/components/ui/SelectConAlta";
 import SeccionPlegable from "@/components/ui/SeccionPlegable";
@@ -8,6 +11,8 @@ import { agruparPorSeccion, hayAlgunaSeccion } from "@/lib/ui/secciones";
 import { fmtRut, mensajeRut, sinTildes } from "@/lib/ui/formato";
 import CampoTelefono from "@/components/ui/CampoTelefono";
 import MotivoDesactivacion from "@/components/ui/MotivoDesactivacion";
+import Icono from "@/components/ui/Icono";
+import Confirmar from "@/components/ui/Confirmar";
 
 export type CampoTipo =
   | "text"
@@ -97,6 +102,12 @@ export interface CampoDef {
   desactiva?: string;
   /** Solo «toggle»: el campo del formulario donde queda el motivo. Por defecto «motivoInactivo». */
   motivoK?: string;
+  /** Abre una sección numerada del panel («Local», «Cuándo»…) antes de este campo. */
+  grupo?: string;
+  /** El valor lo pone otro campo: se muestra, pero no se puede escribir. */
+  bloqueado?: (form: FormValores) => boolean;
+  /** Solo «date»: primer día elegible, en ISO (ej. hoy: no se agenda en el pasado). */
+  minimo?: string;
 }
 
 /** El campo del motivo de un «toggle». */
@@ -110,9 +121,8 @@ export interface Adjunto {
 export type FormValores = Record<string, string | boolean>;
 
 /**
- * Diálogo de formulario del panel — el `dialogoAbierto` del mockup: 720 px,
- * cabecera con el título, campos en dos columnas, nota al pie y el par
- * Cancelar / acción principal.
+ * Panel lateral de formulario: cabecera con el título, secciones con los campos
+ * en dos columnas y, siempre a la vista abajo, Cancelar y la acción principal.
  */
 export default function Dialogo({
   titulo,
@@ -150,8 +160,34 @@ export default function Dialogo({
     campos.filter((c) => c.plegable && String(form[c.k] ?? "")).map((c) => c.k)
   );
 
+  /** Se escribió o se marcó algo: cerrar ya no puede ser sin querer. */
+  const tocado = useRef(false);
+  const [descartar, setDescartar] = useState(false);
+  const panel = useRef<HTMLDivElement>(null);
+  const alCerrar = useRef(onCerrar);
+  alCerrar.current = onCerrar;
+
+  // Esc cierra el panel de más arriba. Con algo escrito, pregunta antes.
   useEffect(() => {
-    // Solo se cierra con la X: un clic fuera o un Escape descartaban el formulario.
+    const tecla = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented || !panel.current) return;
+      // Una lista desplegada o un diálogo encima se llevan el Esc.
+      if (panel.current.querySelector('[role="listbox"], [role="dialog"]')) return;
+      const abiertos = document.querySelectorAll('[role="dialog"]');
+      if (abiertos[abiertos.length - 1] !== panel.current) return;
+      // La tecla termina aquí: si no, cierra al tiro la confirmación que se abre.
+      e.preventDefault();
+      e.stopPropagation();
+      if (tocado.current) setDescartar(true);
+      else alCerrar.current();
+    };
+    // En captura: se mira qué hay abierto antes de que se cierre solo.
+    document.addEventListener("keydown", tecla, true);
+    return () => document.removeEventListener("keydown", tecla, true);
+  }, []);
+
+  useEffect(() => {
+    // Un clic fuera no cierra: descartaba el formulario sin querer.
     const previo = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
@@ -162,33 +198,17 @@ export default function Dialogo({
   const nIncluidos = adjuntos?.filter((a) => a.incluido).length ?? 0;
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={titulo}
-      className="fixed inset-0 z-[60] bg-[rgba(31,28,33,.5)] grid place-items-center sm:p-6"
-    >
-      <div
-        className="w-full max-w-[720px] h-dvh sm:h-auto sm:max-h-[88vh] flex flex-col overflow-hidden bg-[var(--color-bg)] border-2 border-[var(--color-text)] animate-up-dlg"
-      >
-        <div className="flex-none flex items-center gap-3 px-4 sm:px-5.5 py-3.5 sm:py-4.5 border-b-2 border-[var(--color-divider)]">
-          <div className="min-w-0">
-            <div className="font-extrabold text-h3 leading-[1.15]">{titulo}</div>
-          </div>
-          <button
-            type="button"
-            onClick={onCerrar}
-            aria-label="Cerrar"
-            className="btn btn-icon ml-auto flex-none"
-          >
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-              <path d="M6 6l12 12M18 6L6 18" />
-            </svg>
+    <div ref={panel} role="dialog" aria-modal="true" aria-label={titulo} className="dmc sd-ov">
+      <div className="sd-sheet">
+        <div className="sd-head">
+          <h2>{titulo}</h2>
+          <button type="button" onClick={onCerrar} aria-label="Cerrar" className="icon-btn">
+            <Icono nombre="cerrar" />
           </button>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5.5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="sd-body" onInputCapture={() => (tocado.current = true)} onClickCapture={() => (tocado.current = true)}>
+          <div className="sd-campos">
             {campos.map((def) => {
               const c = def.opcionesSegun ? { ...def, opciones: def.opcionesSegun(form) } : def;
               const valor = form[c.k];
@@ -201,32 +221,24 @@ export default function Dialogo({
                   onClick={() =>
                     setDesplegados((prev) => (abierto ? prev.filter((k) => k !== c.k) : [...prev, c.k]))
                   }
-                  className="w-full flex items-center gap-2.5 min-h-10 px-3.5 bg-transparent border border-[var(--color-divider)] cursor-pointer text-[var(--color-text)] text-left hover:bg-black/5"
+                  className="sd-plegar"
                 >
-                  <span className="text-cap opacity-72">{c.label}</span>
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    className="ml-auto flex-none transition-transform"
-                    style={{ transform: `rotate(${abierto ? 180 : 0}deg)` }}
-                  >
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
+                  <span>{c.label}</span>
+                  <Icono nombre="abajo" />
                 </button>
               ) : null;
               if (!abierto) {
                 return (
-                  <div key={c.k} className={`min-w-0 ${c.span === 2 ? "sm:col-span-2" : ""}`}>
-                    {plegador}
-                  </div>
+                  <Fragment key={c.k}>
+                    {c.grupo ? <h3 className="sd-sec">{c.grupo}</h3> : null}
+                    <div className={`min-w-0 ${c.span === 2 ? "sm:col-span-2" : ""}`}>{plegador}</div>
+                  </Fragment>
                 );
               }
               return (
-                <div key={c.k} className={`field min-w-0 ${c.span === 2 ? "sm:col-span-2" : ""}`}>
+                <Fragment key={c.k}>
+                {c.grupo ? <h3 className="sd-sec">{c.grupo}</h3> : null}
+                <div className={`field min-w-0 ${c.span === 2 ? "sm:col-span-2" : ""}`}>
                   {plegador ? (
                     <div className="mb-2">{plegador}</div>
                   ) : c.casilla ? (
@@ -254,7 +266,15 @@ export default function Dialogo({
                     <label htmlFor={`dlg-${c.k}`}>{c.label}</label>
                   )}
 
-                  {c.tipo === "select" ? (
+                  {c.bloqueado?.(form) ? (
+                    <input
+                      id={`dlg-${c.k}`}
+                      className="input"
+                      value={c.opciones?.find((o) => o.v === texto)?.t ?? texto}
+                      disabled
+                      readOnly
+                    />
+                  ) : c.tipo === "select" ? (
                     c.alta ? (
                       <SelectConAlta
                         id={`dlg-${c.k}`}
@@ -355,7 +375,7 @@ export default function Dialogo({
                             onCampo(claveMotivo(c), "");
                             onCampo(c.k, true);
                           }}
-                          className={`tag ${valor === false ? "tag-neutral" : "tag-accent"} min-h-[42px] flex-1 border border-[var(--color-divider)] cursor-pointer font-extrabold text-meta justify-center`}
+                          className={`tag ${valor === false ? "tag-neutral" : "tag-accent"} min-h-[42px] flex-1 border border-[var(--color-line)] rounded-[10px] cursor-pointer font-semibold text-meta justify-center`}
                         >
                           Activo
                         </button>
@@ -365,18 +385,18 @@ export default function Dialogo({
                           aria-checked={valor === false}
                           // Quedar inactivo pasa siempre por el motivo escrito.
                           onClick={() => (valor === false ? undefined : setMotivoDe(c))}
-                          className={`tag ${valor === false ? "tag-accent" : "tag-neutral"} min-h-[42px] flex-1 border border-[var(--color-divider)] cursor-pointer font-extrabold text-meta justify-center`}
+                          className={`tag ${valor === false ? "tag-accent" : "tag-neutral"} min-h-[42px] flex-1 border border-[var(--color-line)] rounded-[10px] cursor-pointer font-semibold text-meta justify-center`}
                         >
                           Inactivo
                         </button>
                       </div>
                       {valor === false ? (
-                        <div className="mt-2 px-3 py-2.5 border border-[var(--color-divider)] bg-[var(--color-surface-3)] flex items-start gap-2.5">
+                        <div className="mt-2 px-3 py-2.5 border border-[var(--color-line)] rounded-[10px] bg-[var(--color-surface-3)] flex items-start gap-2.5">
                           <div className="min-w-0 flex-1">
                             <div className="text-cap opacity-62">Por qué está inactivo</div>
                             <div className="text-meta leading-[1.45] mt-0.5 break-words">
                               {String(form[claveMotivo(c)] ?? "").trim() || (
-                                <span className="font-extrabold text-[var(--color-danger-800)]">Falta el motivo</span>
+                                <span className="font-semibold text-[var(--color-danger-800)]">Falta el motivo</span>
                               )}
                             </div>
                           </div>
@@ -406,6 +426,15 @@ export default function Dialogo({
                       autoComplete="off"
                       className="input min-h-[260px] p-3.5 resize-y text-ui leading-[1.6] bg-[var(--color-surface-3)]"
                     />
+                  ) : c.tipo === "date" ? (
+                    <DatePicker
+                      modo="single"
+                      id={`dlg-${c.k}`}
+                      valor={isoADmy(texto)}
+                      minimo={c.minimo ? isoADmy(c.minimo) : undefined}
+                      maximo={null}
+                      onChange={(v) => onCampo(c.k, dmyAIso(v))}
+                    />
                   ) : c.tipo === "tel" ? (
                     // El «+56 9» es un adorno fijo: se escriben solo los 8 dígitos.
                     <CampoTelefono id={`dlg-${c.k}`} value={texto} onChange={(v) => onCampo(c.k, v)} />
@@ -433,6 +462,7 @@ export default function Dialogo({
                   ) : null}
                   {c.ayuda ? <div className="text-cap leading-[1.4] opacity-66 mt-1.5">{c.ayuda}</div> : null}
                 </div>
+                </Fragment>
               );
             })}
           </div>
@@ -440,9 +470,9 @@ export default function Dialogo({
           {children}
 
           {adjuntos && adjuntos.length > 0 ? (
-            <div className="mt-5 border border-black/[.3]">
+            <div className="mt-5 border border-[var(--color-line)] rounded-[10px]">
               <div className="flex items-center gap-2.5 px-3.5 py-2.5 bg-[var(--color-surface)] border-b border-[var(--color-divider-soft)]">
-                <div className="font-extrabold text-cap ">Adjuntos</div>
+                <div className="font-semibold text-cap ">Adjuntos</div>
                 <div className="ml-auto text-cap opacity-66 tabular-nums">
                   {nIncluidos} de {adjuntos.length} seleccionados
                 </div>
@@ -453,7 +483,7 @@ export default function Dialogo({
                     key={a.label}
                     type="button"
                     onClick={() => onToggleAdjunto?.(i)}
-                    className="flex items-center gap-2.5 min-h-[38px] px-3 border border-black/[.35] text-meta leading-[1.2] cursor-pointer text-left"
+                    className="flex items-center gap-2.5 min-h-[38px] px-3 border border-[var(--color-line)] rounded-[10px] text-meta leading-[1.2] cursor-pointer text-left"
                     style={{
                       background: a.incluido ? "var(--color-text)" : "transparent",
                       color: a.incluido ? "var(--color-bg)" : "var(--color-text)",
@@ -490,19 +520,28 @@ export default function Dialogo({
 
           {nota ? <p className="mt-4.5 mb-0 text-cap opacity-66">{nota}</p> : null}
 
-          <div className="flex gap-2.5 justify-end flex-wrap mt-5.5 pt-4.5 border-t border-[var(--color-divider-soft)]">
-            <button type="button" className="btn btn-secondary min-h-11 px-4.5" onClick={onCerrar}>
-              Cancelar
-            </button>
-            <button type="button" className="btn btn-primary min-h-11 px-4.5" onClick={onGuardar} disabled={guardando}>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-                <path d="M4 12l5 5L20 6" />
-              </svg>
-              <span>{guardando ? "Guardando…" : cta}</span>
-            </button>
-          </div>
+        </div>
+
+        <div className="sd-foot">
+          <button type="button" className="btn-out" onClick={onCerrar}>
+            Cancelar
+          </button>
+          <button type="button" className="btn-pri" onClick={onGuardar} disabled={guardando}>
+            <Espera activo={guardando} accion="Guardando">{cta}</Espera>
+          </button>
         </div>
       </div>
+      {descartar ? (
+        <Confirmar
+          cfg={{
+            titulo: "¿Descartar lo escrito?",
+            texto: "El panel se cierra y lo que no guardaste se pierde.",
+            cta: "Descartar",
+            accion: () => alCerrar.current(),
+          }}
+          onCerrar={() => setDescartar(false)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -537,33 +576,14 @@ export function CasillasMultiples({
   const casilla = (o: OpcionCampo) => {
     const activo = marcados.includes(o.v);
     return (
-      <button
-        key={o.v}
-        type="button"
-        role="checkbox"
-        aria-checked={activo}
-        onClick={() => alternar(o.v)}
-        className="flex items-center gap-2 min-h-9 px-2.5 border border-black/[.35] text-meta leading-[1.2] cursor-pointer text-left"
-        style={{
-          background: activo ? "var(--color-accent)" : "var(--color-bg)",
-          color: activo ? "#fff" : "var(--color-text)",
-          fontWeight: activo ? 800 : 400,
-        }}
-      >
-        <span className="w-3.5 h-3.5 flex-none border-2 border-current grid place-items-center">
-          {activo ? (
-            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4">
-              <path d="M4 12l5 5L20 6" />
-            </svg>
-          ) : null}
-        </span>
-        <span>{o.t}</span>
+      <button key={o.v} type="button" role="checkbox" aria-checked={activo} onClick={() => alternar(o.v)} className="mot-opt">
+        {o.t}
       </button>
     );
   };
 
   return (
-    <div className="border border-[var(--color-divider)] bg-[var(--color-surface-3)]">
+    <div className="mot-caja">
       {opciones.length >= MINIMO_PARA_BUSCAR ? (
         <input
           value={busqueda}
@@ -571,7 +591,7 @@ export function CasillasMultiples({
           placeholder="Filtrar…"
           aria-label="Filtrar opciones"
           autoComplete="off"
-          className="w-full min-h-9 px-3 text-meta bg-[var(--color-bg)] border-0 border-b border-[var(--color-divider)] text-[var(--color-text)] focus-visible:outline-none"
+          className="input mot-filtro"
         />
       ) : null}
       {grupos ? (

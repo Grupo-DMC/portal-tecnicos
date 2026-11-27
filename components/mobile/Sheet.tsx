@@ -55,11 +55,11 @@ export default function Sheet({
       className={`fixed inset-0 z-40 bg-[rgba(31,28,33,.5)] flex flex-col justify-end items-center ${saliendo ? "animate-fade-out" : "animate-fade-in"}`}
     >
       <div
-        className={`w-full max-w-[460px] max-h-[94vh] overflow-y-auto bg-[var(--color-bg)] border-t-2 border-[var(--color-text)] ${saliendo ? "animate-down-sheet" : "animate-up-sheet"}`}
+        className={`w-full max-w-[560px] max-h-[94vh] overflow-y-auto bg-[var(--color-bg)] rounded-t-[20px] ${saliendo ? "animate-down-sheet" : "animate-up-sheet"}`}
       >
-        <div className="sticky top-0 z-10 bg-[var(--color-bg)] flex items-center gap-2.5 px-4 py-3.5 border-b-2 border-[var(--color-divider)]">
+        <div className="sticky top-0 z-10 bg-[var(--color-bg)] flex items-center gap-2.5 px-4 py-3.5 border-b border-[var(--color-line)]">
           <div className="min-w-0">
-            <div className="font-extrabold text-lead leading-[1.2]">{titulo}</div>
+            <div className="font-semibold text-lead leading-[1.2]">{titulo}</div>
           </div>
           <button
             type="button"

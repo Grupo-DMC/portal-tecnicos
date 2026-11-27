@@ -3,108 +3,92 @@ import {
   contarPorReagendar,
   contarProblemasAbiertos,
   getCargaTecnico,
-  getCumplimientoRango,
-  getEstadoHoyDistribucion,
   getProblemasPorTipo,
+  getProblemasResueltos,
   getReagendas,
   getSucursalFallas,
   getTiempoEnSitio,
   getVisitasRango,
+  getVisitasRealizadas,
   rangoFechas,
   type Rango,
 } from "@/lib/data/queries";
-import { fechaCL, hoyISO, inicioMes, inicioSemana } from "@/lib/ui/fecha";
-import { ESTADO_VISITA_COLOR, ESTADO_VISITA_LABEL } from "@/lib/ui/estado";
+import { hoyISO } from "@/lib/ui/fecha";
+import { inicioResolucion, realizadasSemanales, resolucionSemanal } from "@/lib/ui/panel-resolucion";
+import { ESTADO_VISITA_LABEL } from "@/lib/ui/estado";
+import type { EstadoVisita } from "@/lib/types";
 
 export type { Rango };
 
+/** Meta interna de visitas cerradas dentro de la fecha programada. */
+export const META_CUMPLIMIENTO = 92;
+
+// Los cuatro primeros se muestran siempre; el resto, solo si tienen visitas.
+const ESTADOS: { estado: EstadoVisita; fijo?: boolean }[] = [
+  { estado: "PROGRAMADA", fijo: true },
+  { estado: "EN_CURSO", fijo: true },
+  { estado: "COMPLETADA", fijo: true },
+  { estado: "CANCELADA", fijo: true },
+  { estado: "PENDIENTE" },
+  { estado: "REAGENDADA" },
+  { estado: "CANCELADA_ADMIN" },
+];
+
+const porciento = (n: number, total: number) => (total ? Math.round((100 * n) / total) : 0);
+
 export async function buildPanelData(rango: Rango, hoy: string = hoyISO()) {
-  const [visitas, visitasHoy, problemasAbiertosTotal, porReagendar] = await Promise.all([
-    getVisitasRango(rango, hoy),
-    rango === "Hoy" ? Promise.resolve(null) : getVisitasRango("Hoy", hoy),
-    contarProblemasAbiertos(),
-    contarPorReagendar(),
-  ]);
-  const deHoy = visitasHoy ?? visitas;
+  const { desde, hasta } = rangoFechas(rango, hoy);
+
+  const [visitas, problemasAbiertosTotal, porReagendar, problemasTipo, carga, sucursalesFallas, tiempo, reagendas, resueltos, realizadas] =
+    await Promise.all([
+      getVisitasRango(rango, hoy),
+      contarProblemasAbiertos(),
+      contarPorReagendar(),
+      getProblemasPorTipo(),
+      getCargaTecnico(desde, hasta),
+      getSucursalFallas(5),
+      getTiempoEnSitio(),
+      getReagendas(6),
+      getProblemasResueltos(inicioResolucion(hoy)),
+      getVisitasRealizadas(inicioResolucion(hoy)),
+    ]);
 
   const programadas = visitas.length;
   const cerradas = visitas.filter((v) => v.estado === "COMPLETADA").length;
-  const pctCumpl = programadas ? Math.round((100 * cerradas) / programadas) : 0;
-  const reagendas = visitas.filter((v) => v.estado === "REAGENDADA" || v.estado === "PENDIENTE").length;
-  const tecnicosHoy = new Set(deHoy.map((v) => v.tecnicoId)).size;
-
-  const desde = rango === "Mes" ? inicioMes(hoy) : rango === "Semana" ? inicioSemana(hoy) : hoy;
-
-  const [dias, estadoHoy, problemasTipo, carga, sucursalesFallas, tiempo, reagendasLista] = await Promise.all([
-    getCumplimientoRango(desde, hoy),
-    getEstadoHoyDistribucion(hoy),
-    getProblemasPorTipo(),
-    getCargaTecnico(hoy),
-    getSucursalFallas(5),
-    getTiempoEnSitio(),
-    getReagendas(5),
-  ]);
-
-  // Los días sin visitas programadas no entran al gráfico: no se trabajó, así
-  // que una barra en 0 solo ensuciaría la lectura del cumplimiento.
-  const diasConTrabajo = dias.filter((d) => d.programadas > 0);
+  const porEstado = (estado: EstadoVisita) => visitas.filter((v) => v.estado === estado).length;
 
   return {
     rango,
     hoy,
+    meta: META_CUMPLIMIENTO,
     kpis: {
       programadas,
       cerradas,
-      pctCumpl,
-      reagendas,
+      pctCumpl: porciento(cerradas, programadas),
+      /** Visitas del período que quedaron sin fecha. */
+      reagendas: porEstado("REAGENDADA") + porEstado("PENDIENTE"),
       porReagendar,
-      tecnicosHoy,
+      tecnicos: new Set(visitas.map((v) => v.tecnicoId)).size,
       problemasAbiertosTotal,
     },
-    estadoHoy: estadoHoy.map((e) => ({
-      estado: e.estado,
-      label: ESTADO_VISITA_LABEL[e.estado],
-      color: ESTADO_VISITA_COLOR[e.estado],
-      n: e.n,
-      pct: e.pct,
-    })),
-    totalHoy: deHoy.length,
-    cumplimiento: {
-      pct: pctCumpl,
-      meta: 92,
-      detalle: `${cerradas} de ${programadas} visitas cerradas dentro de la fecha programada.`,
-      rangoTexto:
-        rango === "Hoy"
-          ? `Hoy · ${fechaCL(hoy)}`
-          : rango === "Semana"
-            ? "Semana en curso"
-            : new Date(`${hoy}T00:00:00`).toLocaleDateString("es-CL", { month: "long", year: "numeric" }),
-      dias: diasConTrabajo.map((d) => ({
-        fecha: d.fecha,
-        pct: d.pct,
-        pctTxt: `${d.pct}%`,
-        programadas: d.programadas,
-        cerradas: d.cerradas,
-        esHoy: d.fecha === hoy,
-        // La barra mide el cumplimiento del día, no cuántas visitas hubo.
-        h: Math.max(2, d.pct),
-        label: new Date(`${d.fecha}T00:00:00`)
-          .toLocaleDateString("es-CL", { weekday: "short", day: "2-digit" })
-          .replace(".", ""),
-      })),
-    },
+    estados: ESTADOS.map(({ estado, fijo }) => {
+      const n = porEstado(estado);
+      return { estado, fijo: !!fijo, label: ESTADO_VISITA_LABEL[estado], n, pct: porciento(n, programadas) };
+    }).filter((e) => e.fijo || e.n > 0),
+    // Primero quien va más atrás.
+    tecnicos: carga
+      .map((c) => ({ ...c, pct: porciento(c.realizadas, c.programadas) }))
+      .sort((a, b) => a.pct - b.pct || b.programadas - a.programadas),
     problemasTipo,
-    carga: carga.map((c) => ({
-      ...c,
-      pct: c.programadas ? Math.round((100 * c.realizadas) / c.programadas) : 0,
-    })),
+    resolucion: resolucionSemanal(resueltos, hoy),
+    realizadas: realizadasSemanales(realizadas, hoy),
     sucursalesFallas,
     tiempo,
-    reagendasLista,
+    reagendasLista: reagendas,
   };
 }
 
 export type PanelData = Awaited<ReturnType<typeof buildPanelData>>;
 
-/** El rango se usa para la ventana de fechas del gráfico. */
+/** El rango se usa para la ventana de fechas del panel. */
 export { rangoFechas };

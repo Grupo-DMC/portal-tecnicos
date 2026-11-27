@@ -1,4 +1,5 @@
 "use client";
+import Espera from "@/components/ui/Espera";
 
 import { ESTADO_PROBLEMA_AGENDADO, ESTADO_PROBLEMA_CIERRE, ESTADO_PROBLEMA_INICIAL } from "@/lib/ui/estado";
 import { Bloque, FilasSimples, Vacio } from "@/components/admin/checklist/piezas";
@@ -12,20 +13,6 @@ export function Introduccion({ fv }: { fv: ChecklistEditorApi }) {
   const { busqueda, setBusqueda, sucio, filtro, total } = fv;
   return (
     <>
-      <p className="mb-4 text-meta leading-[1.65] opacity-72 max-w-[74ch]">
-        Acá vive todo lo que el técnico elige desde listas en su celular. Cada bloque es una lista distinta. Para
-        cambiar el orden, agarra una fila de su manilla{" "}
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-label="(manilla)" role="img" className="inline align-[-1px]">
-          <circle cx="9" cy="6" r="1.7" />
-          <circle cx="15" cy="6" r="1.7" />
-          <circle cx="9" cy="12" r="1.7" />
-          <circle cx="15" cy="12" r="1.7" />
-          <circle cx="9" cy="18" r="1.7" />
-          <circle cx="15" cy="18" r="1.7" />
-        </svg>{" "}
-        y suéltala donde va; también puedes clonar una entrada con
-        todos sus subdetalles y decidir si cada subdetalle se marca a secas o lleva cantidad.
-      </p>
 
       <div className="flex items-center gap-3 flex-wrap mb-6.5">
         <div className="relative flex-1 min-w-[240px] max-w-[380px]">
@@ -66,14 +53,12 @@ export function Introduccion({ fv }: { fv: ChecklistEditorApi }) {
   );
 }
 
-/** Listas 4 a 8: comentario interno, gestión de pendientes y de problemas, estados y cargos. */
+/** Listas 4 a 7: comentario interno, gestión de problemas, estados y cargos. */
 export function ListasSimples({ fv }: { fv: ChecklistEditorApi }) {
   const {
     aviso,
     internos,
     setInternos,
-    pendientes,
-    setPendientes,
     cargos,
     setCargos,
     gestionProblemas,
@@ -85,12 +70,10 @@ export function ListasSimples({ fv }: { fv: ChecklistEditorApi }) {
     editar,
     filtro,
     internosVisibles,
-    pendientesVisibles,
     cargosVisibles,
     gestionProblemasVisibles,
     estadosProblemaVisibles,
     agregarInterno,
-    agregarPendiente,
     agregarCargo,
     agregarGestionProblema,
     agregarEstadoProblema,
@@ -100,6 +83,7 @@ export function ListasSimples({ fv }: { fv: ChecklistEditorApi }) {
       {/* Lista 4 · Comentario interno */}
       <Bloque
         numero="Lista 4"
+        clave="interno"
         titulo="Comentario interno"
         bajada="Lo que el técnico marca en la sección «Comentario interno» del acta, junto con su texto, fotos y video. Es solo para coordinación: no aparece en el PDF ni en el correo al cliente."
         cta="Nuevo ítem"
@@ -130,47 +114,11 @@ export function ListasSimples({ fv }: { fv: ChecklistEditorApi }) {
         ) : null}
       </Bloque>
 
-      {/* Lista 5 · Gestión de pendientes */}
+      {/* Lista 5 · Gestión de problemas */}
       <Bloque
         numero="Lista 5"
-        titulo="Gestión de pendientes"
-        bajada="Los pasos que coordinación va marcando en «Reagendas y pendientes» mientras destraba una visita que no se pudo hacer. Solo se ve en el panel: el técnico y el cliente no la ven."
-        cta="Nuevo paso"
-        onAgregar={agregarPendiente}
-      >
-        <FilasSimples
-          grupo="pendiente"
-          lista={pendientes}
-          visibles={pendientesVisibles}
-          bloqueado={!!filtro}
-          que="paso"
-          placeholder="Ej: Repuesto pedido a bodega"
-          onEditar={(fn) => editar(setPendientes, fn)}
-          onPedirQuitar={(m) =>
-            setConfirmar({
-              titulo: "¿Quitar este paso?",
-              texto: `«${m.nombre || "Sin nombre"}» deja de aparecer en el checklist de «Reagendas y pendientes». No se borra: lo que ya se marcó con él queda guardado, pero deja de contarse. El cambio se aplica al guardar.`,
-              cta: "Quitar paso",
-              accion: () => editar(setPendientes, (prev) => prev.filter((x) => x.key !== m.key)),
-            })
-          }
-        />
-        {pendientes.length === 0 ? (
-          <Vacio>
-            Sin pasos: en «Reagendas y pendientes» cada visita se ve con toda su información, pero sin checklist que
-            marcar.
-          </Vacio>
-        ) : null}
-        {pendientes.length > 0 && pendientesVisibles.length === 0 ? (
-          <Vacio>Ningún paso coincide con «{busqueda}».</Vacio>
-        ) : null}
-      </Bloque>
-
-      {/* Lista 6 · Gestión de problemas */}
-      <Bloque
-        numero="Lista 6"
+        clave="gestion"
         titulo="Gestión de problemas"
-        bajada="Los pasos que coordinación va marcando en «Problemas» mientras lleva cada falla hasta cerrarla: cotizar, pedir el repuesto, esperar la aprobación del cliente. Solo se ve en el panel: el técnico y el cliente no la ven."
         cta="Nuevo paso"
         onAgregar={agregarGestionProblema}
       >
@@ -201,11 +149,11 @@ export function ListasSimples({ fv }: { fv: ChecklistEditorApi }) {
         ) : null}
       </Bloque>
 
-      {/* Lista 7 · Estados del problema */}
+      {/* Lista 6 · Estados del problema */}
       <Bloque
-        numero="Lista 7"
+        numero="Lista 6"
+        clave="estados"
         titulo="Estados del problema"
-        bajada="Los estados entre los que se elige en «Cambiar estado o tipo» de un problema, en este orden. «Abierto» es con el que nace todo problema que levanta el técnico y «Resuelto» es el único que lo cierra: los dos se pueden renombrar, pero no quitar. Todo lo que agregues es un estado intermedio y el problema sigue contando como sin cerrar."
         cta="Nuevo estado"
         onAgregar={agregarEstadoProblema}
       >
@@ -240,11 +188,11 @@ export function ListasSimples({ fv }: { fv: ChecklistEditorApi }) {
         ) : null}
       </Bloque>
 
-      {/* Lista 8 · Cargos del responsable */}
+      {/* Lista 7 · Cargos del responsable */}
       <Bloque
-        numero="Lista 8"
+        numero="Lista 7"
+        clave="cargos"
         titulo="Cargos del responsable"
-        bajada="Los cargos que se ofrecen para quien recibe y firma en la tienda: al agendar la visita y al llenar el acta. Es opcional en cada visita; el que se elige sale en el acta y en el PDF, al lado del nombre."
         cta="Nuevo cargo"
         onAgregar={agregarCargo}
       >
@@ -282,21 +230,21 @@ export function PlantillaPropia({ fv }: { fv: ChecklistEditorApi }) {
   return (
     <>
       {/* Plantilla propia */}
-      <div className="border-t-2 border-[var(--color-divider)] pt-4.5 mt-2">
-        <h2 className="font-extrabold text-h3 leading-[1.15] tracking-[-.02em] mb-1">
+      <div className="border-t border-[var(--color-line)] pt-4.5 mt-2">
+        <h2 className="font-semibold text-h3 leading-[1.15] tracking-[-.02em] mb-1">
           La lista a la que vuelve «Reiniciar»
         </h2>
         <p className="m-0 mb-3.5 text-meta opacity-68 max-w-[70ch]">
           {plantilla
-            ? `Guardada con ${plantilla.motivos} motivos, ${plantilla.problemas} tipos de problema, ${plantilla.trabajos} trabajos, ${plantilla.internos} ítems internos y ${plantilla.pendientes + plantilla.gestionProblemas} pasos de gestión. Vuelve a fijarla cuando cambies las listas y quieras que ese sea el nuevo punto de partida.`
+            ? `Guardada con ${plantilla.motivos} motivos, ${plantilla.problemas} tipos de problema, ${plantilla.trabajos} trabajos, ${plantilla.internos} ítems internos y ${plantilla.gestionProblemas} pasos de gestión. Vuelve a fijarla cuando cambies las listas y quieras que ese sea el nuevo punto de partida.`
             : "Todavía no has fijado ninguna. Arma las listas como las quieres y fíjalas: desde ahí, «Reiniciar» siempre las devuelve a ese estado."}
         </p>
         <div className="flex items-center gap-2.5 flex-wrap">
-          <button className="btn btn-secondary border border-black/[.3]" onClick={guardarComoPlantilla}>
+          <button className="btn btn-secondary border border-[var(--color-line)] rounded-[10px]" onClick={guardarComoPlantilla}>
             Fijar como mi plantilla
           </button>
           <button
-            className="btn btn-secondary border border-black/[.3]"
+            className="btn btn-secondary border border-[var(--color-line)] rounded-[10px]"
             onClick={reiniciar}
             disabled={!plantilla}
           >
@@ -318,7 +266,7 @@ export function PieGuardar({ fv }: { fv: ChecklistEditorApi }) {
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
             <path d="M4 12l5 5L20 6" />
           </svg>
-          <span>{guardando ? "Guardando…" : "Guardar cambios"}</span>
+          <Espera activo={guardando} accion="Guardando">Guardar cambios</Espera>
         </button>
         <span className="text-cap opacity-62">
           {sucio

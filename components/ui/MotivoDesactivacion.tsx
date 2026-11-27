@@ -64,9 +64,9 @@ export default function MotivoDesactivacion({
       aria-labelledby={`${id}-titulo`}
       className="fixed inset-0 z-[80] bg-[rgba(31,28,33,.55)] grid place-items-center p-3 sm:p-6"
     >
-      <div className="w-full max-w-[480px] bg-[var(--color-bg)] border-2 border-[var(--color-text)] animate-up-dlg">
+      <div className="w-full max-w-[480px] bg-[var(--color-bg)] border border-[var(--color-line)] rounded-[14px] animate-up-dlg">
         <div className="px-5 py-4.5 border-b border-[var(--color-divider-soft)]">
-          <div id={`${id}-titulo`} className="font-extrabold text-h3 leading-[1.2]">
+          <div id={`${id}-titulo`} className="font-semibold text-h3 leading-[1.2]">
             ¿Por qué se desactiva {que}?
           </div>
         </div>
@@ -90,7 +90,7 @@ export default function MotivoDesactivacion({
             />
             <div id={`${id}-ayuda`} className="flex gap-3 mt-1.5 text-cap leading-[1.4]">
               {intentado && error ? (
-                <span role="alert" className="font-extrabold text-[var(--color-danger-800)]">
+                <span role="alert" className="font-semibold text-[var(--color-danger-800)]">
                   {error}
                 </span>
               ) : (

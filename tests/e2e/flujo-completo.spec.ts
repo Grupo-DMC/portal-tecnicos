@@ -28,17 +28,21 @@ test.describe("flujo completo: agendar → acta móvil → panel → PDF", () =>
     await expect(page.getByText("0 registros")).toBeVisible();
     await page.getByRole("button", { name: /Nueva visita/ }).click();
 
-    const dialogo = page.getByRole("dialog");
-    await expect(dialogo.getByRole("combobox", { name: "Cliente" })).toHaveAttribute("placeholder", "Cliente E2E");
-    await expect(dialogo.getByRole("combobox", { name: "Técnico asignado" })).toHaveAttribute("placeholder", "Tecnica Ficticia");
-    await dialogo.getByLabel("Qué se necesita hacer").fill("Revisar las antenas del acceso principal");
-    await dialogo.getByLabel("Responsable de tienda").fill(FIRMANTE.nombre);
+    const dialogo = page.getByRole("dialog", { name: "Nueva visita" });
+    await expect(dialogo.locator("#nvCliente option:checked")).toHaveText("Cliente E2E");
+    await expect(dialogo.locator("#nvTec option:checked")).toHaveText("Tecnica Ficticia");
+    // Parte con la calibración marcada; esta es la preventiva, que trae «Revisión de antenas».
+    await dialogo.locator(".mot-opt", { hasText: "Visita preventiva" }).click();
+    await dialogo.locator(".mot-opt", { hasText: "Calibración de las antenas" }).click();
+    await dialogo.getByLabel("Qué hay que hacer").fill("Revisar las antenas del acceso principal");
+    await dialogo.locator("#nvContacto summary").click();
+    await dialogo.locator("#nvResp").fill(FIRMANTE.nombre);
     // Al abrir el formulario la app revisa si la tienda tiene problemas sin resolver y,
     // hasta que responde, guardar está bloqueado a propósito («Espera: se están
     // revisando…»). Se reintenta el clic hasta que la app deja pasar.
     await expect(async () => {
       await dialogo.getByRole("button", { name: "Programar visita" }).click({ timeout: 2_000 });
-      await expect(page.getByRole("status")).toContainText(/Visita V-\d{4}-\d{5} programada · Tecnica Ficticia/, { timeout: 3_500 });
+      await expect(page.getByRole("status")).toContainText(/Visita V-\d{4}-\d{5} programada para Tecnica Ficticia el \d{2}\/\d{2}\/\d{4}\./, { timeout: 3_500 });
     }).toPass({ timeout: 25_000 });
     folio = ((await page.getByRole("status").textContent()) ?? "").match(/V-\d{4}-\d{5}/)![0];
 

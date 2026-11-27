@@ -1,5 +1,9 @@
-import Cargando from "@/components/ui/Cargando";
+import { EsqueletoTecnicoInicio, MarcoTecnico } from "@/components/ui/esqueletos";
 
 export default function Loading() {
-  return <Cargando compacta />;
+  return (
+    <MarcoTecnico>
+      <EsqueletoTecnicoInicio />
+    </MarcoTecnico>
+  );
 }

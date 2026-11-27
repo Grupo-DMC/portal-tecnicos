@@ -1,4 +1,5 @@
 "use client";
+import Espera from "@/components/ui/Espera";
 
 import Link from "next/link";
 import AdminHeader from "@/components/admin/AdminHeader";
@@ -52,7 +53,7 @@ export default function EditarActa(props: Parameters<typeof useEditarActa>[0]) {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
             <path d="M4 12l5 5L20 6" />
           </svg>
-          <span>{guardando ? "Guardando…" : "Guardar cambios"}</span>
+          <Espera activo={guardando} accion="Guardando">Guardar cambios</Espera>
         </button>
       </AdminHeader>
 

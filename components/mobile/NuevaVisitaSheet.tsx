@@ -1,5 +1,8 @@
 "use client";
 
+import DatePicker from "@/components/ui/DatePicker";
+import Espera from "@/components/ui/Espera";
+import { dmyAIso, hoyISO, isoADmy } from "@/lib/ui/fecha";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Sheet from "@/components/mobile/Sheet";
@@ -19,7 +22,7 @@ import { agruparPorSeccion, hayAlgunaSeccion } from "@/lib/ui/secciones";
 
 const LABEL = "block text-cap opacity-60 mb-1.5";
 const CAMPO =
-  "w-full min-h-[54px] px-3.5 py-3 text-lead leading-[1.3] bg-[var(--color-surface)] border border-[var(--color-divider)] text-[var(--color-text)] caret-[var(--color-accent)] focus-visible:border-[var(--color-accent)]";
+  "w-full min-h-[54px] px-3.5 py-3 text-lead leading-[1.3] bg-[var(--color-surface)] border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] caret-[var(--color-accent)] focus-visible:border-[var(--color-accent)]";
 
 /**
  * "Agregar visita" del celular: el mismo formulario que usa coordinación, para
@@ -89,7 +92,7 @@ export default function NuevaVisitaSheet({
         }}
       >
         <span
-          className="w-[20px] h-[20px] flex-none border-2 border-[var(--color-text)] grid place-items-center"
+          className="w-[20px] h-[20px] flex-none border border-[var(--color-line)] rounded-[14px] grid place-items-center"
           style={{ background: activo ? "var(--color-accent)" : "transparent" }}
         >
           {activo ? (
@@ -171,10 +174,6 @@ export default function NuevaVisitaSheet({
   return (
     <Sheet titulo="Agregar visita" onClose={onCerrar}>
       <div className="p-4 flex flex-col gap-3.5">
-        <p className="m-0 text-meta opacity-60">
-          Mismo formulario que usa coordinación para crear una visita, para cuando no te la asignaron o la haces fuera
-          de tu planificación.
-        </p>
 
         {/* Cliente y sucursal se escriben, no se buscan a rueda: con ochenta
             sucursales el desplegable nativo del celular es inservible. Van uno
@@ -217,7 +216,7 @@ export default function NuevaVisitaSheet({
 
         <div>
           <div className={LABEL}>
-            Motivo de la visita <span className="opacity-70 normal-case tracking-normal">(marca todos los que correspondan)</span>
+            Motivo de la visita
           </div>
           <div className="flex flex-col gap-3.5">
             {conSecciones
@@ -238,7 +237,7 @@ export default function NuevaVisitaSheet({
                 })
               : catalogoMotivo.map(fila)}
             {catalogoMotivo.length === 0 ? (
-              <div className="px-3.5 py-3 border border-dashed border-black/[.4] text-meta opacity-70">
+              <div className="px-3.5 py-3 border border-dashed border-[var(--color-line)] text-meta opacity-70">
                 No hay motivos en el checklist: avisa a coordinacion.
               </div>
             ) : null}
@@ -250,13 +249,7 @@ export default function NuevaVisitaSheet({
             <label htmlFor="nv-fecha" className={LABEL}>
               Fecha programada
             </label>
-            <input
-              id="nv-fecha"
-              type="date"
-              value={fecha}
-              onChange={(e) => setFecha(e.target.value)}
-              className={`${CAMPO} tabular-nums`}
-            />
+            <DatePicker modo="single" id="nv-fecha" valor={isoADmy(fecha)} minimo={isoADmy(hoyISO())} onChange={(v) => setFecha(dmyAIso(v))} className={`${CAMPO} tabular-nums`} />
           </div>
           <div className="flex-1 min-w-0">
             <label htmlFor="nv-hora" className={LABEL}>
@@ -406,10 +399,10 @@ export default function NuevaVisitaSheet({
           type="button"
           onClick={confirmar}
           disabled={guardando}
-          className="w-full min-h-[58px] flex items-center justify-between px-4.5 border-0 font-extrabold text-lead cursor-pointer text-left text-[var(--color-bg)] hover:brightness-95"
+          className="w-full min-h-[58px] flex items-center justify-between px-4.5 border-0 font-semibold text-lead cursor-pointer text-left text-[var(--color-bg)] hover:brightness-95"
           style={{ background: listo ? "var(--color-accent)" : "var(--color-neutral-500)" }}
         >
-          <span>{subiendo ?? (guardando ? "Creando…" : adjuntos.preparando ? "Preparando adjuntos…" : "Crear e iniciar visita")}</span>
+          {subiendo ? <span>{subiendo}</span> : <Espera activo={guardando || adjuntos.preparando} accion={guardando ? "Creando la visita" : "Preparando adjuntos"}>Crear e iniciar visita</Espera>}
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
             <path d="M4 12l5 5L20 6" />
           </svg>

@@ -31,7 +31,7 @@ export default defineConfig({
   projects: [
     {
       name: "escritorio",
-      testMatch: /(autenticacion|permisos|panel)\.spec\.ts/,
+      testMatch: /(autenticacion|permisos|panel|visitas|pantallas|layout|fechas)\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
     },
     {
@@ -46,7 +46,7 @@ export default defineConfig({
         url: `http://localhost:${PUERTO}/login`,
         timeout: 300_000,
         reuseExistingServer: false,
-        env: { ...(process.env as Record<string, string>), ...entorno },
+        env: { ...(process.env as Record<string, string>), ...entorno, NODE_OPTIONS: "--max-old-space-size=2048" },
         stdout: "ignore",
         stderr: "pipe",
       }

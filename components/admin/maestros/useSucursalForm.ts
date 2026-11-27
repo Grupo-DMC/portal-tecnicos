@@ -43,6 +43,7 @@ export function useSucursalForm({
   /** ¿El cliente elegido en el formulario está en plan? Entonces la tienda también, sin preguntar. */
   const clienteEnPlan = (clienteId: string | boolean | undefined) =>
     clientes.find((c) => String(c.id) === String(clienteId))?.planCalibracion === true;
+  const mallDe = (id: unknown) => malls.find((m) => String(m.id) === String(id));
   const formulario: SucursalForm = {
     fields: [
           {
@@ -73,7 +74,6 @@ export function useSucursalForm({
               { v: "", t: "Sin mall (a la calle)" },
               ...malls.map((m) => ({ v: String(m.id), t: m.activo ? m.nombre : `${m.nombre} · inactivo` })),
             ],
-            ayuda: "Al elegirlo, la sucursal toma la dirección, la comuna y la región del mall. Sin mall, escribe la dirección de la calle.",
           },
           {
             // Con mall y marca el nombre es «Cliente · Marca · Mall»: pedirlo sobra.
@@ -83,9 +83,17 @@ export function useSucursalForm({
           },
           { k: "codigo", label: "Código interno (opcional)", ph: "MS-118" },
           { k: "telefono", label: "Teléfono", tipo: "tel" },
-          { k: "direccion", label: "Dirección", span: 2 },
-          { k: "comuna", label: "Comuna" },
-          { k: "region", label: "Región", tipo: "select", opciones: REGIONES.map((r) => ({ v: r, t: r })) },
+          // Con mall, la ubicación es la del mall. Los malls antiguos pueden no tener
+          // comuna o región: ahí se puede escribir.
+          { k: "direccion", label: "Dirección", span: 2, bloqueado: (f) => Boolean(mallDe(f.mallId)?.direccion) },
+          { k: "comuna", label: "Comuna", bloqueado: (f) => Boolean(mallDe(f.mallId)?.comuna) },
+          {
+            k: "region",
+            label: "Región",
+            tipo: "select",
+            opciones: REGIONES.map((r) => ({ v: r, t: r })),
+            bloqueado: (f) => Boolean(mallDe(f.mallId)?.region),
+          },
           { k: "fechaInstalacion", label: "Fecha de instalación (opcional)", tipo: "date" },
           { k: "remota", label: "¿Es remota? (opcional)", tipo: "select", opciones: OPCIONES_SI_NO },
           {
@@ -99,7 +107,6 @@ export function useSucursalForm({
             label: "¿En plan de calibración? (opcional)",
             tipo: "select",
             opciones: OPCIONES_SI_NO,
-            ayuda: "Su cliente no está en plan, pero esta tienda puede estarlo por su cuenta.",
             visible: (f) => !clienteEnPlan(f.clienteId),
           },
           {

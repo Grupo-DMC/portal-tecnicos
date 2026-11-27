@@ -1,8 +1,10 @@
 "use client";
+import Espera from "@/components/ui/Espera";
 
 import Link from "next/link";
 import { Candado, Fotos, Marca, Seccion, Videos } from "@/components/admin/editar-acta/piezas";
 import type { EditarActaApi } from "@/components/admin/editar-acta/useEditarActa";
+import { ocultarRut } from "@/lib/ui/reservado";
 
 // La edición del acta, segunda mitad: comentario interno, fotos y video,
 // firma, el guardado y el índice lateral.
@@ -121,7 +123,6 @@ export function SeccionFotos({ fv }: { fv: EditarActaApi }) {
         id="media"
         n={5}
         titulo="Fotos y video del trabajo"
-        ayuda="Lo que quites no se borra: queda guardado e inactivo, y su número va al registro. Un video de más de 1 minuto o 720p se ajusta solo al agregarlo."
         cambio={cambio("media")}
       >
         <div className="flex flex-col gap-5" onPaste={(e) => pegarFotos(e, false)}>
@@ -156,22 +157,18 @@ export function SeccionFirma({ fv }: { fv: EditarActaApi }) {
   return (
     <>
       {/* ── 6 · Firma ── */}
-      <Seccion id="firma" n={6} titulo="Firma de la tienda" ayuda="Se conserva tal cual: no se edita." candado>
+      <Seccion id="firma" n={6} titulo="Firma de la tienda" candado>
         {firma ? (
           <div className="flex gap-6 items-center flex-wrap">
             <div className="flex-[0_1_300px] min-w-0 bg-white border border-[var(--color-divider-faint)] px-4 pt-3 pb-3.5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={firma.imagen} alt={`Firma de ${firma.nombre}`} className="h-[78px] w-full object-contain object-left-bottom" />
               <div className="h-px bg-[var(--color-text)] mt-1.5" />
-              <div className="text-ui font-extrabold mt-1.5">{firma.nombre}</div>
+              <div className="text-ui font-semibold mt-1.5">{firma.nombre}</div>
               <div className="text-cap opacity-62">
-                Responsable de tienda · {firma.rut || "—"}
+                Responsable de tienda · {firma.rut ? ocultarRut(firma.rut) : "—"}
               </div>
             </div>
-            <p className="m-0 flex-1 min-w-[220px] text-meta leading-[1.55] opacity-70">
-              Es la firma que dejó la tienda al cerrar el acta, con su hora. Si corriges el nombre o el RUT del
-              responsable y eran los mismos que van bajo la firma, ese texto se corrige también; la firma no.
-            </p>
           </div>
         ) : (
           <div className="text-meta opacity-66">Esta acta se cerró sin firma.</div>
@@ -187,11 +184,11 @@ export function SeccionGuardar({ fv }: { fv: EditarActaApi }) {
   return (
     <>
       {/* ── Guardar ── */}
-      <section id="ea-sec-guardar" className="scroll-mt-[120px] border-2 border-[var(--color-text)] bg-white">
+      <section id="ea-sec-guardar" className="scroll-mt-[120px] border border-[var(--color-line)] rounded-[14px] bg-white">
         <div className="px-5 pt-5 pb-1">
-          <div className="font-extrabold text-h3 leading-[1.2] tracking-[-.02em]">¿Por qué se edita el acta?</div>
+          <div className="font-semibold text-h3 leading-[1.2] tracking-[-.02em]">¿Por qué se edita el acta?</div>
           <p className="m-0 mt-1 text-meta opacity-66">
-            Es obligatorio y queda en el registro de la visita junto con lo que cambiaste.
+            Obligatorio
           </p>
         </div>
         <div className="px-5 py-4">
@@ -213,7 +210,7 @@ export function SeccionGuardar({ fv }: { fv: EditarActaApi }) {
                   key={x.clave}
                   type="button"
                   onClick={() => irA(x.clave)}
-                  className="tag tag-dark font-extrabold border-0 cursor-pointer"
+                  className="tag tag-dark font-semibold border-0 cursor-pointer"
                   title="Ir a la sección"
                 >
                   {x.titulo}
@@ -243,7 +240,7 @@ export function SeccionGuardar({ fv }: { fv: EditarActaApi }) {
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
               <path d="M4 12l5 5L20 6" />
             </svg>
-            <span>{guardando ? "Guardando…" : "Guardar cambios"}</span>
+            <Espera activo={guardando} accion="Guardando">Guardar cambios</Espera>
           </button>
           <Link href={hrefActa} className="btn btn-secondary min-h-11 px-4">
             Salir sin guardar
@@ -260,7 +257,7 @@ export function Indice({ fv }: { fv: EditarActaApi }) {
   return (
     <>
       <aside className="hidden xl:block sticky top-[112px]">
-        <div className="border border-[var(--color-divider-soft)] bg-[var(--color-surface-3)]">
+        <div className="border border-[var(--color-line)] rounded-[10px] bg-[var(--color-surface-3)]">
           <div className="px-4 py-3 border-b border-[var(--color-divider-faint)] text-cap opacity-66">
             Secciones del acta
           </div>
@@ -274,7 +271,7 @@ export function Indice({ fv }: { fv: EditarActaApi }) {
                 className="w-full flex items-center gap-2.5 px-4 min-h-10 bg-transparent border-0 border-b border-[var(--color-divider-faint)] text-left text-meta text-[var(--color-text)] cursor-pointer hover:bg-black/[.05]"
               >
                 <span className="w-4 text-cap tabular-nums opacity-55 flex-none">{i + 1}</span>
-                <span className={`flex-1 min-w-0 truncate ${tocada ? "font-extrabold" : ""}`}>{x.titulo}</span>
+                <span className={`flex-1 min-w-0 truncate ${tocada ? "font-semibold" : ""}`}>{x.titulo}</span>
                 {tocada ? (
                   <span className="w-2 h-2 flex-none bg-[var(--color-accent)]" title="Con cambios" />
                 ) : x.clave === "firma" ? (
@@ -286,7 +283,7 @@ export function Indice({ fv }: { fv: EditarActaApi }) {
           <button
             type="button"
             onClick={() => irA("guardar")}
-            className="w-full flex items-center gap-2.5 px-4 min-h-11 bg-transparent border-0 text-left text-meta font-extrabold text-[var(--color-accent-active)] cursor-pointer hover:bg-black/[.05]"
+            className="w-full flex items-center gap-2.5 px-4 min-h-11 bg-transparent border-0 text-left text-meta font-semibold text-[var(--color-accent-active)] cursor-pointer hover:bg-black/[.05]"
           >
             <span className="flex-1">Motivo y guardar</span>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
@@ -294,9 +291,6 @@ export function Indice({ fv }: { fv: EditarActaApi }) {
             </svg>
           </button>
         </div>
-        <p className="m-0 mt-3 text-cap leading-[1.5] opacity-62">
-          El punto morado marca las secciones que llevan cambios sin guardar.
-        </p>
       </aside>
     </>
   );

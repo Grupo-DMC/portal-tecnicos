@@ -1,8 +1,11 @@
 "use client";
 
+import DatePicker from "@/components/ui/DatePicker";
+import { dmyAIso, isoADmy } from "@/lib/ui/fecha";
 import { useState } from "react";
 import SelectBuscable from "@/components/ui/SelectBuscable";
 import SelectMultiple from "@/components/ui/SelectMultiple";
+import Icono from "@/components/ui/Icono";
 
 export interface CampoFiltro {
   id: string;
@@ -54,18 +57,14 @@ export default function FiltrosBar({
 }) {
   const [abierto, setAbierto] = useState(false);
 
-  const textoBoton = abierto
-    ? "Ocultar filtros"
-    : chips.length
-      ? `Editar filtros (${chips.length})`
-      : "Colocar filtro";
-
   return (
-    <>
-      <div className="flex items-center gap-2.5 flex-wrap px-4 md:px-7 py-4 border-b border-[var(--color-divider-soft)]">
+    <div className="barra">
+      <div className="v-bar">
         {onBusqueda ? (
-          <div className="relative flex-1 basis-full sm:basis-0 min-w-[220px] sm:max-w-[340px]">
+          <label className="v-search">
+            <Icono nombre="buscar" />
             <input
+              type="search"
               value={busqueda ?? ""}
               onChange={(e) => onBusqueda(e.target.value)}
               placeholder={phBusqueda}
@@ -73,85 +72,40 @@ export default function FiltrosBar({
               autoComplete="off"
               autoCorrect="off"
               spellCheck={false}
-              className="input pl-9.5"
             />
-            <svg
-              width="17"
-              height="17"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="var(--color-text)"
-              strokeWidth="2"
-              className="absolute left-3 top-1/2 -translate-y-1/2 opacity-62 pointer-events-none"
-            >
-              <circle cx="11" cy="11" r="7" />
-              <path d="M16.5 16.5L21 21" />
-            </svg>
-          </div>
-        ) : null}
-
-        <div className="flex items-center gap-2 flex-wrap" hidden={campos.length === 0}>
-          <button
-            type="button"
-            onClick={() => setAbierto((v) => !v)}
-            className="btn btn-secondary min-h-10 px-3.5 gap-2.5"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <path d="M3 6h18M6 12h12M10 18h4" />
-            </svg>
-            <span>{textoBoton}</span>
-          </button>
-
-          {chips.map((c) => (
-            <button
-              key={c.label}
-              type="button"
-              onClick={c.onQuitar}
-              className="tag tag-accent min-h-8 border-0 cursor-pointer gap-2 px-2.5 text-cap "
-            >
-              <span>{c.label}</span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                <path d="M6 6l12 12M18 6L6 18" />
-              </svg>
-            </button>
-          ))}
-
-          {chips.length > 0 ? (
+          </label>
+        ) : (
+          <span />
+        )}
+        <div className="v-tools">
+          <span className="pb-count">{conteo}</span>
+          {campos.length > 0 ? (
             <button
               type="button"
-              onClick={onLimpiar}
-              className="min-h-8 px-1 bg-transparent border-0 text-[var(--color-accent-active)] text-cap underline underline-offset-[3px] cursor-pointer"
+              className={chips.length ? "v-fbtn on" : "v-fbtn"}
+              aria-expanded={abierto}
+              aria-label={chips.length ? `Filtros, ${chips.length} ${chips.length === 1 ? "puesto" : "puestos"}` : "Filtros"}
+              onClick={() => setAbierto((v) => !v)}
             >
-              Quitar todos
+              <Icono nombre="filtros" />
+              Filtros
+              {chips.length ? <span className="v-fbadge">{chips.length}</span> : null}
             </button>
           ) : null}
-        </div>
-
-        <div className="ml-auto flex items-center gap-3">
-          <div className="text-cap opacity-62 tabular-nums">{conteo}</div>
           {acciones}
         </div>
       </div>
 
       {abierto && campos.length > 0 ? (
-        <div className="px-4 md:px-7 pt-5 pb-5.5 border-b border-[var(--color-divider-soft)] bg-[var(--color-surface)] animate-fade-in">
-          <div className="text-meta font-semibold text-[var(--color-muted)] mb-3.5">
-            Elige por qué quieres filtrar
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="v-filters">
+          <div className="v-fgrid">
             {campos.map((c) => (
-              <div key={c.id} className="field m-0 min-w-0">
+              <div key={c.id} className="fr">
                 <label htmlFor={c.id}>{c.label}</label>
                 {/* Con muchas opciones (sucursales, tecnicos) se escribe y
                     la lista filtra al momento; con pocas basta el nativo. */}
                 {c.tipo === "fecha" ? (
-                  <input
-                    id={c.id}
-                    type="date"
-                    value={c.valor}
-                    onChange={(e) => c.onChange(e.target.value)}
-                    className="input"
-                  />
+                  <DatePicker modo="single" id={c.id} valor={isoADmy(c.valor)} maximo={null} onChange={(v) => c.onChange(dmyAIso(v))} />
                 ) : c.tipo === "multi" ? (
                   <SelectMultiple
                     id={c.id}
@@ -171,48 +125,43 @@ export default function FiltrosBar({
                     placeholder="Escribe para filtrar..."
                   />
                 ) : (
-                  <div className="relative">
-                    <select
-                      id={c.id}
-                      value={c.valor}
-                      onChange={(e) => c.onChange(e.target.value)}
-                      className="input pr-9.5 appearance-none"
-                    >
-                      {c.opciones.map((o) => (
-                        <option key={o.v} value={o.v}>
-                          {o.t}
-                        </option>
-                      ))}
-                    </select>
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="var(--color-text)"
-                      strokeWidth="2.2"
-                      className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                    >
-                      <path d="M6 9l6 6 6-6" />
-                    </svg>
-                  </div>
+                  <select id={c.id} value={c.valor} onChange={(e) => c.onChange(e.target.value)} className="input">
+                    {c.opciones.map((o) => (
+                      <option key={o.v} value={o.v}>
+                        {o.t}
+                      </option>
+                    ))}
+                  </select>
                 )}
               </div>
             ))}
           </div>
-          <div className="flex gap-2.5 mt-4.5 flex-wrap">
-            <button type="button" onClick={() => setAbierto(false)} className="btn btn-primary min-h-[42px] px-4.5 gap-2.5">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-                <path d="M4 12l5 5L20 6" />
-              </svg>
-              <span>Ver resultados</span>
+          <div className="v-fbtns">
+            <button type="button" onClick={onLimpiar} className="btn-out sm">
+              Limpiar
             </button>
-            <button type="button" onClick={onLimpiar} className="btn btn-secondary min-h-[42px] px-4.5">
-              Limpiar filtros
+            <button type="button" onClick={() => setAbierto(false)} className="btn-pri sm">
+              Ver resultados
             </button>
           </div>
         </div>
       ) : null}
-    </>
+
+      {chips.length > 0 ? (
+        <div className="v-active">
+          {chips.map((c) => (
+            <span key={c.label} className="fchip">
+              {c.label}
+              <button type="button" onClick={c.onQuitar} aria-label={`Quitar ${c.label}`}>
+                ✕
+              </button>
+            </span>
+          ))}
+          <button type="button" onClick={onLimpiar} className="enlace">
+            Quitar todos
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 }

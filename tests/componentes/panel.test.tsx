@@ -8,13 +8,13 @@ const q = vi.hoisted(() => ({
   contarProblemasAbiertos: vi.fn(),
   contarPorReagendar: vi.fn(),
   getCargaTecnico: vi.fn(),
-  getCumplimientoRango: vi.fn(),
-  getEstadoHoyDistribucion: vi.fn(),
   getProblemasPorTipo: vi.fn(),
+  getProblemasResueltos: vi.fn(),
   getReagendas: vi.fn(),
   getSucursalFallas: vi.fn(),
   getTiempoEnSitio: vi.fn(),
   getVisitasRango: vi.fn(),
+  getVisitasRealizadas: vi.fn(),
   rangoFechas: vi.fn(),
 }));
 vi.mock("@/lib/data/queries", () => q);
@@ -38,16 +38,20 @@ beforeEach(() => {
   vi.resetAllMocks();
   q.contarProblemasAbiertos.mockResolvedValue(7);
   q.contarPorReagendar.mockResolvedValue(4);
-  q.getEstadoHoyDistribucion.mockResolvedValue([
-    { estado: "COMPLETADA", n: 3, pct: 75 },
-    { estado: "EN_CURSO", n: 1, pct: 25 },
-  ]);
   q.getProblemasPorTipo.mockResolvedValue([{ codigo: "OTRO", nombre: "Otro problema", n: 4, pct: 100 }]);
   q.getCargaTecnico.mockResolvedValue([{ nombre: "Ana Pérez", tecnicoId: 1, programadas: 4, realizadas: 3 }]);
   q.getSucursalFallas.mockResolvedValue([]);
   q.getTiempoEnSitio.mockResolvedValue({ prom: 42, porMotivo: [{ label: "Calibración", min: 55, pct: 100 }] });
   q.getReagendas.mockResolvedValue([]);
-  q.getCumplimientoRango.mockResolvedValue([{ fecha: HOY, programadas: 4, cerradas: 3, pct: 75 }]);
+  q.getProblemasResueltos.mockResolvedValue([]);
+  q.getVisitasRealizadas.mockResolvedValue([]);
+  q.rangoFechas.mockImplementation((rango: string, hoy: string) =>
+    rango === "Hoy"
+      ? { desde: hoy, hasta: hoy }
+      : rango === "Semana"
+        ? { desde: "2026-10-26", hasta: "2026-11-01" }
+        : { desde: "2026-10-01", hasta: "2026-10-31" }
+  );
   q.getVisitasRango.mockImplementation(async (rango: string) =>
     rango === "Hoy"
       ? [v("COMPLETADA", 1), v("COMPLETADA", 1), v("COMPLETADA", 2), v("EN_CURSO", 3)]
@@ -57,46 +61,48 @@ beforeEach(() => {
   );
 });
 
+const indicador = (titulo: string) => screen.getByText(titulo).closest("a")!;
+
 describe("panel de operación", () => {
-  it("parte en «Hoy» con los KPI del día", async () => {
+  it("parte en «Hoy» con los indicadores del día", async () => {
     render(<PanelDashboard data={await datos()} />);
     expect(screen.getByRole("heading", { name: "Panel de operación" })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Hoy" })).toBeChecked();
-    expect(screen.getByText("Visitas · hoy")).toBeInTheDocument();
-    expect(screen.getByText("Cumplimiento · hoy")).toBeInTheDocument();
-    expect(screen.getAllByText("75%").length).toBeGreaterThan(0);
-    expect(screen.getByText("3 de 4 cerradas a tiempo")).toBeInTheDocument();
-    expect(screen.getByText("3 técnicos en terreno")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Hoy" })).toHaveAttribute("aria-pressed", "true");
+    expect(indicador("Visitas hoy")).toHaveTextContent("4programadas3 técnicos en terreno");
+    expect(indicador("Cerradas a tiempo")).toHaveTextContent("3de 417 puntos bajo la meta");
   });
 
-  it("cambiar de rango recalcula todo con los datos de ese rango", async () => {
+  it("cambiar de período recalcula con sus datos", async () => {
     const u = userEvent.setup();
     render(<PanelDashboard data={await datos()} />);
-    await u.click(screen.getByRole("radio", { name: "Semana" }));
-    expect(screen.getByText("Visitas · semana")).toBeInTheDocument();
-    expect(screen.getAllByText("60%").length).toBeGreaterThan(0);
-    expect(screen.getByText("6 de 10 cerradas a tiempo")).toBeInTheDocument();
-    expect(screen.getByText("4 sin cerrar a tiempo")).toBeInTheDocument();
+    await u.click(screen.getByRole("button", { name: "Semana" }));
+    expect(indicador("Visitas de la semana")).toHaveTextContent("10programadas");
+    expect(indicador("Cerradas a tiempo")).toHaveTextContent("6de 10");
 
-    await u.click(screen.getByRole("radio", { name: "Mes" }));
-    expect(screen.getByText("Visitas · mes")).toBeInTheDocument();
-    expect(screen.getAllByText("25%").length).toBeGreaterThan(0);
-    expect(screen.getByText("Esperan nueva fecha")).toBeInTheDocument();
-    expect(screen.getByText(/de este mes$/)).toBeInTheDocument();
+    await u.click(screen.getByRole("button", { name: "Mes" }));
+    expect(indicador("Visitas del mes")).toHaveTextContent("20programadas");
+    expect(indicador("Esperan nueva fecha")).toHaveTextContent("4visitas15 eran de este mes");
   });
 
-  it("los KPI enlazan a la vista filtrada correspondiente", async () => {
+  it("los indicadores llevan a su sección", async () => {
     render(<PanelDashboard data={await datos()} />);
-    expect(screen.getByRole("link", { name: /Ver visitas/ })).toHaveAttribute("href", "/admin/visitas");
-    expect(screen.getByRole("link", { name: /Ver completadas/ })).toHaveAttribute("href", "/admin/visitas?estado=COMPLETADA");
-    expect(screen.getByRole("link", { name: /Ver problemas/ })).toHaveAttribute("href", "/admin/problemas");
-    expect(screen.getByRole("link", { name: /Ver reagendas/ })).toHaveAttribute("href", "/admin/reagendas");
+    expect(indicador("Visitas hoy")).toHaveAttribute("href", "/admin/visitas");
+    expect(indicador("Cerradas a tiempo")).toHaveAttribute("href", "#tecnicos");
+    expect(indicador("Problemas abiertos")).toHaveAttribute("href", "/admin/problemas");
+    expect(indicador("Esperan nueva fecha")).toHaveAttribute("href", "#reagendamientos");
   });
 
-  it("muestra los problemas abiertos en total y por tipo", async () => {
+  it("elegir un tipo de problema lo destaca y ofrece ir a Problemas", async () => {
+    const u = userEvent.setup();
     render(<PanelDashboard data={await datos()} />);
     expect(screen.getByText("7 abiertos")).toBeInTheDocument();
-    expect(screen.getByText("Otro problema")).toBeInTheDocument();
+    expect(screen.getByText("Sin clasificar")).toBeInTheDocument();
+    const tipo = screen.getByRole("button", { name: /Otro problema/ });
+    await u.click(tipo);
+    expect(tipo).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("link", { name: "Ver problemas" })).toHaveAttribute("href", "/admin/problemas?tipo=OTRO");
+    await u.click(tipo);
+    expect(screen.queryByRole("link", { name: "Ver problemas" })).toBeNull();
   });
 
   it("muestra el tiempo en sitio promedio y por motivo", async () => {
@@ -106,45 +112,49 @@ describe("panel de operación", () => {
     expect(screen.getByText("55 min")).toBeInTheDocument();
   });
 
-  it("sin problemas registrados lo dice", async () => {
+  it("los vacíos explican qué falta", async () => {
     q.getProblemasPorTipo.mockResolvedValue([]);
     render(<PanelDashboard data={await datos()} />);
-    expect(screen.getByText("Sin problemas registrados en este período.")).toBeInTheDocument();
+    expect(screen.getByText(/No hay problemas abiertos/)).toBeInTheDocument();
+    expect(screen.getByText(/Todavía no se resuelve ningún problema/)).toBeInTheDocument();
+    expect(screen.getByText("No hay reagendamientos.")).toBeInTheDocument();
   });
 
-  it("la distribución de estados enlaza al listado filtrado por cada estado", async () => {
+  it("cada estado enlaza al listado filtrado", async () => {
     render(<PanelDashboard data={await datos()} />);
     const enlace = screen.getByRole("link", { name: /Completada/ });
     expect(enlace).toHaveAttribute("href", "/admin/visitas?estado=COMPLETADA");
     expect(within(enlace).getByText("75%")).toBeInTheDocument();
-    expect(screen.getByText("4 visitas")).toBeInTheDocument();
   });
 
-  it("en «Hoy» el cumplimiento se lee por técnico y cada fila abre sus visitas del día", async () => {
-    render(<PanelDashboard data={await datos()} />);
-    const fila = screen.getByText("Ana Pérez").closest("a")!;
-    expect(fila).toHaveAttribute("href", expect.stringMatching(/fecha=.+&tecnico=/));
-    expect(within(fila).getByText("4")).toBeInTheDocument();
-    expect(within(fila).getByText("3")).toBeInTheDocument();
-    expect(screen.queryByText("Carga por técnico")).toBeNull();
-  });
-
-  it("en semana o mes la carga por técnico muestra programadas y realizadas", async () => {
+  it("cada técnico abre sus visitas; solo en «Hoy» se filtra además por fecha", async () => {
     const u = userEvent.setup();
     render(<PanelDashboard data={await datos()} />);
-    await u.click(screen.getByRole("radio", { name: "Semana" }));
-    const fila = screen.getByText("Ana Pérez").closest("tr")!;
-    expect(within(fila).getByText("4")).toBeInTheDocument();
-    expect(within(fila).getByText("3")).toBeInTheDocument();
+    const fila = () => screen.getByText("Ana Pérez").closest("a")!;
+    expect(fila()).toHaveAttribute("href", `/admin/visitas?fecha=${HOY}&tecnico=1`);
+    expect(fila()).toHaveTextContent("3 de 4 a tiempo");
+    await u.click(screen.getByRole("button", { name: "Semana" }));
+    expect(fila()).toHaveAttribute("href", "/admin/visitas?tecnico=1");
   });
 
-  it("con cero visitas no se rompe (todo en cero)", async () => {
+  it("marca los registros de prueba sin esconderlos", async () => {
+    q.getSucursalFallas.mockResolvedValue([
+      { sucursalId: 9, total: 2, sinCerrar: 1, sucursal: { nombre: "ZZ Sucursal", comuna: "Maipú", cliente: "Cliente de Pruebas" } },
+    ]);
+    q.getReagendas.mockResolvedValue([
+      { reagendamiento: { id: 1, motivo: "prueba funcional" }, visita: { folio: "V-1", sucursal: { nombre: "Centro" } } },
+    ]);
+    render(<PanelDashboard data={await datos()} />);
+    expect(screen.getAllByText("Prueba")).toHaveLength(2);
+    expect(screen.getByText("ZZ Sucursal", { exact: false })).toBeInTheDocument();
+  });
+
+  it("con cero visitas no se rompe", async () => {
     q.getVisitasRango.mockResolvedValue([]);
-    q.getEstadoHoyDistribucion.mockResolvedValue([]);
-    q.getCumplimientoRango.mockResolvedValue([]);
     q.getCargaTecnico.mockResolvedValue([]);
     render(<PanelDashboard data={await datos()} />);
-    expect(screen.getAllByText("0%").length).toBeGreaterThan(0);
-    expect(screen.getByText("0 visitas")).toBeInTheDocument();
+    expect(indicador("Cerradas a tiempo")).toHaveTextContent("Sin visitas en el período");
+    expect(screen.getByText(/Nadie tiene visitas programadas/)).toBeInTheDocument();
+    expect(screen.getAllByText("0 visitas").length).toBeGreaterThan(0);
   });
 });

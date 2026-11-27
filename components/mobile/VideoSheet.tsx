@@ -106,9 +106,9 @@ export default function VideoSheet({
       aria-label="Grabar video"
       className="fixed inset-0 z-50 bg-[rgba(31,28,33,.7)] flex flex-col justify-end items-center"
     >
-      <div className="w-full max-w-[460px] max-h-[94vh] overflow-y-auto bg-[var(--color-bg)] border-t-2 border-[var(--color-text)] animate-up-sheet">
-        <div className="flex items-center gap-2.5 px-4 py-3.5 border-b-2 border-[var(--color-divider)]">
-          <div className="font-extrabold text-lead leading-[1.2]">
+      <div className="w-full max-w-[460px] max-h-[94vh] overflow-y-auto bg-[var(--color-bg)] border-t border-[var(--color-line)] animate-up-sheet">
+        <div className="flex items-center gap-2.5 px-4 py-3.5 border-b border-[var(--color-line)]">
+          <div className="font-semibold text-lead leading-[1.2]">
             {estado === "revisando" ? "Revisa el video" : estado === "ajustando" ? "Ajustando el video" : "Grabar video"}
           </div>
           <button
@@ -125,7 +125,7 @@ export default function VideoSheet({
 
         <div className="p-4">
           {estado === "revisando" && clip ? (
-            <div className="relative w-full aspect-[16/9] bg-black overflow-hidden border border-[var(--color-divider)]">
+            <div className="relative w-full aspect-[16/9] bg-black overflow-hidden border border-[var(--color-line)] rounded-[10px]">
               <video
                 src={clip.url}
                 controls
@@ -139,7 +139,7 @@ export default function VideoSheet({
           {estado === "ajustando" ? (
             <>
               <div className="px-4 py-8 text-center bg-[var(--color-text)] text-[var(--color-bg)]">
-                <div className="font-extrabold text-lead">Recortando y bajando a 720p…</div>
+                <div className="font-semibold text-lead">Recortando y bajando a 720p…</div>
                 <div className="mt-1 opacity-80 tabular-nums">{ajuste}%</div>
               </div>
               <div className="h-1 mt-2 bg-[var(--color-divider)] overflow-hidden">
@@ -157,7 +157,7 @@ export default function VideoSheet({
 
           {estado === "lista" ? (
             <>
-              <label className="relative w-full min-h-[64px] flex items-center justify-between px-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] font-extrabold text-lead cursor-pointer hover:bg-[var(--color-accent-hover)]">
+              <label className="relative w-full min-h-[64px] flex items-center justify-between px-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] font-semibold text-lead cursor-pointer hover:bg-[var(--color-accent-hover)]">
                 <span>Grabar con la cámara</span>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
                   <path d="M3 7h11v10H3z" />
@@ -189,14 +189,14 @@ export default function VideoSheet({
               </div>
               {clip.ajustes.length ? (
                 <div className="mt-2 px-3 py-2.5 bg-[var(--color-surface-3)] border border-[var(--color-accent-300)] text-cap leading-[1.45]">
-                  <span className="font-extrabold">Se ajustó para poder guardarlo: </span>
+                  <span className="font-semibold">Se ajustó para poder guardarlo: </span>
                   {clip.ajustes.join("; ")}. Revísalo antes de aceptarlo.
                 </div>
               ) : null}
               <button
                 type="button"
                 onClick={aceptar}
-                className="w-full min-h-[58px] flex items-center justify-between px-4.5 mt-2.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)]"
+                className="w-full min-h-[58px] flex items-center justify-between px-4.5 mt-2.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-semibold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)]"
               >
                 <span>Usar este video</span>
                 <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -206,7 +206,7 @@ export default function VideoSheet({
               <button
                 type="button"
                 onClick={repetir}
-                className="w-full min-h-[50px] mt-2.5 px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
+                className="w-full min-h-[50px] mt-2.5 px-4 bg-transparent border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] font-semibold text-ui cursor-pointer text-left hover:bg-black/[.07]"
               >
                 Grabar otro
               </button>
@@ -216,7 +216,7 @@ export default function VideoSheet({
           {error ? <p className="mt-2.5 mb-0 text-cap text-[var(--color-danger-800)]">{error}</p> : null}
 
           {estado === "lista" ? (
-            <label className="relative w-full min-h-[52px] flex items-center gap-2.5 px-4 mt-2.5 bg-transparent border border-dashed border-black/[.5] text-[var(--color-text)] font-extrabold text-ui cursor-pointer hover:bg-black/[.06]">
+            <label className="relative w-full min-h-[52px] flex items-center gap-2.5 px-4 mt-2.5 bg-transparent border border-dashed border-[var(--color-line)] text-[var(--color-text)] font-semibold text-ui cursor-pointer hover:bg-black/[.06]">
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path d="M4 5h16v14H4z" />
                 <path d="M10 9l5 3-5 3z" />
@@ -236,7 +236,7 @@ export default function VideoSheet({
             <button
               type="button"
               onClick={cerrar}
-              className="w-full min-h-[50px] mt-2.5 px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
+              className="w-full min-h-[50px] mt-2.5 px-4 bg-transparent border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] font-semibold text-ui cursor-pointer text-left hover:bg-black/[.07]"
             >
               Cancelar
             </button>

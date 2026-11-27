@@ -1,5 +1,5 @@
-import Cargando from "@/components/ui/Cargando";
+import { EsqueletoPanel } from "@/components/ui/esqueletos";
 
 export default function Loading() {
-  return <Cargando compacta />;
+  return <EsqueletoPanel />;
 }

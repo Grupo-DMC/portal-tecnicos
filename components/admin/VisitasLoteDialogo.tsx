@@ -1,4 +1,6 @@
 "use client";
+import { dmyAIso, hoyISO, isoADmy } from "@/lib/ui/fecha";
+import DatePicker from "@/components/ui/DatePicker";
 
 import { useMemo, useState } from "react";
 import Tag from "@/components/Tag";
@@ -133,7 +135,7 @@ export default function VisitasLoteDialogo({
             buscable: true,
             opciones: [{ v: "", t: "No cambiar" }, ...opcAyudante(String(form.tecnicoId))],
           },
-          ...camposFecha(form, "Vacía = cada visita conserva la suya.").map((c) => ({
+          ...camposFecha(form, "Vacía = cada visita conserva la suya.", hoyISO()).map((c) => ({
             ...c,
             label: c.k === "fecha" ? (form.margen === true ? "Desde · para todas" : "Nueva fecha · para todas") : "Hasta · para todas",
             ...(c.k === "fechaHasta" ? { ayuda: undefined } : null),
@@ -181,7 +183,6 @@ export default function VisitasLoteDialogo({
               label: `Escribe «${fraseEliminar}» para confirmar`,
               span: 2,
               ph: fraseEliminar,
-              ayuda: "Si quitas visitas de la lista, el número cambia.",
             },
           ];
 
@@ -323,9 +324,9 @@ export default function VisitasLoteDialogo({
       onGuardar={guardar}
       guardando={guardando}
     >
-      <div className="mt-5 border border-black/[.3]">
+      <div className="mt-5 border border-[var(--color-line)] rounded-[10px]">
         <div className="flex items-center gap-2.5 px-3.5 py-2.5 bg-[var(--color-surface)] border-b border-[var(--color-divider-soft)]">
-          <div className="font-extrabold text-cap ">Visitas seleccionadas</div>
+          <div className="font-semibold text-cap ">Visitas seleccionadas</div>
           <div className="ml-auto text-cap opacity-66 tabular-nums">
             {guardando && n > TANDA ? `Aplicando… ${avance} de ${n}` : nVisitas(n)}
           </div>
@@ -336,7 +337,7 @@ export default function VisitasLoteDialogo({
         ) : null}
 
         {filas.map(({ visita: v, propio: p }) => (
-          <div key={v.folio} className="border-b border-black/[.18] last:border-b-0">
+          <div key={v.folio} className="border-b border-[var(--color-line)] last:border-b-0">
             <div className="flex items-center gap-2 px-3.5 py-2">
               <button
                 type="button"
@@ -377,7 +378,7 @@ export default function VisitasLoteDialogo({
               <button
                 type="button"
                 onClick={() => setFilas((prev) => prev.filter((x) => x.visita.folio !== v.folio))}
-                className="btn btn-icon w-8 h-8 flex-none border border-black/[.3]"
+                className="btn btn-icon w-8 h-8 flex-none border border-[var(--color-line)] rounded-[10px]"
                 aria-label={`Quitar ${v.folio} de la lista`}
                 title="Quitar de la lista"
               >
@@ -503,6 +504,8 @@ function CampoFila({
           autoComplete="off"
           className="input min-h-[64px] px-3.5 py-3 resize-y leading-[1.5]"
         />
+      ) : tipo === "date" ? (
+        <DatePicker modo="single" id={id} valor={isoADmy(valor)} minimo={isoADmy(hoyISO())} onChange={(v) => onCambiar(folio, { [k]: dmyAIso(v) })} />
       ) : (
         <input
           id={id}

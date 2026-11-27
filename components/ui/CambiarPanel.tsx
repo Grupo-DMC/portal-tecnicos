@@ -1,4 +1,5 @@
 "use client";
+import Espera from "@/components/ui/Espera";
 
 import { useFormStatus } from "react-dom";
 import { cambiarModoAction } from "@/app/actions/auth";
@@ -25,7 +26,7 @@ function Icono() {
 
 function Boton({ destino, variante }: { destino: Modo; variante: "menu" | "barra" | "franja" }) {
   const { pending } = useFormStatus();
-  const texto = pending ? "Cambiando…" : TEXTO[destino].largo;
+  const texto = <Espera activo={pending} accion="Cambiando de panel">{TEXTO[destino].largo}</Espera>;
   if (variante === "barra") {
     return (
       <button
@@ -33,10 +34,10 @@ function Boton({ destino, variante }: { destino: Modo; variante: "menu" | "barra
         disabled={pending}
         aria-label={TEXTO[destino].largo}
         title={TEXTO[destino].largo}
-        className="shrink-0 min-h-10 px-2.5 inline-flex items-center gap-1.5 border border-[var(--color-accent)] text-[var(--color-accent-active)] font-extrabold text-cap hover:bg-[var(--color-accent-100)] disabled:opacity-60"
+        className="shrink-0 min-h-10 px-2.5 inline-flex items-center gap-1.5 border border-[var(--color-accent)] text-[var(--color-accent-active)] font-semibold text-cap hover:bg-[var(--color-accent-100)] disabled:opacity-60"
       >
         <Icono />
-        <span>{pending ? "…" : TEXTO[destino].corto}</span>
+        <Espera activo={pending} accion="Cambiando de panel">{TEXTO[destino].corto}</Espera>
       </button>
     );
   }
@@ -45,10 +46,10 @@ function Boton({ destino, variante }: { destino: Modo; variante: "menu" | "barra
       <button
         type="submit"
         disabled={pending}
-        className="shrink-0 min-h-10 px-3 inline-flex items-center gap-1.5 bg-[var(--color-bg)] border border-[var(--color-accent)] text-[var(--color-accent-active)] font-extrabold text-cap hover:bg-[var(--color-accent-100)] disabled:opacity-60"
+        className="shrink-0 min-h-10 px-3 inline-flex items-center gap-1.5 bg-[var(--color-bg)] border border-[var(--color-accent)] text-[var(--color-accent-active)] font-semibold text-cap hover:bg-[var(--color-accent-100)] disabled:opacity-60"
       >
         <Icono />
-        <span>{texto}</span>
+        {texto}
       </button>
     );
   }
@@ -56,10 +57,11 @@ function Boton({ destino, variante }: { destino: Modo; variante: "menu" | "barra
     <button
       type="submit"
       disabled={pending}
-      className="w-full min-h-11 flex items-center gap-2.5 px-3 bg-[var(--color-accent)] text-[var(--color-bg)] font-extrabold text-meta text-left hover:bg-[var(--color-accent-active)] disabled:opacity-60"
+      // Va dentro del menú lateral: su estilo es el del rediseño (rediseno.css).
+      className="switch-panel"
     >
       <Icono />
-      <span>{texto}</span>
+      {texto}
     </button>
   );
 }

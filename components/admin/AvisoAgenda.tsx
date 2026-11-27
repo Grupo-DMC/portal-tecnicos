@@ -50,11 +50,11 @@ export default function AvisoAgenda({ conflictos, fecha }: { conflictos: Conflic
 
   return (
     <section role="alert" className="mt-4 border-2 border-[var(--color-danger)] bg-[var(--color-surface)] px-4 py-3.5">
-      <div className="text-cap font-extrabold text-[var(--color-danger)]">Atención · posible trabajo duplicado</div>
+      <div className="text-cap font-semibold text-[var(--color-danger)]">Atención · posible trabajo duplicado</div>
 
       {duplicados.length > 0 ? (
         <div className="mt-2">
-          <p className="m-0 font-extrabold text-body leading-[1.3]">
+          <p className="m-0 font-semibold text-body leading-[1.3]">
             {duplicados[0].repetidos.join(" y ")} ya tiene{duplicados[0].repetidos.length > 1 ? "n" : ""} agendado este
             local el {dia}
           </p>
@@ -71,7 +71,7 @@ export default function AvisoAgenda({ conflictos, fecha }: { conflictos: Conflic
 
       {otros.length > 0 ? (
         <div className={duplicados.length > 0 ? "mt-3" : "mt-2"}>
-          <p className="m-0 font-extrabold text-body leading-[1.3]">
+          <p className="m-0 font-semibold text-body leading-[1.3]">
             Otros técnicos van al mismo {otros.every((c) => c.alcance === "LOCAL") ? "local" : "local o mall"} el {dia}
           </p>
           <ul className="list-none m-0 mt-2 p-0 flex flex-col gap-1.5">

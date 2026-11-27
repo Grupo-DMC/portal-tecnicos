@@ -59,5 +59,7 @@ export default async function ActaPage({ params }: { params: Promise<{ folio: st
     };
   }
 
-  return <ActaView visita={paraPanel} enviada={await getActaEnviada(visita.folio)} correo={correo} />;
+  return (
+    <ActaView visita={paraPanel} enviada={await getActaEnviada(visita.folio)} correo={correo} puedeVerRut={esAdmin(sesion)} />
+  );
 }

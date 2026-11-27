@@ -36,7 +36,7 @@ function OpcionesRecortadas<T>({
       {ocultas > 0 ? (
         <button
           onClick={() => setAbierto(true)}
-          className="w-full min-h-[46px] px-3.5 bg-transparent border border-dashed border-black/[.4] text-[var(--color-text)] text-ui font-extrabold cursor-pointer text-left hover:bg-black/[.07]"
+          className="w-full min-h-[46px] px-3.5 bg-transparent border border-dashed border-[var(--color-line)] text-[var(--color-text)] text-ui font-semibold cursor-pointer text-left hover:bg-black/[.07]"
         >
           Ver {ocultas === 1 ? "la 1 restante" : `las ${ocultas} restantes`}
         </button>
@@ -83,7 +83,7 @@ export function HojaTrabajo({ fv }: { fv: FormularioVisitaApi }) {
                 <div className="text-cap text-[var(--color-accent-800)]">
                   Ya agregaste
                 </div>
-                <div className="text-ui font-extrabold mt-1">{nt.agregados.map(nombreTrabajo).join(" · ")}</div>
+                <div className="text-ui font-semibold mt-1">{nt.agregados.map(nombreTrabajo).join(" · ")}</div>
               </div>
             ) : null}
             <div>
@@ -107,7 +107,7 @@ export function HojaTrabajo({ fv }: { fv: FormularioVisitaApi }) {
                     })
                   : ofrecidos.map(filaTrabajo)}
                 {ofrecidos.length === 0 ? (
-                  <div className="px-3.5 py-3 border border-dashed border-black/[.4] text-meta opacity-70">
+                  <div className="px-3.5 py-3 border border-dashed border-[var(--color-line)] text-meta opacity-70">
                     El checklist no tiene trabajos para este motivo. Avisa a coordinación.
                   </div>
                 ) : null}
@@ -144,7 +144,7 @@ export function HojaTrabajo({ fv }: { fv: FormularioVisitaApi }) {
                           }}
                         >
                           <span
-                            className="w-[18px] h-[18px] flex-none border-2 border-[var(--color-text)] grid place-items-center"
+                            className="w-[18px] h-[18px] flex-none border border-[var(--color-line)] rounded-[14px] grid place-items-center"
                             style={{ background: activo ? "var(--color-accent)" : "transparent" }}
                           >
                             {activo ? (
@@ -194,7 +194,7 @@ export function HojaTrabajo({ fv }: { fv: FormularioVisitaApi }) {
                 setNt((p) => ({ ...p, codigo: "", subs: [], agregados: [...p.agregados, p.codigo] }));
                 aviso(`${nombreTrabajo(nt.codigo)} agregado · ¿qué más hiciste?`);
               }}
-              className="w-full min-h-[58px] flex items-center justify-between px-4.5 border-0 font-extrabold text-lead cursor-pointer text-left hover:brightness-95"
+              className="w-full min-h-[58px] flex items-center justify-between px-4.5 border-0 font-semibold text-lead cursor-pointer text-left hover:brightness-95"
               style={{
                 background: nt.codigo ? "var(--color-accent)" : "var(--color-neutral-500)",
                 color: nt.codigo ? "var(--color-bg)" : "var(--color-surface-3)",
@@ -208,7 +208,7 @@ export function HojaTrabajo({ fv }: { fv: FormularioVisitaApi }) {
             {nt.agregados.length > 0 ? (
               <button
                 onClick={() => setSheet(null)}
-                className="w-full min-h-[50px] px-4 -mt-2 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
+                className="w-full min-h-[50px] px-4 -mt-2 bg-transparent border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] font-semibold text-ui cursor-pointer text-left hover:bg-black/[.07]"
               >
                 Listo, no hice nada más
               </button>
@@ -243,7 +243,7 @@ export function HojaProblema({ fv }: { fv: FormularioVisitaApi }) {
       <button
         key={t.codigo}
         onClick={() => setNp((p) => ({ ...p, codigo: t.codigo, items: [] }))}
-        className="w-full min-h-[54px] flex items-center gap-3 px-3.5 font-extrabold text-body leading-[1.3] cursor-pointer text-left"
+        className="w-full min-h-[54px] flex items-center gap-3 px-3.5 font-semibold text-body leading-[1.3] cursor-pointer text-left"
         style={{
           background: activo ? "var(--color-accent)" : "var(--color-surface-3)",
           color: activo ? "#fff" : "var(--color-text)",
@@ -296,7 +296,7 @@ export function HojaProblema({ fv }: { fv: FormularioVisitaApi }) {
             </div>
 
             {probSel && probSel.opciones.length > 0 ? (
-              <div className="border-t border-black/[.3] pt-4">
+              <div className="border-t border-[var(--color-line)] pt-4">
                 <PasoTitulo n="2" texto={probSel.grupoLabel ?? "Detalle"} />
                 <p className="m-0 mb-3 ml-[33px] text-meta opacity-60">
                   {probSel.ayuda ?? `Marca ${(probSel.grupoLabel ?? "el detalle").toLowerCase()} y ajusta la cantidad.`}
@@ -324,7 +324,7 @@ export function HojaProblema({ fv }: { fv: FormularioVisitaApi }) {
                           }}
                         >
                           <span
-                            className="w-[22px] h-[22px] flex-none border-2 border-[var(--color-text)] grid place-items-center"
+                            className="w-[22px] h-[22px] flex-none border border-[var(--color-line)] rounded-[14px] grid place-items-center"
                             style={{ background: activo ? "var(--color-accent)" : "transparent" }}
                           >
                             {activo ? (
@@ -342,9 +342,6 @@ export function HojaProblema({ fv }: { fv: FormularioVisitaApi }) {
                     );
                   })}
                 </div>
-                <p className="mt-3 mb-0 text-cap opacity-62">
-                  Toca para marcar. Las opciones que llevan cantidad muestran − y + al marcarlas.
-                </p>
               </div>
             ) : null}
 
@@ -385,7 +382,7 @@ export function HojaProblema({ fv }: { fv: FormularioVisitaApi }) {
                 setAbierta("problemas");
                 aviso(np.editando === null ? "Problema agregado a la ficha" : "Problema corregido");
               }}
-              className="w-full min-h-[58px] flex items-center justify-between px-4.5 border-0 font-extrabold text-lead cursor-pointer text-left hover:brightness-95"
+              className="w-full min-h-[58px] flex items-center justify-between px-4.5 border-0 font-semibold text-lead cursor-pointer text-left hover:brightness-95"
               style={{
                 background: probListo ? "var(--color-accent)" : "var(--color-neutral-500)",
                 color: probListo ? "var(--color-bg)" : "var(--color-surface-3)",

@@ -1,4 +1,5 @@
 "use client";
+import Espera from "@/components/ui/Espera";
 
 import { useActionState, useState } from "react";
 import { cambiarPasswordAction, logoutAction, type CambioPasswordState } from "@/app/actions/auth";
@@ -55,9 +56,9 @@ export default function CambiarPasswordForm() {
         <button
           type="submit"
           disabled={pending}
-          className="w-full min-h-[58px] flex items-center justify-between gap-2.5 px-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-lead cursor-pointer text-left mt-1.5 hover:bg-[var(--color-accent-hover)] active:bg-[var(--color-accent-active)] disabled:opacity-60"
+          className="w-full min-h-[58px] flex items-center justify-between gap-2.5 px-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-semibold text-lead cursor-pointer text-left mt-1.5 hover:bg-[var(--color-accent-hover)] active:bg-[var(--color-accent-active)] disabled:opacity-60"
         >
-          <span>{pending ? "Guardando…" : "Guardar y entrar"}</span>
+          <Espera activo={pending} accion="Guardando">Guardar y entrar</Espera>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
             <path d="M5 12h14M13 6l6 6-6 6" />
           </svg>

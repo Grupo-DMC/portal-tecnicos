@@ -30,21 +30,21 @@ export default async function PerfilPage() {
         <div className="flex items-center gap-3.5">
           <div
             aria-hidden="true"
-            className="w-16 h-16 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-h2 leading-none tracking-[.02em]"
+            className="w-16 h-16 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-semibold text-h2 leading-none tracking-[.02em]"
           >
             {iniciales || "—"}
           </div>
           <div className="min-w-0">
-            <h1 className="font-extrabold text-h2 leading-[1.1] tracking-[-.03em] m-0">{tecnico.nombreCompleto}</h1>
+            <h1 className="font-semibold text-h2 leading-[1.1] tracking-[-.01em] m-0">{tecnico.nombreCompleto}</h1>
             <div className="text-meta text-[var(--color-muted)] mt-1">Técnico en terreno</div>
           </div>
         </div>
 
-        <div className="mt-4.5 border border-[var(--color-divider)] bg-[var(--color-surface-3)] px-3.5">
+        <div className="mt-4.5 border border-[var(--color-line)] rounded-[10px] bg-[var(--color-surface-3)] px-3.5">
           {filas.map((f, i) => (
             <div
               key={f.k}
-              className={`flex items-baseline gap-3 py-3 ${i > 0 ? "border-t border-black/[.15]" : ""}`}
+              className={`flex items-baseline gap-3 py-3 ${i > 0 ? "border-t border-[var(--color-line)]" : ""}`}
             >
               <div className="text-cap opacity-62 w-[78px] flex-none">{f.k}</div>
               <div className="text-ui min-w-0 tabular-nums">{f.v}</div>

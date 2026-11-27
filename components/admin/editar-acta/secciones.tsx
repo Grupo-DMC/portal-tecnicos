@@ -21,7 +21,7 @@ export function Encabezado({ fv }: { fv: EditarActaApi }) {
   return (
     <>
       {/* De qué acta se trata, y las reglas del juego en una línea. */}
-      <div className="border border-[var(--color-divider-soft)] bg-[var(--color-surface-3)]">
+      <div className="border border-[var(--color-line)] rounded-[10px] bg-[var(--color-surface-3)]">
         <div className="grid grid-cols-2 sm:grid-cols-4">
           {[
             { k: "Cliente", v: visita.cliente?.nombreFantasia ?? "—" },
@@ -31,7 +31,7 @@ export function Encabezado({ fv }: { fv: EditarActaApi }) {
           ].map((d) => (
             <div key={d.k} className="px-4 py-3 min-w-0 border-r border-b border-[var(--color-divider-faint)]">
               <div className="text-cap opacity-62">{d.k}</div>
-              <div className="text-ui font-extrabold leading-[1.3] mt-1 truncate" title={d.v}>
+              <div className="text-ui font-semibold leading-[1.3] mt-1 truncate" title={d.v}>
                 {d.v}
               </div>
             </div>
@@ -76,7 +76,6 @@ export function SeccionResponsable({ fv }: { fv: EditarActaApi }) {
         id="responsable"
         n={1}
         titulo="Responsable de tienda"
-        ayuda="Quien recibió al técnico y firmó el acta."
         cambio={cambio("responsable")}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4">
@@ -173,7 +172,6 @@ export function SeccionTrabajo({ fv }: { fv: EditarActaApi }) {
         id="trabajo"
         n={2}
         titulo="Motivo y trabajo realizado"
-        ayuda="Cada motivo con lo que se hizo en él. Lo marcado es lo que sale en el acta."
         cambio={cambio("trabajo")}
       >
         <div className="flex flex-col gap-5">
@@ -183,10 +181,10 @@ export function SeccionTrabajo({ fv }: { fv: EditarActaApi }) {
               (t) => !suyos.some((x) => x.codigo === t.codigo)
             );
             return (
-              <div key={codigo} className="border border-[var(--color-divider-soft)] bg-white">
+              <div key={codigo} className="border border-[var(--color-line)] rounded-[10px] bg-white">
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--color-divider-faint)]">
                   <div className="min-w-0 flex-1">
-                    <div className="font-extrabold text-lead leading-[1.25]">{nombreMotivo(codigo)}</div>
+                    <div className="font-semibold text-lead leading-[1.25]">{nombreMotivo(codigo)}</div>
                   </div>
                   {agendados.includes(codigo) ? (
                     <span className="tag tag-neutral flex-none" title={autorDeVisita(visita) ? `Lo agendó ${autorDeVisita(visita)}` : "Lo agendó quien creó la visita"}>
@@ -226,7 +224,7 @@ export function SeccionTrabajo({ fv }: { fv: EditarActaApi }) {
                     return (
                       <div key={t.id} className="border border-[var(--color-divider-faint)] bg-[var(--color-surface-3)]">
                         <div className="flex items-center gap-3 pl-4 pr-2 py-2">
-                          <div className="font-extrabold text-body leading-[1.3] flex-1 min-w-0">{nombreTrabajo(t.codigo)}</div>
+                          <div className="font-semibold text-body leading-[1.3] flex-1 min-w-0">{nombreTrabajo(t.codigo)}</div>
                           {t.subs.length > 0 ? (
                             <span className="text-cap opacity-62 tabular-nums flex-none">
                               {t.subs.length} {t.subs.length === 1 ? "marcado" : "marcados"}

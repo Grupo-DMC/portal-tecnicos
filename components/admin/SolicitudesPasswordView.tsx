@@ -1,4 +1,5 @@
 "use client";
+import Espera from "@/components/ui/Espera";
 
 import { useMemo, useState } from "react";
 import { sinTildes } from "@/lib/ui/formato";
@@ -108,15 +109,15 @@ export default function SolicitudesPasswordView({
         </div>
 
         {entregada ? (
-          <div className="mx-4 md:mx-7 mt-5 border-2 border-[var(--color-text)] bg-[var(--color-surface-3)]">
-            <div className="px-4 py-3 border-b border-[var(--color-divider)] font-extrabold text-body">
+          <div className="mx-4 md:mx-7 mt-5 border border-[var(--color-line)] rounded-[14px] bg-[var(--color-surface-3)]">
+            <div className="px-4 py-3 border-b border-[var(--color-divider)] font-semibold text-body">
               Contraseña asignada a {entregada.email}
             </div>
             <div className="px-4 py-3.5">
               <div className="text-cap opacity-62 mb-1.5">
                 Anótala ahora — no se puede volver a mostrar
               </div>
-              <code className="inline-block px-3 py-2 bg-[var(--color-bg)] border border-black/[.35] text-lead tracking-[.06em]">
+              <code className="inline-block px-3 py-2 bg-[var(--color-bg)] border border-[var(--color-line)] rounded-[10px] text-lead tracking-[.06em]">
                 {entregada.clave}
               </code>
               <p className="mt-2.5 mb-0 text-meta opacity-70">
@@ -217,7 +218,7 @@ export default function SolicitudesPasswordView({
 
           {filtradas.length === 0 ? (
             <div className="py-14 text-center">
-              <div className="font-extrabold text-lead mb-1.5">Nada pendiente</div>
+              <div className="font-semibold text-lead mb-1.5">Nada pendiente</div>
               <div className="text-meta opacity-66">
                 Cuando alguien apriete «Olvidé mi contraseña» en el login, la solicitud aparece acá.
               </div>
@@ -234,10 +235,10 @@ export default function SolicitudesPasswordView({
           className="fixed inset-0 z-[60] bg-[rgba(31,28,33,.5)] grid place-items-center p-3 sm:p-6"
         >
           <div
-            className="w-full max-w-[520px] bg-[var(--color-bg)] border-2 border-[var(--color-text)] animate-up-dlg"
+            className="w-full max-w-[520px] bg-[var(--color-bg)] border border-[var(--color-line)] rounded-[14px] animate-up-dlg"
           >
-            <div className="px-5.5 py-4.5 border-b-2 border-[var(--color-divider)]">
-              <div className="font-extrabold text-h3 leading-[1.15]">Contraseña temporal</div>
+            <div className="px-5.5 py-4.5 border-b border-[var(--color-line)]">
+              <div className="font-semibold text-h3 leading-[1.15]">Contraseña temporal</div>
               <div className="text-meta text-[var(--color-muted)] mt-1">{dialogo.solicitud.email}</div>
             </div>
             <div className="p-5.5">
@@ -269,7 +270,7 @@ export default function SolicitudesPasswordView({
                   Cancelar
                 </button>
                 <button className="btn btn-primary min-h-11 px-4.5" onClick={asignar} disabled={guardando}>
-                  <span>{guardando ? "Asignando…" : "Asignar contraseña"}</span>
+                  <Espera activo={guardando} accion="Asignando">Asignar contraseña</Espera>
                 </button>
               </div>
             </div>

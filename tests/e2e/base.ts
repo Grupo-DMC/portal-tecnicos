@@ -31,13 +31,13 @@ export const PUERTO = 3100;
 
 const RAIZ = resolve(__dirname, "../..");
 
-export function configBd() {
+export function configBd(base: string = BASE_E2E) {
   const archivo = resolve(RAIZ, ".env.test");
   const delArchivo = existsSync(archivo) ? leerEnv(readFileSync(archivo, "utf8")) : {};
   const g = (k: string) => process.env[k] ?? delArchivo[k];
   const cfg = { server: g("TEST_DB_SERVER"), port: Number(g("TEST_DB_PORT") ?? 1433), user: g("TEST_DB_USER"), password: g("TEST_DB_PASSWORD") };
   if (!cfg.server || !cfg.user || !cfg.password) return null;
-  validarDestinoDePrueba({ server: cfg.server, database: BASE_E2E });
+  validarDestinoDePrueba({ server: cfg.server, database: base });
   return cfg as { server: string; port: number; user: string; password: string };
 }
 
@@ -48,33 +48,36 @@ const opciones = (cfg: NonNullable<ReturnType<typeof configBd>>, database: strin
   requestTimeout: 120_000,
 });
 
-export async function borrarBaseE2E() {
-  const cfg = configBd();
+export async function borrarBaseE2E(base: string = BASE_E2E) {
+  const cfg = configBd(base);
   if (!cfg) return;
-  validarDestinoDePrueba({ server: cfg.server, database: BASE_E2E });
+  validarDestinoDePrueba({ server: cfg.server, database: base });
   const admin = await new sql.ConnectionPool(opciones(cfg, "master")).connect();
   try {
     await admin
       .request()
       .batch(
-        `IF DB_ID('${BASE_E2E}') IS NOT NULL BEGIN ALTER DATABASE [${BASE_E2E}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [${BASE_E2E}]; END`
+        `IF DB_ID('${base}') IS NOT NULL BEGIN ALTER DATABASE [${base}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [${base}]; END`
       );
   } finally {
     await admin.close();
   }
 }
 
-/** Crea la base, aplica el DDL y siembra datos ficticios y cuentas conocidas. */
-export async function crearBaseE2E() {
-  const cfg = configBd();
+/**
+ * Crea la base, aplica el DDL y siembra datos ficticios y cuentas conocidas.
+ * `base` y `extra` los usa la base de comparación con la demo (tests/demo), que suma volumen.
+ */
+export async function crearBaseE2E(base: string = BASE_E2E, extra?: (pool: sql.ConnectionPool) => Promise<void>) {
+  const cfg = configBd(base);
   if (!cfg) throw new Error("Faltan TEST_DB_* (ver .env.test.example): los E2E necesitan una base local desechable.");
-  await borrarBaseE2E();
+  await borrarBaseE2E(base);
 
   const admin = await new sql.ConnectionPool(opciones(cfg, "master")).connect();
-  await admin.request().batch(`CREATE DATABASE [${BASE_E2E}]`);
+  await admin.request().batch(`CREATE DATABASE [${base}]`);
   await admin.close();
 
-  const pool = await new sql.ConnectionPool(opciones(cfg, BASE_E2E)).connect();
+  const pool = await new sql.ConnectionPool(opciones(cfg, base)).connect();
   try {
     const ddl = adaptarEsquema(readFileSync(resolve(RAIZ, "sql/dmc_contingencia_sqlserver.sql"), "utf8"), ESQUEMA_DE_PRUEBA);
     for (const lote of dividirLotes(ddl)) await pool.request().batch(lote);
@@ -117,19 +120,20 @@ export async function crearBaseE2E() {
                        ('${CUENTAS.doble.email}', 'ADMIN'),
                        ('${CUENTAS.doble.email}', 'TECNICO')) AS x (email, rol) ON x.email = u.email;
     `);
+    if (extra) await extra(pool);
   } finally {
     await pool.close();
   }
 }
 
 /** Variables con que se levanta la app bajo prueba: TODAS apuntan a la base E2E local. */
-export function entornoDeLaApp(): Record<string, string> {
-  const cfg = configBd();
+export function entornoDeLaApp(base: string = BASE_E2E): Record<string, string> {
+  const cfg = configBd(base);
   if (!cfg) return {};
   return {
     DB_SERVER: cfg.server,
     DB_PORT: String(cfg.port),
-    DB_NAME: BASE_E2E,
+    DB_NAME: base,
     DB_SCHEMA: ESQUEMA_DE_PRUEBA,
     ...entornoDeEsquemas(),
     DB_USER: cfg.user,

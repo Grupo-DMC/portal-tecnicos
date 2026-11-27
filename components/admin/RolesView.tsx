@@ -18,6 +18,12 @@ import {
 } from "@/lib/permisos";
 import type { Rol } from "@/lib/types";
 
+// «Reagendas y pendientes» salió del menú: sus permisos no se ofrecen. Lo que un
+// rol ya tenga guardado se conserva.
+const visibleEnRoles = (permiso: string) => !permiso.startsWith("reagendas.");
+const MODULOS_VISIBLES = MODULOS.filter((m) => m.clave !== "reagendas");
+const PERMISOS_VISIBLES = TODOS_LOS_PERMISOS.filter(visibleEnRoles);
+
 /**
  * "Roles y permisos": qué puede hacer cada rol del panel, módulo por módulo y
  * acción por acción.
@@ -52,8 +58,8 @@ export default function RolesView({
     /** true = se editan los permisos del celular del Técnico, no un rol del panel. */
     celular?: boolean;
   } | null>(null);
-  const modulos = dialogo?.celular ? MODULOS_CELULAR : MODULOS;
-  const total = dialogo?.celular ? TODOS_LOS_PERMISOS_CELULAR.length : TODOS_LOS_PERMISOS.length;
+  const modulos = dialogo?.celular ? MODULOS_CELULAR : MODULOS_VISIBLES;
+  const total = dialogo?.celular ? TODOS_LOS_PERMISOS_CELULAR.length : PERMISOS_VISIBLES.length;
   const [confirmar, setConfirmar] = useState<ConfirmarCfg | null>(null);
   const [guardando, setGuardando] = useState(false);
 
@@ -148,10 +154,6 @@ export default function RolesView({
 
       <div className="px-4 md:px-7 pt-6 pb-10 animate-fade-in">
         <>
-            <p className="m-0 mb-4 text-meta opacity-66 max-w-[80ch]">
-              Cada usuario del panel tiene un rol y puede hacer lo que su rol tenga marcado. El rol se le asigna en
-              la pestaña Cuentas.
-            </p>
             <div className="overflow-x-auto">
             <table className="table min-w-[640px]">
               <thead>
@@ -179,13 +181,13 @@ export default function RolesView({
                     <td className="opacity-70">{r.descripcion ?? ""}</td>
                     <td className="tabular-nums">{r.usuarios}</td>
                     <td className="tabular-nums">
-                      {r.permisos.length} de {TODOS_LOS_PERMISOS.length}
+                      {r.permisos.filter(visibleEnRoles).length} de {PERMISOS_VISIBLES.length}
                     </td>
                     <td className="text-right whitespace-nowrap">
                       {!r.esSistema ? (
                         <button
                           onClick={() => pedirEliminar(r)}
-                          className="btn btn-icon w-8 h-8 border border-black/[.3] mr-1.5"
+                          className="btn btn-icon w-8 h-8 border border-[var(--color-line)] rounded-[10px] mr-1.5"
                           aria-label={`Eliminar el rol ${r.nombre}`}
                           title="Eliminar rol"
                         >
@@ -202,7 +204,7 @@ export default function RolesView({
                             permisos: r.permisos,
                           })
                         }
-                        className="btn btn-icon w-8 h-8 border border-black/[.3]"
+                        className="btn btn-icon w-8 h-8 border border-[var(--color-line)] rounded-[10px]"
                         aria-label={`Editar el rol ${r.nombre}`}
                         title="Editar nombre y permisos"
                       >
@@ -218,7 +220,7 @@ export default function RolesView({
             </table>
             </div>
 
-            <h2 className="mt-9 mb-1 text-cap font-extrabold ">Permisos del celular</h2>
+            <h2 className="mt-9 mb-1 text-cap font-semibold ">Permisos del celular</h2>
             <p className="m-0 mb-4 text-meta opacity-66 max-w-[80ch]">
               Qué puede hacer un técnico desde la app del celular. Lo heredan todas las cuentas de técnico; ven solo sus
               propias visitas, sin importar estos permisos.
@@ -252,7 +254,7 @@ export default function RolesView({
                           celular: true,
                         })
                       }
-                      className="btn btn-icon w-8 h-8 border border-black/[.3]"
+                      className="btn btn-icon w-8 h-8 border border-[var(--color-line)] rounded-[10px]"
                       aria-label="Editar los permisos del celular del técnico"
                       title="Editar permisos del celular"
                     >
@@ -291,19 +293,19 @@ export default function RolesView({
           onGuardar={guardar}
           guardando={guardando}
         >
-          <div className="mt-5 border border-black/[.3]">
+          <div className="mt-5 border border-[var(--color-line)] rounded-[10px]">
             <div className="flex items-center gap-2.5 px-3.5 py-2.5 bg-[var(--color-surface)] border-b border-[var(--color-divider-soft)]">
-              <div className="font-extrabold text-cap ">Qué puede hacer</div>
+              <div className="font-semibold text-cap ">Qué puede hacer</div>
               <div className="ml-auto text-cap opacity-66 tabular-nums">
-                {dialogo.permisos.length} de {total} permisos
+                {dialogo.celular ? dialogo.permisos.length : dialogo.permisos.filter(visibleEnRoles).length} de {total} permisos
               </div>
             </div>
             {modulos.map((m) => {
               const marcadas = m.acciones.filter((a) => dialogo.permisos.includes(`${m.clave}.${a.clave}`)).length;
               return (
-                <div key={m.clave} className="px-3.5 py-3 border-b border-black/[.18] last:border-b-0">
+                <div key={m.clave} className="px-3.5 py-3 border-b border-[var(--color-line)] last:border-b-0">
                   <div className="flex items-center gap-2.5 mb-2">
-                    <div className="font-extrabold text-meta">{m.label}</div>
+                    <div className="font-semibold text-meta">{m.label}</div>
                     <div className="text-cap opacity-62 tabular-nums">
                       {marcadas} de {m.acciones.length}
                     </div>
@@ -311,7 +313,7 @@ export default function RolesView({
                       <button
                         type="button"
                         onClick={() => alternarModulo(m)}
-                        className="ml-auto min-h-7 px-2.5 bg-transparent border border-black/[.35] text-cap cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
+                        className="ml-auto min-h-7 px-2.5 bg-transparent border border-[var(--color-line)] rounded-[10px] text-cap cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
                       >
                         {marcadas === m.acciones.length ? "Quitar todo" : "Marcar todo"}
                       </button>
@@ -327,7 +329,7 @@ export default function RolesView({
                           role="checkbox"
                           aria-checked={activo}
                           onClick={() => alternar(m, a.clave)}
-                          className="flex items-center gap-2 min-h-9 px-2.5 border border-black/[.35] text-meta leading-[1.2] cursor-pointer text-left"
+                          className="flex items-center gap-2 min-h-9 px-2.5 border border-[var(--color-line)] rounded-[10px] text-meta leading-[1.2] cursor-pointer text-left"
                           style={{
                             background: activo ? "var(--color-accent)" : "var(--color-bg)",
                             color: activo ? "#fff" : "var(--color-text)",

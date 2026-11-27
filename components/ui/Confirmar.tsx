@@ -68,17 +68,17 @@ export default function Confirmar({
       >
         <div
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-[460px] bg-[var(--color-bg)] border-t-2 border-[var(--color-text)] animate-up-sheet"
+          className="w-full max-w-[460px] bg-[var(--color-bg)] border-t border-[var(--color-line)] animate-up-sheet"
         >
           <div className="px-4 pt-4 pb-3.5 border-b border-[var(--color-divider-soft)]">
-            <div className="font-extrabold text-h3 leading-[1.2]">{cfg.titulo}</div>
+            <div className="font-semibold text-h3 leading-[1.2]">{cfg.titulo}</div>
           </div>
           <div className="px-4 pt-3.5 pb-5">
             <p className="m-0 text-body leading-[1.55]">{cfg.texto}</p>
             <button
               type="button"
               onClick={confirmar}
-              className="w-full min-h-[56px] flex items-center justify-between px-4.5 mt-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)] active:bg-[var(--color-accent-active)]"
+              className="w-full min-h-[56px] flex items-center justify-between px-4.5 mt-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-semibold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)] active:bg-[var(--color-accent-active)]"
             >
               <span>{cfg.cta}</span>
               {basurero(19)}
@@ -86,7 +86,7 @@ export default function Confirmar({
             <button
               type="button"
               onClick={onCerrar}
-              className="w-full min-h-[50px] mt-2.5 px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
+              className="w-full min-h-[50px] mt-2.5 px-4 bg-transparent border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] font-semibold text-ui cursor-pointer text-left hover:bg-black/[.07]"
             >
               Cancelar
             </button>
@@ -105,10 +105,10 @@ export default function Confirmar({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-[460px] bg-[var(--color-bg)] border-2 border-[var(--color-text)] animate-up-dlg"
+        className="w-full max-w-[460px] bg-[var(--color-bg)] border border-[var(--color-line)] rounded-[14px] animate-up-dlg"
       >
         <div className="px-5 py-4.5 border-b border-[var(--color-divider-soft)]">
-          <div className="font-extrabold text-h3 leading-[1.2]">{cfg.titulo}</div>
+          <div className="font-semibold text-h3 leading-[1.2]">{cfg.titulo}</div>
         </div>
         <div className="px-5 pt-4.5 pb-5">
           <p className="m-0 text-ui leading-[1.6]">{cfg.texto}</p>

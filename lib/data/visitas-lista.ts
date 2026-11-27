@@ -10,7 +10,7 @@ import {
   type PaginaVisitas,
 } from "@/lib/ui/filtros-visitas";
 import { ESTADO_PROBLEMA_CIERRE } from "@/lib/ui/estado";
-import type { FilaFicha } from "@/lib/types";
+import type { FilaFicha, Visita } from "@/lib/types";
 import { T } from "@/lib/db/esquema";
 
 // Listas de visitas del panel: la tabla de Visitas, filtrada y paginada en el
@@ -128,7 +128,8 @@ export async function buscarVisitas(f: FiltrosVisitas): Promise<PaginaVisitas> {
   const total = num(cuenta?.n ?? 0);
   const paginas = Math.max(1, Math.ceil(total / f.limite));
   const pagina = Math.min(f.pagina, paginas);
-  if (total === 0) return { visitas: [], total, pagina, paginas };
+  const porEstado = await contarPorEstado(f);
+  if (total === 0) return { visitas: [], total, pagina, paginas, porEstado, porDia: {} };
 
   const ids = await consultaCon<{ id: number }>(
     `SELECT v.id ${desde(c)} WHERE ${c.where}
@@ -140,7 +141,31 @@ export async function buscarVisitas(f: FiltrosVisitas): Promise<PaginaVisitas> {
     ids.map((x) => num(x.id)),
     { eliminadas: f.estados.includes(ELIMINADAS) }
   );
-  return { visitas, total, pagina, paginas };
+  const porDia = await contarPorDia(c, [...new Set(visitas.map((v) => v.fechaProgramada))]);
+  return { visitas, total, pagina, paginas, porEstado, porDia };
+}
+
+/** Las pestañas de la lista: los mismos filtros, sin el de estado. Las eliminadas se miran solas. */
+async function contarPorEstado(f: FiltrosVisitas): Promise<PaginaVisitas["porEstado"]> {
+  const c = condiciones({ ...f, estados: [] });
+  const filas = await consultaCon<{ estado: Visita["estado"]; n: number }>(
+    `SELECT v.estado, COUNT(*) AS n ${desde(c)} WHERE ${c.where} GROUP BY v.estado`,
+    c.params
+  );
+  return Object.fromEntries(filas.map((x) => [x.estado, num(x.n)]));
+}
+
+/** Cuántas visitas filtradas tiene cada uno de esos días, estén o no en la página. */
+async function contarPorDia(c: Condiciones, dias: string[]): Promise<Record<string, number>> {
+  if (dias.length === 0) return {};
+  const params = [...c.params];
+  const filas = await consultaCon<{ fecha: string; n: number }>(
+    `SELECT ${F_FECHA("v.fecha_programada")} AS fecha, COUNT(*) AS n ${desde(c)}
+      WHERE ${c.where} AND ${enLista("v.fecha_programada", "dia", sql.Date, dias, params)}
+      GROUP BY v.fecha_programada`,
+    params
+  );
+  return Object.fromEntries(filas.map((x) => [x.fecha, num(x.n)]));
 }
 
 /**

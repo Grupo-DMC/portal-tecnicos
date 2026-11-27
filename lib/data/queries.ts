@@ -7,7 +7,7 @@ import { T } from "@/lib/db/esquema";
 
 // Consultas agregadas del panel de coordinación. Donde el esquema ya trae una
 // vista para el cálculo (sección 10 del DDL) se usa esa vista en vez de rehacer
-// la agregación acá: v_cumplimiento_dia, v_carga_tecnico y v_sucursal_fallas.
+// la agregación acá: v_carga_tecnico y v_sucursal_fallas.
 
 export type Rango = "Hoy" | "Semana" | "Mes";
 
@@ -112,63 +112,6 @@ export async function contarProblemasAbiertos(): Promise<number> {
   return num(f?.n ?? 0);
 }
 
-// ── Cumplimiento (vista v_cumplimiento_dia) ─────────────────────────────────
-
-export interface CumplimientoDia {
-  fecha: string;
-  programadas: number;
-  cerradas: number;
-  pct: number;
-}
-
-export async function getCumplimientoRango(desde: string, hasta: string): Promise<CumplimientoDia[]> {
-  await cancelarVisitasVencidas();
-  const filas = await consultaCon<{ fecha: string; programadas: number; cerradas: number; pct: number }>(
-    `SELECT ${F_FECHA("fecha_programada")} AS fecha, programadas, cerradas, ISNULL(pct, 0) AS pct
-       FROM ${T.v_cumplimiento_dia}
-      WHERE fecha_programada BETWEEN @desde AND @hasta
-      ORDER BY fecha_programada`,
-    [
-      ["desde", sql.Date, desde],
-      ["hasta", sql.Date, hasta],
-    ]
-  );
-  return filas.map((f) => ({
-    fecha: f.fecha,
-    programadas: num(f.programadas),
-    cerradas: num(f.cerradas),
-    pct: num(f.pct),
-  }));
-}
-
-// ── Distribución por estado ─────────────────────────────────────────────────
-
-const ORDEN_ESTADOS: EstadoVisita[] = [
-  "COMPLETADA",
-  "EN_CURSO",
-  "PROGRAMADA",
-  "PENDIENTE",
-  "REAGENDADA",
-  "CANCELADA",
-  "CANCELADA_ADMIN",
-];
-
-export async function getEstadoHoyDistribucion(hoy: string): Promise<{ estado: EstadoVisita; n: number; pct: number }[]> {
-  await cancelarVisitasVencidas();
-  const filas = await consultaCon<{ estado: EstadoVisita; n: number }>(
-    `SELECT estado, COUNT(*) AS n FROM ${T.visita} WHERE fecha_programada = @hoy AND activo = 1 GROUP BY estado`,
-    [["hoy", sql.Date, hoy]]
-  );
-  const total = filas.reduce((acc, f) => acc + num(f.n), 0);
-  const porEstado = new Map(filas.map((f) => [f.estado, num(f.n)]));
-  return ORDEN_ESTADOS.map((estado) => {
-    const n = porEstado.get(estado) ?? 0;
-    return { estado, n, pct: total ? Math.round((100 * n) / total) : 0 };
-  }).filter((e) => e.n > 0);
-}
-
-// ── Problemas por tipo ──────────────────────────────────────────────────────
-
 export async function getProblemasPorTipo(): Promise<{ codigo: string; nombre: string; n: number; pct: number }[]> {
   const filas = await consulta<{ codigo: string; nombre: string; n: number }>(
     `SELECT p.tipo_codigo AS codigo, ISNULL(c.nombre, p.tipo_codigo) AS nombre, COUNT(*) AS n
@@ -198,7 +141,8 @@ export interface CargaTecnico {
   noRealizadas: number;
 }
 
-export async function getCargaTecnico(hoy: string): Promise<CargaTecnico[]> {
+/** Lo programado y lo cerrado de cada técnico entre dos fechas (incluidas). */
+export async function getCargaTecnico(desde: string, hasta: string = desde): Promise<CargaTecnico[]> {
   await cancelarVisitasVencidas();
   const filas = await consultaCon<{
     tecnico_id: number;
@@ -207,9 +151,16 @@ export async function getCargaTecnico(hoy: string): Promise<CargaTecnico[]> {
     realizadas: number;
     no_realizadas: number;
   }>(
-    `SELECT tecnico_id, tecnico, programadas, realizadas, no_realizadas
-       FROM ${T.v_carga_tecnico} WHERE fecha_programada = @hoy ORDER BY tecnico`,
-    [["hoy", sql.Date, hoy]]
+    `SELECT tecnico_id, tecnico, SUM(programadas) AS programadas, SUM(realizadas) AS realizadas,
+            SUM(no_realizadas) AS no_realizadas
+       FROM ${T.v_carga_tecnico}
+      WHERE fecha_programada BETWEEN @desde AND @hasta
+      GROUP BY tecnico_id, tecnico
+      ORDER BY tecnico`,
+    [
+      ["desde", sql.Date, desde],
+      ["hasta", sql.Date, hasta],
+    ]
   );
   return filas.map((f) => ({
     tecnicoId: num(f.tecnico_id),
@@ -226,7 +177,7 @@ export interface SucursalFallas {
   sucursalId: number;
   total: number;
   sinCerrar: number;
-  sucursal: { nombre: string; comuna: string };
+  sucursal: { nombre: string; comuna: string; cliente: string };
 }
 
 export async function getSucursalFallas(limite = 5): Promise<SucursalFallas[]> {
@@ -234,10 +185,11 @@ export async function getSucursalFallas(limite = 5): Promise<SucursalFallas[]> {
     sucursal_id: number;
     sucursal: string;
     comuna: string;
+    cliente: string;
     total: number;
     sin_cerrar: number;
   }>(
-    `SELECT TOP (@limite) sucursal_id, sucursal, comuna, total, sin_cerrar
+    `SELECT TOP (@limite) sucursal_id, sucursal, comuna, cliente, total, sin_cerrar
        FROM ${T.v_sucursal_fallas} ORDER BY sin_cerrar DESC, total DESC`,
     [["limite", sql.Int, limite]]
   );
@@ -245,7 +197,7 @@ export async function getSucursalFallas(limite = 5): Promise<SucursalFallas[]> {
     sucursalId: num(f.sucursal_id),
     total: num(f.total),
     sinCerrar: num(f.sin_cerrar),
-    sucursal: { nombre: f.sucursal, comuna: f.comuna },
+    sucursal: { nombre: f.sucursal, comuna: f.comuna, cliente: f.cliente },
   }));
 }
 
@@ -281,6 +233,34 @@ export async function getTiempoEnSitio(): Promise<{
     prom: general?.prom === null || general?.prom === undefined ? 0 : Math.round(num(general.prom)),
     porMotivo: lista.map((x) => ({ ...x, pct: Math.round((100 * x.min) / max) })),
   };
+}
+
+// ── Resolución de problemas ─────────────────────────────────────────────────
+
+/** Cada problema resuelto desde `desde`: qué día se cerró y cuánto tardó. */
+export async function getProblemasResueltos(desde: string): Promise<{ fecha: string; minutos: number }[]> {
+  const filas = await consultaCon<{ fecha: string; minutos: number }>(
+    `SELECT ${F_FECHA("p.resuelto_en")} AS fecha, DATEDIFF(minute, p.creado_en, p.resuelto_en) AS minutos
+       FROM ${T.problema} p
+       JOIN ${T.visita}   v ON v.id = p.visita_id
+      WHERE p.estado = 'RESUELTO' AND p.resuelto_en >= @desde AND v.activo = 1`,
+    [["desde", sql.Date, desde]]
+  );
+  return filas.map((f) => ({ fecha: f.fecha, minutos: num(f.minutos) }));
+}
+
+// ── Visitas realizadas ──────────────────────────────────────────────────────
+
+/** Cuántas visitas completadas hay en cada día desde `desde`. */
+export async function getVisitasRealizadas(desde: string): Promise<{ fecha: string; n: number }[]> {
+  const filas = await consultaCon<{ fecha: string; n: number }>(
+    `SELECT ${F_FECHA("fecha_programada")} AS fecha, COUNT(*) AS n
+       FROM ${T.visita}
+      WHERE estado = 'COMPLETADA' AND activo = 1 AND fecha_programada >= @desde
+      GROUP BY fecha_programada`,
+    [["desde", sql.Date, desde]]
+  );
+  return filas.map((f) => ({ fecha: f.fecha, n: num(f.n) }));
 }
 
 // ── Reagendamientos recientes ───────────────────────────────────────────────

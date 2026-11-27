@@ -59,7 +59,7 @@ export function SeccionInterno({ fv }: { fv: FormularioVisitaApi }) {
       />
       {abierta === "interno" ? (
         <Cuerpo gap={false}>
-          <div className="px-3.5 py-2.5 mb-3.5 bg-[var(--color-bg)] border border-[var(--color-line-control)] text-meta leading-[1.45]">
+          <div className="px-3.5 py-2.5 mb-3.5 bg-[var(--color-bg)] border border-[var(--color-line)] rounded-[10px] text-meta leading-[1.45]">
             Solo para coordinación. Nada de esta sección sale en el acta que recibe el cliente.
           </div>
 
@@ -85,7 +85,7 @@ export function SeccionInterno({ fv }: { fv: FormularioVisitaApi }) {
                     }}
                   >
                     <span
-                      className="w-[22px] h-[22px] flex-none border-2 border-[var(--color-text)] grid place-items-center"
+                      className="w-[22px] h-[22px] flex-none border border-[var(--color-line)] rounded-[14px] grid place-items-center"
                       style={{ background: activo ? "var(--color-accent)" : "transparent" }}
                     >
                       {activo ? (
@@ -132,7 +132,7 @@ export function SeccionInterno({ fv }: { fv: FormularioVisitaApi }) {
           {puedeVideo ? (
           <button
             onClick={() => abrirVideo("interno")}
-            className="w-full min-h-[48px] flex items-center gap-2.5 px-4 mt-2 bg-[var(--color-text)] text-[var(--color-bg)] border-0 font-extrabold text-ui cursor-pointer text-left hover:bg-[var(--color-neutral-900)]"
+            className="w-full min-h-[48px] flex items-center gap-2.5 px-4 mt-2 bg-[var(--color-text)] text-[var(--color-bg)] border-0 font-semibold text-ui cursor-pointer text-left hover:bg-[var(--color-neutral-900)]"
           >
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
               <path d="M3 7h11v10H3z" />
@@ -144,7 +144,7 @@ export function SeccionInterno({ fv }: { fv: FormularioVisitaApi }) {
 
           <div className="mt-3.5">
             {esObligatoria("interno") && faltaEnSeccion("interno") ? (
-              <p className="m-0 mb-2 text-meta font-extrabold">Obligatorio: {faltaEnSeccion("interno")?.toLowerCase()}.</p>
+              <p className="m-0 mb-2 text-meta font-semibold">Obligatorio: {faltaEnSeccion("interno")?.toLowerCase()}.</p>
             ) : null}
             <BotonGuardar
               texto="Guardar y seguir"
@@ -232,7 +232,7 @@ export function SeccionFotos({ fv }: { fv: FormularioVisitaApi }) {
 
             <button
               onClick={() => abrirVideo("trabajo")}
-              className="w-full min-h-[52px] flex items-center gap-2.5 px-4 mt-2 bg-[var(--color-text)] text-[var(--color-bg)] border-0 font-extrabold text-ui cursor-pointer text-left hover:bg-[var(--color-neutral-900)]"
+              className="w-full min-h-[52px] flex items-center gap-2.5 px-4 mt-2 bg-[var(--color-text)] text-[var(--color-bg)] border-0 font-semibold text-ui cursor-pointer text-left hover:bg-[var(--color-neutral-900)]"
             >
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
                 <path d="M3 7h11v10H3z" />
@@ -244,7 +244,7 @@ export function SeccionFotos({ fv }: { fv: FormularioVisitaApi }) {
           ) : null}
 
           {esObligatoria("fotos") && faltaEnSeccion("fotos") ? (
-            <p className="m-0 mt-3.5 text-meta font-extrabold">
+            <p className="m-0 mt-3.5 text-meta font-semibold">
               Obligatorio: {faltaEnSeccion("fotos")?.charAt(0).toLowerCase()}{faltaEnSeccion("fotos")?.slice(1)}.
             </p>
           ) : null}
@@ -285,14 +285,14 @@ export function SeccionFirma({ fv }: { fv: FormularioVisitaApi }) {
       />
       {abierta === "firmas" ? (
         <Cuerpo>
-          <div className="bg-[var(--color-surface-3)] border border-[var(--color-divider)] px-3.5 py-3">
+          <div className="bg-[var(--color-surface-3)] border border-[var(--color-line)] rounded-[10px] px-3.5 py-3">
             <div className="flex items-center gap-2">
               <div className="text-cap opacity-66">Responsable de tienda</div>
               <span className={`tag ${firma ? "tag-accent" : "tag-neutral"} ml-auto`}>
                 {firma ? `Firmado ${firma.hora}` : "Sin firmar"}
               </span>
             </div>
-            <div className="font-extrabold text-body leading-[1.2] mt-1.5">
+            <div className="font-semibold text-body leading-[1.2] mt-1.5">
               {firma?.nombre || respNombre || visita.responsableNombre || "Encargado de tienda"}
             </div>
             {firma ? (
@@ -300,7 +300,7 @@ export function SeccionFirma({ fv }: { fv: FormularioVisitaApi }) {
               <img
                 src={firma.imagen}
                 alt="Firma"
-                className="w-full h-[76px] object-contain object-left mt-2 border-b border-black/[.35]"
+                className="w-full h-[76px] object-contain object-left mt-2 border-b border-[var(--color-line)]"
               />
             ) : null}
             {edicion ? (
@@ -312,7 +312,7 @@ export function SeccionFirma({ fv }: { fv: FormularioVisitaApi }) {
             ) : (
             <button
               onClick={() => setSheet("firma")}
-              className="w-full min-h-[50px] flex items-center justify-between px-3.5 mt-3 border border-[var(--color-divider)] font-extrabold text-ui cursor-pointer text-left"
+              className="w-full min-h-[50px] flex items-center justify-between px-3.5 mt-3 border border-[var(--color-line)] rounded-[10px] font-semibold text-ui cursor-pointer text-left"
               style={{
                 background: firma ? "transparent" : "var(--color-accent)",
                 color: firma ? "var(--color-text)" : "var(--color-bg)",
@@ -379,7 +379,7 @@ export function BotonRevisar({ fv }: { fv: FormularioVisitaApi }) {
             setHoraTermino(ahora());
             setPaso("preview");
           }}
-          className="w-full min-h-[60px] flex items-center justify-between px-4.5 border-0 font-extrabold text-lead cursor-pointer text-left hover:brightness-95"
+          className="w-full min-h-[60px] flex items-center justify-between px-4.5 border-0 font-semibold text-lead cursor-pointer text-left hover:brightness-95"
           style={{
             background: puedeRevisar ? "var(--color-accent)" : "var(--color-neutral-500)",
             color: puedeRevisar ? "var(--color-bg)" : "var(--color-surface-3)",
@@ -392,7 +392,7 @@ export function BotonRevisar({ fv }: { fv: FormularioVisitaApi }) {
         </button>
         <p className="mt-2.5 mb-0 text-cap opacity-66">
           {puedeRevisar
-            ? "Vas a ver el acta completa antes de guardar nada."
+            ? null
             : "Completa las secciones marcadas como obligatorias, y responde los problemas que venías a resolver, para poder revisar el acta."}
         </p>
       </div>

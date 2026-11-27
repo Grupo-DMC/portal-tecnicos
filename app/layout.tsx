@@ -4,7 +4,10 @@ import { Fira_Sans } from "next/font/google";
 import localFont from "next/font/local";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { FUENTES } from "./fuentes";
 import "./globals.css";
+import "./rediseno.css";
+import "./rediseno-secciones.css";
 
 // Par «Dashboard Data» de ui-ux-pro-max: Fira Sans para el texto y los
 // títulos, Fira Code solo para cifras y datos (KPI, folios, horas).
@@ -34,7 +37,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   // estática o sus scripts saldrían sin él.
   await connection();
   return (
-    <html lang="es" className={`${firaSans.variable} ${firaCode.variable} h-full antialiased`}>
+    <html lang="es" className={`${firaSans.variable} ${firaCode.variable} ${FUENTES} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         {children}
         {/* Estadísticas y velocidad de Vercel: el script y el envío salen del

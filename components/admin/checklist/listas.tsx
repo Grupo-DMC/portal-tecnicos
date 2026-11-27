@@ -31,8 +31,8 @@ export function ListaMotivos({ fv }: { fv: ChecklistEditorApi }) {
       {/* Lista 1 · Motivos y sus trabajos */}
       <Bloque
         numero="Lista 1"
+        clave="motivos"
         titulo="Motivos y sus trabajos"
-        bajada="Coordinación agenda la visita con uno o varios motivos, y bajo cada motivo el técnico registra lo que hizo eligiendo entre SUS trabajos, en este orden. Despliega un motivo para armar su lista. Agrupa los motivos en secciones (ej. «Visitas») y el celular y el panel los muestran plegables por sección. Un mismo trabajo puede ir en varios motivos: sus subtrabajos se editan una vez y valen en todos."
         cta="Nuevo motivo de visita"
         onAgregar={() => agregarMotivo()}
         ctaExtra={{ label: "Nueva sección", onClick: () => agregarSeccion(setSeccionesMotivo) }}
@@ -311,8 +311,8 @@ export function ListaTiposProblema({ fv }: { fv: ChecklistEditorApi }) {
   return (
     <Bloque
       numero="Lista 2"
+      clave="problemas"
       titulo="Tipos de problema"
-      bajada="Lo que el técnico elige al levantar un problema: primero la categoría y después el tipo. Despliega un tipo para editar sus subdetalles; sin subdetalles, el técnico escribe con sus palabras qué encontró. Agrupa los tipos en categorías (ej. «Antenas»): el celular y el panel las muestran plegables. Cambiar un tipo de categoría no toca los problemas ya registrados."
       cta="Nuevo tipo"
       onAgregar={() => agregarGrupo(setTipos, setAbiertoTipo)}
       ctaExtra={{ label: "Nueva categoría", onClick: () => agregarSeccion(setSeccionesProblema, "Categoría") }}
@@ -363,8 +363,8 @@ export function ListaTrabajos({ fv }: { fv: ChecklistEditorApi }) {
       {/* Lista 3 · Todos los trabajos (la misma relación de la Lista 1, vista desde el trabajo) */}
       <Bloque
         numero="Lista 3"
+        clave="trabajos"
         titulo="Todos los trabajos"
-        bajada="Los mismos trabajos de la Lista 1, vistos desde el otro lado: cada uno con los motivos donde aparece. Sirve para poner un trabajo en varios motivos de una vez y para encontrar los que quedaron sin motivo, que el técnico no ve. Agrupa los trabajos (con sus subtrabajos) en secciones: el técnico las ve plegables. El orden lo da cada motivo, no esta lista."
         cta="Nuevo trabajo"
         onAgregar={() => agregarGrupo(setTrabajos, setAbiertoTrabajo)}
         ctaExtra={{ label: "Nueva sección", onClick: () => agregarSeccion(setSeccionesTrabajo) }}

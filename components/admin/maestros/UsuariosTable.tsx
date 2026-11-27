@@ -126,7 +126,6 @@ export default function UsuariosTable({
             { v: "", t: SIN_TECNICO },
             ...tecnicos.filter((t) => t.activo).map((t) => ({ v: String(t.id), t: t.nombreCompleto })),
           ],
-          ayuda: "Con este técnico ve sus visitas asignadas y llena sus actas desde el panel de técnico.",
           visible: (f) => rolesDelForm(f).includes("TECNICO"),
         },
         {

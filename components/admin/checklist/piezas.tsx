@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, createContext, useContext } from "react";
 import { type Motivo, mover, nombreDeCopia, nuevaClave, reubicar } from "@/components/admin/checklist/modelo";
 
 // Las piezas del editor del checklist: la caja de una sección, el bloque de
@@ -41,9 +41,9 @@ export function CajaSeccion({
   children: React.ReactNode;
 }) {
   return (
-    <div className="border-2 border-[var(--color-text)] bg-[var(--color-surface-3)]">
+    <div className="border border-[var(--color-line)] rounded-[14px] bg-[var(--color-surface-3)]">
       <div
-        className={`flex items-center gap-2.5 flex-wrap px-3.5 py-3 ${abierta ? "border-b-2 border-[var(--color-text)]" : ""}`}
+        className={`flex items-center gap-2.5 flex-wrap px-3.5 py-3 ${abierta ? "border-b border-[var(--color-line)]" : ""}`}
         style={{ background: abierta ? "var(--color-neutral-300)" : "var(--color-neutral-200)" }}
       >
         <button
@@ -51,7 +51,7 @@ export function CajaSeccion({
           onClick={onToggle}
           aria-expanded={abierta}
           aria-label={abierta ? "Plegar la sección" : "Desplegar la sección"}
-          className="btn btn-icon w-8.5 h-8.5 flex-none border border-black/[.3]"
+          className="btn btn-icon w-8.5 h-8.5 flex-none border border-[var(--color-line)] rounded-[10px]"
         >
           <svg
             width="14"
@@ -67,13 +67,13 @@ export function CajaSeccion({
           </svg>
         </button>
         {fija || !onRenombrar ? (
-          <div className="flex-1 min-w-[160px] font-extrabold text-lead">{nombre}</div>
+          <div className="flex-1 min-w-[160px] font-semibold text-lead">{nombre}</div>
         ) : (
           <input
             value={nombre}
             onChange={(e) => onRenombrar(e.target.value)}
             placeholder={phNombre}
-            className="input flex-1 min-w-[160px] min-h-10 font-extrabold text-lead bg-[var(--color-bg)]"
+            className="input flex-1 min-w-[160px] min-h-10 font-semibold text-lead bg-[var(--color-bg)]"
             aria-label="Nombre de la sección"
             autoComplete="off"
           />
@@ -85,7 +85,7 @@ export function CajaSeccion({
               type="button"
               onClick={onSubir}
               disabled={!onSubir}
-              className="btn btn-icon w-8.5 h-8.5 flex-none border border-black/[.3] disabled:opacity-30"
+              className="btn btn-icon w-8.5 h-8.5 flex-none border border-[var(--color-line)] rounded-[10px] disabled:opacity-30"
               aria-label="Subir la sección"
               title="Subir la sección"
             >
@@ -95,7 +95,7 @@ export function CajaSeccion({
               type="button"
               onClick={onBajar}
               disabled={!onBajar}
-              className="btn btn-icon w-8.5 h-8.5 flex-none border border-black/[.3] disabled:opacity-30"
+              className="btn btn-icon w-8.5 h-8.5 flex-none border border-[var(--color-line)] rounded-[10px] disabled:opacity-30"
               aria-label="Bajar la sección"
               title="Bajar la sección"
             >
@@ -113,7 +113,7 @@ export function CajaSeccion({
           <button
             type="button"
             onClick={onQuitar}
-            className="btn btn-icon w-8.5 h-8.5 flex-none border border-black/[.3]"
+            className="btn btn-icon w-8.5 h-8.5 flex-none border border-[var(--color-line)] rounded-[10px]"
             aria-label="Quitar la sección"
             title="Quitar la sección (sus entradas pasan a «Sin sección»)"
           >
@@ -126,7 +126,11 @@ export function CajaSeccion({
   );
 }
 
+/** La pestaña a la vista. Null = todas (mientras se busca). */
+export const PestanaChecklist = createContext<string | null>(null);
+
 export function Bloque({
+  clave,
   numero,
   titulo,
   bajada,
@@ -135,24 +139,27 @@ export function Bloque({
   ctaExtra,
   children,
 }: {
+  /** Su pestaña. */
+  clave: string;
   numero: string;
   titulo: string;
-  bajada: string;
+  bajada?: string;
   cta: string;
   onAgregar: () => void;
   /** Un segundo botón junto al principal (en las listas con secciones: «Nueva sección»). */
   ctaExtra?: { label: string; onClick: () => void };
   children: React.ReactNode;
 }) {
+  const activa = useContext(PestanaChecklist);
   return (
-    <div className="border-t-2 border-[var(--color-divider)] pt-4 mb-11">
+    <div className="ck-bloque" hidden={activa !== null && activa !== clave}>
       <div className="flex items-end gap-3.5 flex-wrap mb-4">
         <div className="min-w-0">
-          <h2 className="font-extrabold text-h3 leading-[1.15] tracking-[-.02em] mb-1">
+          <h2 className="font-semibold text-h3 leading-[1.15] tracking-[-.02em] mb-1">
             <span className="text-[var(--color-muted)]">{numero} · </span>
             {titulo}
           </h2>
-          <p className="m-0 text-meta opacity-68 max-w-[64ch]">{bajada}</p>
+          {bajada ? <p className="m-0 text-meta opacity-68 max-w-[64ch]">{bajada}</p> : null}
         </div>
         <div className="ml-auto flex items-center gap-2 flex-wrap">
           {ctaExtra ? (
@@ -241,7 +248,7 @@ export function FilasSimples({
                     return nueva;
                   })
                 }
-                className="btn btn-icon w-10 h-10 flex-none border border-black/[.3]"
+                className="btn btn-icon w-10 h-10 flex-none border border-[var(--color-line)] rounded-[10px]"
                 aria-label={`Clonar ${que}`}
                 title={`Clonar este ${que}`}
               >
@@ -249,7 +256,7 @@ export function FilasSimples({
               </button>
               <button
                 onClick={() => onPedirQuitar(m)}
-                className="btn btn-icon w-10 h-10 flex-none border border-black/[.3]"
+                className="btn btn-icon w-10 h-10 flex-none border border-[var(--color-line)] rounded-[10px]"
                 aria-label={`Quitar ${que}`}
               >
                 <IconoBasura />
@@ -276,7 +283,7 @@ export function ModoItem({
         type="button"
         onClick={() => onCambiar(false)}
         title="En el celular sale como una casilla: se marca y listo."
-        className="min-h-10 px-2.5 border border-black/[.3] border-r-0 cursor-pointer text-cap leading-none "
+        className="min-h-10 px-2.5 border border-[var(--color-line)] rounded-[10px] border-r-0 cursor-pointer text-cap leading-none "
         style={{
           background: permiteCantidad ? "transparent" : "var(--color-text)",
           color: permiteCantidad ? "var(--color-text)" : "var(--color-bg)",
@@ -288,7 +295,7 @@ export function ModoItem({
         type="button"
         onClick={() => onCambiar(true)}
         title="En el celular sale con un contador: se marca y se indica cuántos."
-        className="min-h-10 px-2.5 border border-black/[.3] cursor-pointer text-cap leading-none "
+        className="min-h-10 px-2.5 border border-[var(--color-line)] rounded-[10px] cursor-pointer text-cap leading-none "
         style={{
           background: permiteCantidad ? "var(--color-text)" : "transparent",
           color: permiteCantidad ? "var(--color-bg)" : "var(--color-text)",
@@ -363,7 +370,7 @@ export function Arrastrable({
           ? "Quita la búsqueda para poder reordenar"
           : "Arrastra para cambiar el orden (o usa ↑ ↓ del teclado)"
       }
-      className="w-7 h-9 flex-none grid place-items-center border border-black/[.3] bg-[var(--color-bg)] text-[var(--color-text)] cursor-grab active:cursor-grabbing hover:bg-black/[.08] disabled:opacity-30 disabled:cursor-not-allowed"
+      className="w-7 h-9 flex-none grid place-items-center border border-[var(--color-line)] rounded-[10px] bg-[var(--color-bg)] text-[var(--color-text)] cursor-grab active:cursor-grabbing hover:bg-black/[.08] disabled:opacity-30 disabled:cursor-not-allowed"
     >
       <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <circle cx="9" cy="6" r="1.7" />
@@ -457,7 +464,7 @@ export function Codigo({ codigo }: { codigo: string | null }) {
 
 export function Numero({ n }: { n: number }) {
   return (
-    <span className="w-6.5 h-6.5 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap tabular-nums">
+    <span className="w-6.5 h-6.5 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-semibold text-cap tabular-nums">
       {n}
     </span>
   );
@@ -466,7 +473,7 @@ export function Numero({ n }: { n: number }) {
 export function Vacio({ children, grande }: { children: React.ReactNode; grande?: boolean }) {
   return (
     <div
-      className={`border border-dashed border-black/[.4] opacity-70 ${grande ? "p-6.5 text-ui" : "p-3.5 text-meta"}`}
+      className={`border border-dashed border-[var(--color-line)] opacity-70 ${grande ? "p-6.5 text-ui" : "p-3.5 text-meta"}`}
     >
       {children}
     </div>

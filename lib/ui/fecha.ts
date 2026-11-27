@@ -86,3 +86,15 @@ export function textoFechaVisita(v: Pick<ConMargen, "fechaProgramada" | "fechaHa
 export function inicioMes(fecha: string): string {
   return `${fecha.slice(0, 7)}-01`;
 }
+
+/** 'YYYY-MM-DD' → 'dd-mm-aaaa', el formato del sistema en el selector de fechas. '' si no hay fecha. */
+export function isoADmy(iso: string | null | undefined): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? "");
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : "";
+}
+
+/** 'dd-mm-aaaa' → 'YYYY-MM-DD'. '' si no tiene esa forma. */
+export function dmyAIso(dmy: string | null | undefined): string {
+  const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(dmy ?? "");
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : "";
+}

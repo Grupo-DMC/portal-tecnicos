@@ -1,276 +1,127 @@
 "use client";
 
-import { useFiltroRecordado } from "@/lib/ui/filtro-recordado";
+// «Tiendas con problemas»: la franja de lo que sigue sin cerrar, las tiendas a
+// la izquierda y, a la derecha, los problemas de la elegida con su antigüedad,
+// su estado, los pasos de gestión y la bitácora.
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Tag from "@/components/Tag";
-import EstadoProblemaTag from "@/components/EstadoProblemaTag";
-import AdminHeader from "@/components/admin/AdminHeader";
-import FiltrosBar, { type ChipFiltro } from "@/components/admin/FiltrosBar";
-import ProblemasAnalisis, { enTramo, TRAMOS, type ProblemaConTienda } from "@/components/admin/ProblemasAnalisis";
-import VisitaDialogo, { type OrigenProblema } from "@/components/admin/VisitaDialogos";
+import type { OrigenProblema } from "@/components/admin/VisitaDialogos";
+import NuevaVisitaHoja, { precargaDeProblema } from "@/components/admin/NuevaVisitaHoja";
+import Bitacora from "@/components/admin/problemas/Bitacora";
+import CambiarProblema from "@/components/admin/problemas/CambiarProblema";
+import Desplegable from "@/components/ui/Desplegable";
+import Icono from "@/components/ui/Icono";
+import PanelLateral from "@/components/ui/PanelLateral";
 import { Toast, useToast } from "@/components/ui/Toast";
-import { actualizarProblemaAction, marcarGestionProblemaAction } from "@/app/actions/admin";
-import {
-  ESTADO_PROBLEMA_INICIAL,
-  ESTADO_VISITA_LABEL,
-  ESTADO_VISITA_TAG,
-  etiquetaEstadoProblema,
-} from "@/lib/ui/estado";
-import { fechaHoraLegible, fechaCL } from "@/lib/ui/fecha";
-import { sinTildes } from "@/lib/ui/formato";
+import { marcarGestionProblemaAction } from "@/app/actions/admin";
+import { useFiltroRecordado } from "@/lib/ui/filtro-recordado";
+import { ESTADO_VISITA_LABEL, etiquetaEstadoProblema } from "@/lib/ui/estado";
+import { PILL_VISITA } from "@/lib/ui/lista-visitas";
+import { fechaCL, fechaHoraLegible } from "@/lib/ui/fecha";
+import { iniciales } from "@/lib/ui/cuenta";
+import { plural } from "@/lib/ui/plural";
+import { esDatoDePrueba } from "@/lib/ui/pruebas";
+import { ocultarCredenciales } from "@/lib/ui/reservado";
 import { puede, useReferencias } from "@/lib/ui/referencias";
+import {
+  abierto,
+  claseEstado,
+  filtrarProblemas,
+  masAntiguo,
+  resumenProblemas,
+  SIN_FILTROS_PROBLEMAS,
+  TRAMOS,
+  tramoDe,
+  type FiltrosProblemas,
+} from "@/lib/ui/problemas-panel";
 import type { DatosProblemas, GestionMarca, GrupoProblemas, ProblemaPanel } from "@/lib/contratos/panel";
-import type { CatalogoGestionProblema, EstadoProblema } from "@/lib/types";
 
-/**
- * El panel "Problemas": cada falla levantada en terreno, por tienda.
- *
- * Arriba, los gráficos (cuánto hay sin cerrar, si entra más de lo que se
- * resuelve, qué tan viejo es lo pendiente, qué tipos y qué tiendas pesan más).
- * Abajo, la lista: cada problema con su antigüedad, el checklist de gestión
- * (la Lista 6 del Checklist), su bitácora de cambios y, por tienda, el
- * historial de visitas y de problemas del local.
- */
-
-/** Desde cuántos días abierto un problema se resalta como atrasado. */
-const DIAS_ATRASO = 15;
-
-interface Filtros {
-  clienteId: string;
-  tipo: string;
-  /** "" = sin cerrar (por defecto), "TODOS" = incluidos los resueltos. */
-  estado: string;
-  /** Clave de un tramo de antigüedad. Solo aplica a lo que sigue sin cerrar. */
-  tramo: string;
-  /** "" = cualquiera · SIN = sin visita agendada · CON = con visita agendada. */
-  agenda: string;
-  /** "" = cualquiera · SIN = nada marcado · PARCIAL = a medias · LISTA = todo marcado. */
-  avance: string;
-}
-
-const SIN_FILTROS: Filtros = { clienteId: "", tipo: "", estado: "", tramo: "", agenda: "", avance: "" };
-
-const AVANCE_LABEL: Record<string, string> = { SIN: "sin empezar", PARCIAL: "a medias", LISTA: "completa" };
-
-const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
-
-function textoAntiguedad(p: ProblemaPanel): string {
-  if (p.estado === "RESUELTO") return p.dias === 0 ? "Resuelto el mismo día" : `Resuelto en ${plural(p.dias, "día", "días")}`;
-  return p.dias === 0 ? "Levantado hoy" : `Abierto hace ${plural(p.dias, "día", "días")}`;
-}
+const AVANCE: Record<string, string> = { SIN: "Sin empezar", PARCIAL: "A medias", LISTA: "Completa" };
 
 const marcasIniciales = (grupos: GrupoProblemas[]): Record<number, GestionMarca[]> =>
   Object.fromEntries(grupos.flatMap((g) => g.items.map((p) => [p.id, p.gestion])));
 
-export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
+export default function ProblemasView({ datos, tipoInicial = "" }: { datos: DatosProblemas; tipoInicial?: string }) {
   const router = useRouter();
   const ref = useReferencias();
-  const { clientes, problemas: catalogoProblema } = ref;
+  const { clientes, problemas: catalogo, estadosProblema } = ref;
   const { grupos, pasos, hoy } = datos;
-  const OPC_TIPOS = useMemo(() => catalogoProblema.map((t) => ({ v: t.codigo, t: t.nombre })), [catalogoProblema]);
-  const nombreTipo = (codigo: string) => catalogoProblema.find((t) => t.codigo === codigo)?.nombre ?? codigo;
-  // Los estados salen de la Lista 7 del Checklist. Para elegir, solo los
-  // activos; para nombrar, todos: un problema puede seguir en uno ya quitado.
-  const estados = ref.estadosProblema.filter((e) => e.activo);
-  const nombreEstado = (codigo: string) => etiquetaEstadoProblema(codigo, ref.estadosProblema);
+  const nombreTipo = (codigo: string) => catalogo.find((t) => t.codigo === codigo)?.nombre ?? codigo;
+  const nombreEstado = (codigo: string) => etiquetaEstadoProblema(codigo, estadosProblema);
+  // Para elegir, solo los estados activos del Checklist; para nombrar, todos.
+  const estados = estadosProblema.filter((e) => e.activo);
+  const puedeEditar = puede(ref, "problemas.editar");
 
   const { toast, aviso } = useToast();
   const [busqueda, setBusqueda] = useFiltroRecordado("busqueda");
-  const [f, setF] = useState<Filtros>(SIN_FILTROS);
-  const [verAnalisis, setVerAnalisis] = useState(true);
-  /** Problema con el panel "Cambiar estado o tipo" desplegado. */
-  const [editando, setEditando] = useState<number | null>(null);
-  /** Cambios sin confirmar del panel abierto. */
-  const [pendiente, setPendiente] = useState<{ estado: EstadoProblema; tipo: string; nota: string } | null>(null);
-  const [guardando, setGuardando] = useState(false);
-  /** Al resolver: se está preguntando si se asocia a una visita, y cuál (folio, "" = ninguna). */
-  const [preguntando, setPreguntando] = useState(false);
-  const [visitaAsociada, setVisitaAsociada] = useState("");
-  /** Tiendas con la tarjeta cerrada (solo se ve su encabezado). */
-  const [cerradas, setCerradas] = useState<number[]>([]);
+  const inicial = { ...SIN_FILTROS_PROBLEMAS, tipo: tipoInicial };
+  const [f, setF] = useState<FiltrosProblemas>(inicial);
+  const [borrador, setBorrador] = useState<FiltrosProblemas>(inicial);
+  const [verFiltros, setVerFiltros] = useState(false);
+  const [elegida, setElegida] = useState<number | null>(null);
+  /** El problema que se acaba de pedir desde la franja: se destaca. */
+  const [destacado, setDestacado] = useState<number | null>(null);
   const [agendar, setAgendar] = useState<OrigenProblema | null>(null);
-  /** Problemas con la bitácora desplegada y tiendas con el historial desplegado. */
-  const [bitacoras, setBitacoras] = useState<number[]>([]);
-  const [historiales, setHistoriales] = useState<number[]>([]);
-  /** Lo marcado del checklist, por id de problema. Se adelanta al servidor. */
+  const [checklist, setChecklist] = useState(false);
+  /** Lo marcado de los pasos, por id de problema. Se adelanta al servidor. */
   const [marcas, setMarcas] = useState(() => marcasIniciales(grupos));
-  /** Pasos con el guardado en camino, como "<problema>:<código>". */
   const [ocupados, setOcupados] = useState<string[]>([]);
   const lista = useRef<HTMLDivElement>(null);
 
-  // Tras cada guardado el servidor manda la lista de nuevo, ya con quién marcó
-  // cada paso y cuándo.
+  // Tras cada guardado el servidor manda la lista de nuevo, ya con quién marcó cada paso y cuándo.
   useEffect(() => setMarcas(marcasIniciales(grupos)), [grupos]);
 
-  const puedeEditar = puede(ref, "problemas.editar");
-  const puedeGestionar = puedeEditar;
+  const resumen = useMemo(() => resumenProblemas(grupos, hoy), [grupos, hoy]);
+  const filtradas = filtrarProblemas(grupos, f, busqueda, nombreTipo, (p) => (marcas[p.id] ?? []).length, pasos.length);
+  const total = filtradas.reduce((n, g) => n + g.items.length, 0);
+  const actual = filtradas.find((g) => g.sucursalId === elegida) ?? filtradas[0] ?? null;
+  const original = actual ? (grupos.find((g) => g.sucursalId === actual.sucursalId) ?? actual) : null;
 
-  // ── Recorte común a los gráficos y a la lista: cliente, tipo y búsqueda ──
-  const q = sinTildes(busqueda.trim());
-  const enAlcance = useMemo(() => {
-    return grupos
-      .filter((g) => !f.clienteId || String(g.clienteId) === f.clienteId)
-      .map((g) => {
-        const tiendaCoincide = !q || sinTildes(`${g.nombre} ${g.cliente} ${g.comuna}`).includes(q);
-        return {
-          ...g,
-          items: g.items.filter((p) => {
-            if (f.tipo && p.tipoCodigo !== f.tipo) return false;
-            if (tiendaCoincide) return true;
-            const hay = `${p.visita.folio} ${p.agenda?.folio ?? ""} ${p.visita.tecnico} ${p.descripcion ?? ""} ${
-              p.solucion ?? ""
-            } ${catalogoProblema.find((t) => t.codigo === p.tipoCodigo)?.nombre ?? p.tipoCodigo} ${p.items
-              .map((i) => i.etiqueta)
-              .join(" ")}`;
-            return sinTildes(hay).includes(q);
-          }),
-        };
-      })
-      .filter((g) => g.items.length > 0);
-  }, [grupos, f.clienteId, f.tipo, q, catalogoProblema]);
+  useEffect(() => {
+    if (destacado === null) return;
+    document.getElementById(`problema-${destacado}`)?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    const espera = setTimeout(() => setDestacado(null), 1600);
+    return () => clearTimeout(espera);
+  }, [destacado]);
 
-  const paraGraficos = useMemo<ProblemaConTienda[]>(
-    () =>
-      enAlcance.flatMap((g) =>
-        g.items.map((p) => ({ ...p, sucursalId: g.sucursalId, sucursal: g.nombre, cliente: g.cliente }))
-      ),
-    [enAlcance]
-  );
-
-  // ── Lo que además recorta solo la lista: estado, antigüedad, agenda, gestión ──
-  const filtrados = useMemo(() => {
-    return enAlcance
-      .map((g) => ({
-        ...g,
-        items: g.items
-          .filter((p) => {
-            const resuelto = p.estado === "RESUELTO";
-            if (f.estado === "") {
-              if (resuelto) return false;
-            } else if (f.estado !== "TODOS" && p.estado !== f.estado) return false;
-            if (f.tramo && (resuelto || !enTramo(p.dias, f.tramo))) return false;
-            if (f.agenda === "SIN" && (resuelto || p.agenda)) return false;
-            if (f.agenda === "CON" && !p.agenda) return false;
-            if (f.avance) {
-              const n = (marcas[p.id] ?? []).length;
-              const avance = n === 0 ? "SIN" : n >= pasos.length ? "LISTA" : "PARCIAL";
-              if (avance !== f.avance) return false;
-            }
-            return true;
-          })
-          // Primero lo que sigue sin cerrar, de lo más viejo a lo más nuevo;
-          // después lo resuelto, de lo más reciente hacia atrás.
-          .sort((a, b) => {
-            const ra = Number(a.estado === "RESUELTO");
-            const rb = Number(b.estado === "RESUELTO");
-            if (ra !== rb) return ra - rb;
-            return ra ? (b.resueltoEn ?? "").localeCompare(a.resueltoEn ?? "") : a.creadoEn.localeCompare(b.creadoEn);
-          }),
-      }))
-      .filter((g) => g.items.length > 0);
-  }, [enAlcance, f.estado, f.tramo, f.agenda, f.avance, marcas, pasos.length]);
-
-  const totalProblemas = filtrados.reduce((acc, g) => acc + g.items.length, 0);
-
-  const chips: ChipFiltro[] = [];
-  if (f.clienteId) {
-    const c = clientes.find((x) => String(x.id) === f.clienteId);
-    chips.push({ label: `Cliente: ${c?.nombreFantasia ?? ""}`, onQuitar: () => setF((p) => ({ ...p, clienteId: "" })) });
-  }
-  if (f.tipo) chips.push({ label: `Falla: ${nombreTipo(f.tipo)}`, onQuitar: () => setF((p) => ({ ...p, tipo: "" })) });
-  if (f.estado) {
-    chips.push({
-      label: `Estado: ${f.estado === "TODOS" ? "todos" : nombreEstado(f.estado)}`,
-      onQuitar: () => setF((p) => ({ ...p, estado: "" })),
-    });
-  }
-  if (f.tramo) {
-    chips.push({
-      label: `Antigüedad: ${TRAMOS.find((t) => t.clave === f.tramo)?.label ?? f.tramo}`,
-      onQuitar: () => setF((p) => ({ ...p, tramo: "" })),
-    });
-  }
-  if (f.agenda) {
-    chips.push({
-      label: f.agenda === "SIN" ? "Sin visita agendada" : "Con visita agendada",
-      onQuitar: () => setF((p) => ({ ...p, agenda: "" })),
-    });
-  }
-  if (f.avance) {
-    chips.push({ label: `Gestión: ${AVANCE_LABEL[f.avance]}`, onQuitar: () => setF((p) => ({ ...p, avance: "" })) });
+  /** Pone filtros desde la franja o el checklist y baja a la lista. */
+  function filtrarPor(cambio: Partial<FiltrosProblemas>) {
+    const nuevo = { ...SIN_FILTROS_PROBLEMAS, ...cambio };
+    setF(nuevo);
+    setBorrador(nuevo);
+    requestAnimationFrame(() => lista.current?.scrollIntoView?.({ behavior: "smooth", block: "start" }));
   }
 
-  const alcance =
-    [
-      f.clienteId ? clientes.find((x) => String(x.id) === f.clienteId)?.nombreFantasia : null,
-      f.tipo ? nombreTipo(f.tipo) : null,
-      q ? `«${busqueda.trim()}»` : null,
-    ]
-      .filter(Boolean)
-      .join(" · ") || "todos los clientes y tipos";
-
-  /** Aplica un filtro pedido desde un gráfico y baja a la lista. */
-  function irALista(cambio: Partial<Filtros>, buscar?: string) {
-    setF((p) => ({ ...p, ...cambio }));
-    if (buscar !== undefined) setBusqueda(buscar);
-    requestAnimationFrame(() => lista.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
-  }
-
-  /** Primer paso: si el cambio cierra el problema, antes se pregunta por la visita. */
-  function pedirConfirmacion(p: ProblemaPanel, g: GrupoProblemas) {
-    if (!pendiente || (pendiente.estado === p.estado && pendiente.tipo === p.tipoCodigo)) {
-      return aviso("No hay cambios que confirmar");
+  function irATienda(sucursalId: number, problemaId?: number) {
+    // Si los filtros la esconden, se quitan.
+    const visible = filtradas.some((g) => g.sucursalId === sucursalId && (!problemaId || g.items.some((p) => p.id === problemaId)));
+    if (!visible) {
+      setF(SIN_FILTROS_PROBLEMAS);
+      setBorrador(SIN_FILTROS_PROBLEMAS);
+      setBusqueda("");
     }
-    if (pendiente.estado === "RESUELTO" && p.estado !== "RESUELTO" && g.visitas.length > 0) {
-      // Si ya tiene una visita agendada para resolverlo, parte elegida esa.
-      setVisitaAsociada(p.agenda?.folio ?? "");
-      return setPreguntando(true);
-    }
-    return confirmarCambio(p, "");
+    setElegida(sucursalId);
+    if (problemaId) setDestacado(problemaId);
+    else requestAnimationFrame(() => lista.current?.scrollIntoView?.({ behavior: "smooth", block: "start" }));
   }
 
-  async function confirmarCambio(p: ProblemaPanel, visitaFolio: string) {
-    if (!pendiente) return;
-    setGuardando(true);
-    const res = await actualizarProblemaAction({
-      problemaId: p.id,
-      estado: pendiente.estado,
-      tipoCodigo: pendiente.tipo,
-      nota: pendiente.nota,
-      ...(visitaFolio ? { visitaFolio } : {}),
-    });
-    setGuardando(false);
-    if (!res.ok) return aviso(res.error ?? "No se pudo guardar el cambio.");
-
-    const partes: string[] = [];
-    if (pendiente.estado !== p.estado) partes.push(nombreEstado(pendiente.estado));
-    if (pendiente.tipo !== p.tipoCodigo) partes.push(`reclasificado como «${nombreTipo(pendiente.tipo)}»`);
-    if (visitaFolio) partes.push(`asociado a la visita ${visitaFolio}`);
-    aviso(
-      partes.join(" · ") +
-        (pendiente.estado === "RESUELTO" && p.estado !== "RESUELTO" && f.estado === ""
-          ? " · sale de la lista de sin cerrar"
-          : "")
-    );
-    setEditando(null);
-    setPendiente(null);
-    setPreguntando(false);
-    router.refresh();
+  function limpiar() {
+    setF(SIN_FILTROS_PROBLEMAS);
+    setBorrador(SIN_FILTROS_PROBLEMAS);
+    setBusqueda("");
   }
 
   async function alternarPaso(p: ProblemaPanel, codigo: string) {
     const clave = `${p.id}:${codigo}`;
     if (ocupados.includes(clave)) return;
     const estaba = (marcas[p.id] ?? []).some((m) => m.codigo === codigo);
-
     const poner = (marcado: boolean) =>
       setMarcas((prev) => {
         const sin = (prev[p.id] ?? []).filter((m) => m.codigo !== codigo);
         return { ...prev, [p.id]: marcado ? [...sin, { codigo, por: null, en: "" }] : sin };
       });
-
     setOcupados((prev) => [...prev, clave]);
     poner(!estaba);
     const res = await marcarGestionProblemaAction({ problemaId: p.id, codigo, marcado: !estaba });
@@ -282,577 +133,587 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
     router.refresh();
   }
 
-  const alternar = (set: React.Dispatch<React.SetStateAction<number[]>>, id: number) =>
-    set((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  const chips: { clave: keyof FiltrosProblemas; texto: string }[] = [];
+  if (f.clienteId) chips.push({ clave: "clienteId", texto: `Cliente: ${clientes.find((c) => String(c.id) === f.clienteId)?.nombreFantasia ?? ""}` });
+  if (f.tipo) chips.push({ clave: "tipo", texto: `Falla: ${nombreTipo(f.tipo)}` });
+  if (f.estado) chips.push({ clave: "estado", texto: `Estado: ${f.estado === "TODOS" ? "todos" : nombreEstado(f.estado)}` });
+  if (f.tramo) chips.push({ clave: "tramo", texto: `Antigüedad: ${TRAMOS.find((t) => t.clave === f.tramo)?.label ?? f.tramo}` });
+  if (f.agenda) chips.push({ clave: "agenda", texto: f.agenda === "SIN" ? "Sin visita agendada" : "Con visita agendada" });
+  if (f.avance) chips.push({ clave: "avance", texto: `Gestión: ${AVANCE[f.avance].toLowerCase()}` });
+
+  const selectores: { k: keyof FiltrosProblemas; label: string; opciones: [string, string][] }[] = [
+    { k: "clienteId", label: "Cliente", opciones: [["", "Todos los clientes"], ...clientes.map((c): [string, string] => [String(c.id), c.nombreFantasia])] },
+    { k: "tipo", label: "Tipo de falla", opciones: [["", "Todas las fallas"], ...catalogo.map((t): [string, string] => [t.codigo, t.nombre])] },
+    {
+      k: "estado",
+      label: "Estado del problema",
+      opciones: [["", "Sin cerrar (por defecto)"], ...estados.map((e): [string, string] => [e.codigo, e.nombre]), ["TODOS", "Todos, incluidos los resueltos"]],
+    },
+    { k: "tramo", label: "Antigüedad (sin cerrar)", opciones: [["", "Cualquier antigüedad"], ...TRAMOS.map((t): [string, string] => [t.clave, t.label])] },
+    { k: "agenda", label: "Visita para resolverlo", opciones: [["", "Con o sin visita"], ["CON", "Con visita agendada"], ["SIN", "Sin visita agendada"]] },
+    ...(pasos.length
+      ? [{ k: "avance" as const, label: "Avance de la gestión", opciones: [["", "Cualquier avance"], ...Object.entries(AVANCE)] as [string, string][] }]
+      : []),
+  ];
+
+  const delta = (ahora: number, antes: number, subirEsMalo: boolean) => (
+    <>
+      <span className={`pb-delta ${ahora === antes ? "" : ahora > antes === subirEsMalo ? "malo" : "bueno"}`}>
+        {ahora > antes ? "+" : ""}
+        {ahora - antes}
+      </span>{" "}
+      vs. 30 días anteriores
+    </>
+  );
+
+  const abiertos = resumen.sinCerrar.length;
+  const iniciales_ = resumen.sinCerrar.filter((p) => claseEstado(p.estado) === "open").length;
 
   return (
-    <>
-      <AdminHeader title="Tiendas con problemas">
-        <button
-          onClick={() => setVerAnalisis((v) => !v)}
-          aria-pressed={verAnalisis}
-          className="btn btn-secondary"
-        >
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-            <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
-          </svg>
-          <span>{verAnalisis ? "Ocultar gráficos" : "Ver gráficos"}</span>
-        </button>
-        {filtrados.length > 1 ? (
-          <button
-            onClick={() =>
-              setCerradas(cerradas.length < filtrados.length ? filtrados.map((g) => g.sucursalId) : [])
-            }
-            className="btn btn-secondary"
-          >
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <path d={cerradas.length < filtrados.length ? "M6 9l6 6 6-6M6 4h12" : "M6 15l6-6 6 6M6 20h12"} />
-            </svg>
-            <span>{cerradas.length < filtrados.length ? "Cerrar todas las tarjetas" : "Abrir todas las tarjetas"}</span>
-          </button>
-        ) : null}
-        {puede(ref, "checklist.ver") ? (
-          <Link href="/admin/checklist" className="btn btn-secondary">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <path d="M4 6l2 2 3-3M4 13l2 2 3-3M4 20h5M13 7h8M13 14h8M13 20h8" />
-            </svg>
-            <span>Checklist de gestión</span>
-          </Link>
-        ) : null}
-      </AdminHeader>
+    <div className="dmc pagina">
+      <div className="wrap pb">
+        <header className="top">
+          <div>
+            <h1>Tiendas con problemas</h1>
+            <p>
+              {plural(abiertos, "problema sin cerrar", "problemas sin cerrar")} en {plural(resumen.tiendas, "tienda", "tiendas")}.
+            </p>
+          </div>
+          <div className="v-actions">
+            <button type="button" className="btn-out" onClick={() => setChecklist(true)}>
+              <Icono nombre="checklist" />
+              Checklist de gestión
+            </button>
+          </div>
+        </header>
 
-      <div className="pb-10 animate-fade-in">
-        {/* Un solo juego de filtros, arriba de todo lo que recortan. */}
-        <FiltrosBar
-          busqueda={busqueda}
-          phBusqueda="Buscar tienda, cliente, folio, detalle…"
-          onBusqueda={setBusqueda}
-          conteo={`${plural(totalProblemas, "problema", "problemas")} en ${plural(filtrados.length, "tienda", "tiendas")}`}
-          chips={chips}
-          onLimpiar={() => setF(SIN_FILTROS)}
-          campos={[
-            {
-              id: "fp-cliente",
-              label: "Cliente",
-              valor: f.clienteId,
-              opciones: [
-                { v: "", t: "Todos los clientes" },
-                ...clientes.map((c) => ({ v: String(c.id), t: c.nombreFantasia })),
-              ],
-              onChange: (v) => setF((p) => ({ ...p, clienteId: v })),
-            },
-            {
-              id: "fp-tipo",
-              label: "Tipo de falla",
-              valor: f.tipo,
-              opciones: [{ v: "", t: "Todas las fallas" }, ...OPC_TIPOS],
-              onChange: (v) => setF((p) => ({ ...p, tipo: v })),
-            },
-            {
-              id: "fp-estado",
-              label: "Estado del problema",
-              valor: f.estado,
-              opciones: [
-                { v: "", t: "Sin cerrar (por defecto)" },
-                ...estados.map((e) => ({ v: e.codigo, t: e.nombre })),
-                { v: "TODOS", t: "Todos, incluidos los resueltos" },
-              ],
-              onChange: (v) => setF((p) => ({ ...p, estado: v })),
-            },
-            {
-              id: "fp-tramo",
-              label: "Antigüedad (sin cerrar)",
-              valor: f.tramo,
-              opciones: [{ v: "", t: "Cualquier antigüedad" }, ...TRAMOS.map((t) => ({ v: t.clave, t: t.label }))],
-              onChange: (v) => setF((p) => ({ ...p, tramo: v })),
-            },
-            {
-              id: "fp-agenda",
-              label: "Visita para resolverlo",
-              valor: f.agenda,
-              opciones: [
-                { v: "", t: "Con o sin visita" },
-                { v: "SIN", t: "Sin visita agendada" },
-                { v: "CON", t: "Con visita agendada" },
-              ],
-              onChange: (v) => setF((p) => ({ ...p, agenda: v })),
-            },
-            ...(pasos.length
-              ? [
-                  {
-                    id: "fp-avance",
-                    label: "Avance de la gestión",
-                    valor: f.avance,
-                    opciones: [
-                      { v: "", t: "Cualquier avance" },
-                      { v: "SIN", t: "Sin empezar" },
-                      { v: "PARCIAL", t: "A medias" },
-                      { v: "LISTA", t: "Completa" },
-                    ],
-                    onChange: (v: string) => setF((p) => ({ ...p, avance: v })),
-                  },
-                ]
-              : []),
-          ]}
-        />
-
-        {verAnalisis ? (
-          <ProblemasAnalisis
-            problemas={paraGraficos}
-            hoy={hoy}
-            alcance={alcance}
-            nombreTipo={nombreTipo}
-            nombreEstado={nombreEstado}
-            onTipo={(codigo) => irALista({ tipo: codigo })}
-            onTramo={(clave) => irALista({ tramo: clave, estado: "" })}
-            onSinAgenda={() => irALista({ agenda: "SIN", estado: "" })}
-            onTienda={(sucursalId) => {
-              const g = grupos.find((x) => x.sucursalId === sucursalId);
-              if (!g) return;
-              setHistoriales((prev) => (prev.includes(sucursalId) ? prev : [...prev, sucursalId]));
-              setCerradas((prev) => prev.filter((x) => x !== sucursalId));
-              irALista({ tramo: "", agenda: "", avance: "", estado: "" }, g.nombre);
-            }}
-          />
-        ) : null}
-
-        <div ref={lista} className="px-4 md:px-7 scroll-mt-28">
-          {pasos.length === 0 && puedeEditar ? (
-            <div className="mt-6 px-3.5 py-3 border border-dashed border-black/[.4] text-meta opacity-75 max-w-[90ch]">
-              Todavía no hay checklist de gestión. Agrega los pasos en Maestros › Checklist › Lista 6 «Gestión de
-              problemas» y aparecen en cada problema para ir marcándolos.
+        {abiertos > 0 || resumen.totalResueltos > 0 ? (
+          <section className="pb-hero" aria-labelledby="pb-franja">
+            <div className="pb-hero-top">
+              <div className="pb-hero-n">
+                <h2 id="pb-franja">Sin cerrar</h2>
+                <b>{abiertos}</b>
+                <span>
+                  {iniciales_} recién levantados, {abiertos - iniciales_} en gestión
+                </span>
+              </div>
+              <div className="pb-hero-w">
+                <p className="pb-hero-wl">
+                  Cada cuadro es un problema, por días desde que se levantó. Toca uno para ir a su tienda, o un tramo para filtrar.
+                </p>
+                <div className="pb-waffle">
+                  {resumen.tramos.map((t) => (
+                    <div key={t.clave} className="pb-wf-g" style={{ flexGrow: Math.max(t.items.length, 1) }}>
+                      <div className="pb-wf-cells">
+                        {t.items.map((p) => {
+                          const texto = `${p.grupo.cliente}, ${p.grupo.nombre}: ${nombreTipo(p.tipoCodigo)}, ${plural(p.dias, "día", "días")}`;
+                          return (
+                            <button
+                              key={p.id}
+                              type="button"
+                              className={`pb-cell edad-${t.i}`}
+                              title={texto}
+                              aria-label={texto}
+                              onClick={() => irATienda(p.grupo.sucursalId, p.id)}
+                            />
+                          );
+                        })}
+                      </div>
+                      <button
+                        type="button"
+                        className="pb-wf-l"
+                        aria-pressed={f.tramo === t.clave}
+                        onClick={() => filtrarPor(f.tramo === t.clave ? {} : { tramo: t.clave })}
+                      >
+                        <i className={`edad-${t.i}`} aria-hidden="true" />
+                        {t.label}
+                        <b>{t.items.length}</b>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-          ) : null}
-
-          {filtrados.map((g) => {
-            const original = grupos.find((x) => x.sucursalId === g.sucursalId) ?? g;
-            const masViejo = original.items
-              .filter((p) => p.estado !== "RESUELTO")
-              .reduce((m, p) => Math.max(m, p.dias), 0);
-            const historialAbierto = historiales.includes(g.sucursalId);
-            const cerrada = cerradas.includes(g.sucursalId);
-
-            return (
-              <div
-                key={g.sucursalId}
-                className="border-2 border-[var(--color-text)] mt-7"
+            <dl className="pb-mets">
+              <Metrica titulo="Levantados, 30 días" valor={resumen.levantados}>
+                {delta(resumen.levantados, resumen.levantadosAntes, true)}
+              </Metrica>
+              <Metrica titulo="Resueltos, 30 días" valor={resumen.resueltos}>
+                {delta(resumen.resueltos, resumen.resueltosAntes, false)}
+              </Metrica>
+              <Metrica
+                titulo="Tiempo medio de resolución"
+                valor={resumen.diasResolver === null ? "—" : resumen.diasResolver.toFixed(1).replace(".", ",")}
+                unidad={resumen.diasResolver === null ? undefined : "días"}
               >
-                <div
-                  className={`flex items-center gap-3 flex-wrap px-5 py-4 bg-[var(--color-surface-2)] ${
-                    cerrada ? "" : "border-b-2 border-[var(--color-text)]"
-                  }`}
+                {plural(resumen.totalResueltos, "resuelto", "resueltos")}
+              </Metrica>
+              <Metrica titulo="El más antiguo" valor={resumen.masViejo?.dias ?? "—"} unidad={resumen.masViejo ? "días" : undefined}>
+                {resumen.masViejo ? (
+                  <>
+                    {resumen.masViejo.grupo.cliente}, {resumen.masViejo.grupo.nombre}.{" "}
+                    <button type="button" className="enlace" onClick={() => irATienda(resumen.masViejo!.grupo.sucursalId, resumen.masViejo!.id)}>
+                      Ver tienda
+                    </button>
+                  </>
+                ) : (
+                  "No queda ninguno abierto"
+                )}
+              </Metrica>
+              <Metrica titulo="Sin visita agendada" valor={resumen.sinVisita} unidad={`de ${abiertos}`}>
+                <button type="button" className="enlace" onClick={() => filtrarPor({ agenda: "SIN" })}>
+                  Ver cuáles
+                </button>
+              </Metrica>
+            </dl>
+          </section>
+        ) : null}
+
+        <section className="v-card" aria-label="Búsqueda y filtros" ref={lista}>
+          <div className="v-bar">
+            <label className="v-search">
+              <Icono nombre="buscar" />
+              <span className="sr">Buscar tienda, cliente, folio o detalle</span>
+              <input
+                type="search"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar tienda, cliente, folio, detalle…"
+                autoComplete="off"
+              />
+            </label>
+            <div className="v-tools">
+              <span className="pb-count">
+                {plural(total, "problema", "problemas")} en {plural(filtradas.length, "tienda", "tiendas")}
+              </span>
+              <button
+                type="button"
+                className={chips.length ? "v-fbtn on" : "v-fbtn"}
+                aria-expanded={verFiltros}
+                aria-label={chips.length ? `Filtros, ${plural(chips.length, "puesto", "puestos")}` : "Filtros"}
+                onClick={() => {
+                  setBorrador(f);
+                  setVerFiltros((x) => !x);
+                }}
+              >
+                <Icono nombre="filtros" />
+                Filtros
+                {chips.length ? <span className="v-fbadge">{chips.length}</span> : null}
+              </button>
+            </div>
+          </div>
+          {verFiltros ? (
+            <form
+              className="v-filters"
+              onSubmit={(e) => {
+                e.preventDefault();
+                setF(borrador);
+                setVerFiltros(false);
+              }}
+            >
+              <div className="v-fgrid">
+                {selectores.map((s) => (
+                  <div className="fr" key={s.k}>
+                    <label htmlFor={`fp-${s.k}`}>{s.label}</label>
+                    <select id={`fp-${s.k}`} className="input" value={borrador[s.k]} onChange={(e) => setBorrador({ ...borrador, [s.k]: e.target.value })}>
+                      {s.opciones.map(([v, t]) => (
+                        <option key={v} value={v}>
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+              <div className="v-fbtns">
+                <button
+                  type="button"
+                  className="btn-out sm"
+                  onClick={() => {
+                    limpiar();
+                    setVerFiltros(false);
+                  }}
                 >
+                  Limpiar
+                </button>
+                <button type="submit" className="btn-pri sm">
+                  Ver resultados
+                </button>
+              </div>
+            </form>
+          ) : null}
+          {chips.length ? (
+            <div className="v-active">
+              {chips.map((c) => (
+                <span className="fchip" key={c.clave}>
+                  {c.texto}
                   <button
                     type="button"
-                    onClick={() => alternar(setCerradas, g.sucursalId)}
-                    aria-expanded={!cerrada}
-                    aria-label={`${cerrada ? "Abrir" : "Cerrar"} la tarjeta de ${g.nombre}`}
-                    className="flex items-center gap-3 min-w-0 text-left bg-transparent border-0 p-0 cursor-pointer text-[var(--color-text)]"
+                    aria-label={`Quitar ${c.texto}`}
+                    onClick={() => {
+                      setF({ ...f, [c.clave]: "" });
+                      setBorrador({ ...f, [c.clave]: "" });
+                    }}
                   >
-                    <Flecha abierta={!cerrada} />
-                    <span className="min-w-0">
-                      <span className="block font-extrabold text-lead">{g.nombre}</span>
-                      <span className="block text-meta opacity-60 mt-0.5">
-                        {g.cliente} · {g.comuna}
-                      </span>
-                    </span>
+                    ✕
                   </button>
-                  <div className="ml-auto flex items-center gap-2.5 flex-wrap">
-                    <span className="tag tag-outline">{original.abiertos} sin cerrar</span>
-                    <span className="text-cap opacity-62">de {original.total} en total</span>
-                    {original.abiertos > 0 ? (
-                      <span className={`tag ${masViejo > DIAS_ATRASO ? "tag-accent" : "tag-neutral border border-black/[.2]"}`}>
-                        El más antiguo: {plural(masViejo, "día", "días")}
-                      </span>
-                    ) : null}
-                    <button
-                      onClick={() => alternar(setHistoriales, g.sucursalId)}
-                      aria-expanded={historialAbierto}
-                      className="min-h-[34px] flex items-center gap-2 px-3 bg-transparent border border-black/[.35] text-cap cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
-                    >
-                      <span>
-                        {historialAbierto ? "Ocultar historial del local" : "Historial del local"} ·{" "}
-                        {plural(original.visitas.length, "visita", "visitas")}
-                      </span>
-                      <Flecha abierta={historialAbierto} />
-                    </button>
-                  </div>
-                </div>
-
-                {!cerrada && historialAbierto ? <HistorialLocal grupo={original} nombreTipo={nombreTipo} /> : null}
-
-                <div className="bg-white" hidden={cerrada}>
-                  {g.items.map((p) => {
-                    const resuelto = p.estado === "RESUELTO";
-                    const abierto = editando === p.id;
-                    const estadoSel = abierto && pendiente ? pendiente.estado : p.estado;
-                    const tipoSel = abierto && pendiente ? pendiente.tipo : p.tipoCodigo;
-                    const hayCambio = estadoSel !== p.estado || tipoSel !== p.tipoCodigo;
-                    // Resuelto en gris, abierto en rojo de alarma y los intermedios (planificados) en morado medio.
-                    const color = resuelto
-                      ? "var(--color-neutral-600)"
-                      : p.estado === ESTADO_PROBLEMA_INICIAL
-                        ? "var(--color-danger)"
-                        : "var(--color-accent-500)";
-                    const marcasP = marcas[p.id] ?? [];
-                    const bitacoraAbierta = bitacoras.includes(p.id);
-                    const eventos = p.cambios.length + marcasP.length + (p.agenda ? 1 : 0) + 1;
-
-                    return (
-                      <div
-                        key={p.id}
-                        className="flex gap-3.5 px-5 py-4 border-b border-black/[.15]"
-                        style={{
-                          borderLeft: `4px solid ${color}`,
-                          background: resuelto ? "var(--color-surface-3)" : "var(--color-danger-100)",
-                        }}
-                      >
-                        <div
-                          className="flex-none w-6.5 h-6.5 rounded-full grid place-items-center mt-0.5"
-                          style={{ background: color }}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3">
-                            {resuelto ? <path d="M4 12l5 5L20 6" /> : <path d="M12 8v5M12 17h.01" />}
-                          </svg>
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2.5 flex-wrap">
-                            <div className="font-extrabold text-lead leading-[1.25]">{nombreTipo(p.tipoCodigo)}</div>
-                            <EstadoProblemaTag estado={p.estado} />
-                            <span
-                              className={`tag tabular-nums ${
-                                !resuelto && p.dias > DIAS_ATRASO ? "tag-accent" : "tag-neutral border border-black/[.2]"
-                              }`}
-                            >
-                              {textoAntiguedad(p)}
-                            </span>
-                            {p.agenda && !resuelto ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap leading-[1.2] ">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
-                                  <circle cx="12" cy="12" r="9" />
-                                  <path d="M12 7.5V12l3 2" />
-                                </svg>
-                                <span>Con visita agendada</span>
-                              </span>
-                            ) : null}
-                            <button
-                              onClick={() => router.push(`/admin/visitas/${p.visita.folio}`)}
-                              className="ml-auto min-h-8 px-2.5 bg-transparent border border-black/[.3] text-cap leading-none cursor-pointer hover:bg-black/[.07]"
-                            >
-                              {p.visita.folio}
-                            </button>
-                          </div>
-
-                          <div className="text-cap opacity-62 mt-1.5 tabular-nums">
-                            Levantado el {fechaHoraLegible(p.creadoEn)} · {p.visita.tecnico}
-                            {p.visita.motivo ? ` · ${p.visita.motivo}` : ""}
-                          </div>
-
-                          {p.items.length > 0 ? (
-                            <div className="flex flex-wrap gap-1.5 mt-2">
-                              {p.items.map((it) => (
-                                <span
-                                  key={it.id}
-                                  className="px-2.5 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap leading-[1.2] tabular-nums"
-                                >
-                                  {it.etiqueta} × {it.cantidad}
-                                </span>
-                              ))}
-                            </div>
-                          ) : null}
-
-                          {p.descripcion ? <div className="text-ui mt-2 max-w-[76ch]">{p.descripcion}</div> : null}
-                          {p.solucion ? (
-                            <div className="text-ui mt-1.5 max-w-[76ch]">
-                              <strong className="font-extrabold">{resuelto ? "Se realizó:" : "Sugerencia:"}</strong>{" "}
-                              {p.solucion}
-                            </div>
-                          ) : null}
-
-                          {p.agenda ? (
-                            <div className="flex gap-2.5 items-center flex-wrap mt-3 px-3.5 py-2.5 bg-[var(--color-surface)] border border-[var(--color-line-control)]">
-                              <svg
-                                width="17"
-                                height="17"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="var(--color-text)"
-                                strokeWidth="2.2"
-                                className="flex-none"
-                              >
-                                <rect x="3" y="5" width="18" height="16" />
-                                <path d="M8 3v4M16 3v4M3 11h18" />
-                              </svg>
-                              <div className="text-meta tabular-nums">
-                                Visita para resolverlo: {fechaCL(p.agenda.fecha)} · {p.agenda.tecnico}
-                              </div>
-                              <Tag variant={ESTADO_VISITA_TAG[p.agenda.estado]}>{ESTADO_VISITA_LABEL[p.agenda.estado]}</Tag>
-                              <button
-                                onClick={() => router.push(`/admin/visitas/${p.agenda!.folio}`)}
-                                className="ml-auto min-h-7 px-2 bg-transparent border border-black/[.3] text-cap leading-none cursor-pointer hover:bg-black/[.07]"
-                              >
-                                {p.agenda.folio}
-                              </button>
-                            </div>
-                          ) : null}
-
-                          {/* Checklist de gestión */}
-                          {pasos.length ? (
-                            <Gestion
-                              pasos={pasos}
-                              marcas={marcasP}
-                              ocupados={ocupados}
-                              problemaId={p.id}
-                              editable={puedeGestionar && !resuelto}
-                              onPaso={(codigo) => alternarPaso(p, codigo)}
-                            />
-                          ) : null}
-
-                          <div className="flex items-center gap-2.5 flex-wrap mt-3.5 pt-3 border-t border-black/[.18]">
-                            {!resuelto && puede(ref, "visitas.crear") ? (
-                              <button
-                                onClick={() =>
-                                  setAgendar({
-                                    problemaId: p.id,
-                                    folio: p.visita.folio,
-                                    clienteId: g.clienteId,
-                                    sucursalId: g.sucursalId,
-                                    tipoCodigo: p.tipoCodigo,
-                                    tipoNombre: nombreTipo(p.tipoCodigo),
-                                    descripcion: p.descripcion,
-                                    solucion: p.solucion,
-                                  })
-                                }
-                                className="btn btn-primary min-h-[34px] px-3 gap-2 text-meta"
-                              >
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                                  <rect x="3" y="5" width="18" height="16" />
-                                  <path d="M8 3v4M16 3v4M3 11h18M12 15h4" />
-                                </svg>
-                                <span>{p.agenda ? "Agendar otra visita" : "Agendar visita"}</span>
-                              </button>
-                            ) : null}
-
-                            <button
-                              onClick={() => alternar(setBitacoras, p.id)}
-                              aria-expanded={bitacoraAbierta}
-                              className="min-h-[34px] flex items-center gap-2 px-3 bg-transparent border border-black/[.35] text-cap cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
-                            >
-                              <span>
-                                {bitacoraAbierta ? "Ocultar bitácora" : "Bitácora"} · {plural(eventos, "registro", "registros")}
-                              </span>
-                              <Flecha abierta={bitacoraAbierta} />
-                            </button>
-
-                            {/* También resuelto o con visita agendada: si se
-                                cerró por otra vía, o hay que reabrirlo,
-                                coordinación tiene que poder cambiarlo. */}
-                            {puedeEditar ? (
-                              <button
-                                onClick={() => {
-                                  const abrir = editando !== p.id;
-                                  setEditando(abrir ? p.id : null);
-                                  setPendiente(abrir ? { estado: p.estado, tipo: p.tipoCodigo, nota: "" } : null);
-                                  setPreguntando(false);
-                                }}
-                                aria-expanded={abierto}
-                                className="ml-auto min-h-[34px] flex items-center gap-2 px-3 bg-transparent border border-black/[.35] text-cap cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
-                              >
-                                <span>{abierto ? "Ocultar" : "Cambiar estado o tipo"}</span>
-                                <Flecha abierta={abierto} />
-                              </button>
-                            ) : null}
-                          </div>
-
-                          {bitacoraAbierta ? (
-                            <Bitacora
-                              problema={p}
-                              marcas={marcasP}
-                              pasos={pasos}
-                              nombreTipo={nombreTipo}
-                              nombreEstado={nombreEstado}
-                            />
-                          ) : null}
-
-                          {abierto && pendiente ? (
-                            <div className="mt-2.5 px-3.5 py-3 bg-[var(--color-surface)] border border-black/[.25]">
-                              <div className="flex items-center gap-2.5 flex-wrap">
-                                <span className="text-cap opacity-60">Estado</span>
-                                <div className="flex gap-1.5 flex-wrap">
-                                  {/* El estado actual va siempre, aunque ya no esté en el checklist. */}
-                                  {(estados.some((e) => e.codigo === p.estado)
-                                    ? estados
-                                    : [...ref.estadosProblema.filter((e) => e.codigo === p.estado), ...estados]
-                                  ).map((a) => (
-                                    <button
-                                      key={a.codigo}
-                                      onClick={() => setPendiente({ ...pendiente, estado: a.codigo })}
-                                      aria-pressed={estadoSel === a.codigo}
-                                      className="min-h-[34px] px-3 border border-black/[.35] font-extrabold text-cap cursor-pointer hover:bg-black/[.1]"
-                                      style={{
-                                        background: estadoSel === a.codigo ? "var(--color-text)" : "transparent",
-                                        color: estadoSel === a.codigo ? "var(--color-bg)" : "var(--color-text)",
-                                      }}
-                                    >
-                                      {a.nombre}
-                                    </button>
-                                  ))}
-                                </div>
-
-                                <div className="ml-auto flex items-center gap-2.5">
-                                  <label htmlFor={`ft-${p.id}`} className="text-cap opacity-60">
-                                    Reclasificar
-                                  </label>
-                                  <div className="relative">
-                                    <select
-                                      id={`ft-${p.id}`}
-                                      value={tipoSel}
-                                      onChange={(e) => setPendiente({ ...pendiente, tipo: e.target.value })}
-                                      className="input min-h-[34px] pl-2.5 pr-8.5 text-meta appearance-none"
-                                    >
-                                      {/* El tipo actual puede estar ya fuera del checklist. */}
-                                      {OPC_TIPOS.some((o) => o.v === p.tipoCodigo) ? null : (
-                                        <option value={p.tipoCodigo}>{nombreTipo(p.tipoCodigo)}</option>
-                                      )}
-                                      {OPC_TIPOS.map((o) => (
-                                        <option key={o.v} value={o.v}>
-                                          {o.t}
-                                        </option>
-                                      ))}
-                                    </select>
-                                    <svg
-                                      width="15"
-                                      height="15"
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      stroke="var(--color-text)"
-                                      strokeWidth="2.2"
-                                      className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                                    >
-                                      <path d="M6 9l6 6 6-6" />
-                                    </svg>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <label
-                                htmlFor={`fn-${p.id}`}
-                                className="block text-cap opacity-60 mt-3 mb-1.5"
-                              >
-                                Nota del cambio <span className="normal-case tracking-normal">(opcional · queda en la bitácora)</span>
-                              </label>
-                              <textarea
-                                id={`fn-${p.id}`}
-                                rows={2}
-                                value={pendiente.nota}
-                                onChange={(e) => setPendiente({ ...pendiente, nota: e.target.value })}
-                                autoComplete="off"
-                                placeholder="Ej: el repuesto llega el viernes; se resolvió por teléfono con la tienda."
-                                className="input max-w-[76ch]"
-                              />
-
-                              {preguntando ? (
-                                <div className="mt-3 px-3.5 py-3 border-2 border-[var(--color-text)] bg-white">
-                                  <div className="font-extrabold text-ui">¿Asociar la resolución a una visita?</div>
-                                  <div className="text-cap opacity-62 mt-1 max-w-[70ch]">
-                                    Elige la visita del local en la que se resolvió. Queda en la bitácora del problema.
-                                  </div>
-                                  <label htmlFor={`fv-${p.id}`} className="block text-cap opacity-60 mt-3 mb-1.5">
-                                    Visita
-                                  </label>
-                                  <select
-                                    id={`fv-${p.id}`}
-                                    value={visitaAsociada}
-                                    onChange={(e) => setVisitaAsociada(e.target.value)}
-                                    className="input min-h-[34px] text-meta max-w-full"
-                                  >
-                                    <option value="">Ninguna en particular</option>
-                                    {g.visitas.map((v) => (
-                                      <option key={v.folio} value={v.folio}>
-                                        {v.folio} · {fechaCL(v.fecha)} · {v.tecnico}
-                                        {v.motivo ? ` · ${v.motivo}` : ""}
-                                        {p.agenda?.folio === v.folio ? " · agendada para resolverlo" : ""}
-                                      </option>
-                                    ))}
-                                  </select>
-                                  <div className="flex items-center gap-2.5 flex-wrap mt-3">
-                                    <button
-                                      onClick={() => confirmarCambio(p, visitaAsociada)}
-                                      disabled={guardando}
-                                      className="btn btn-primary min-h-[38px] px-3.5 text-meta"
-                                    >
-                                      {guardando
-                                        ? "Guardando…"
-                                        : visitaAsociada
-                                          ? "Resolver y asociar"
-                                          : "Resolver sin asociar"}
-                                    </button>
-                                    <button
-                                      onClick={() => setPreguntando(false)}
-                                      disabled={guardando}
-                                      className="min-h-[38px] px-3.5 bg-transparent border border-black/[.35] text-meta cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
-                                    >
-                                      Volver
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : null}
-
-                              <div className="flex items-center gap-2.5 flex-wrap mt-3" hidden={preguntando}>
-                                <button
-                                  onClick={() => pedirConfirmacion(p, original)}
-                                  disabled={guardando}
-                                  className="min-h-[38px] flex items-center gap-2 px-3.5 text-[var(--color-bg)] border-0 font-extrabold text-meta cursor-pointer hover:brightness-95 disabled:opacity-60"
-                                  style={{ background: hayCambio ? "var(--color-accent)" : "var(--color-neutral-500)" }}
-                                >
-                                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
-                                    <path d="M4 12l5 5L20 6" />
-                                  </svg>
-                                  <span>{guardando ? "Guardando…" : "Confirmar cambio"}</span>
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setEditando(null);
-                                    setPendiente(null);
-                                    setPreguntando(false);
-                                  }}
-                                  className="min-h-[38px] px-3.5 bg-transparent border border-black/[.35] text-meta cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
-                                >
-                                  Cancelar
-                                </button>
-                                <span className="text-cap opacity-66 max-w-[46ch]">
-                                  Nada cambia hasta que confirmes. El cambio queda en la bitácora con tu usuario.
-                                </span>
-                              </div>
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-
-          {filtrados.length === 0 ? (
-            <div className="py-14 text-center">
-              <div className="font-extrabold text-lead mb-1.5">Nada que mostrar</div>
-              <div className="text-meta opacity-66">
-                {grupos.length === 0
-                  ? "Todavía no se ha levantado ningún problema en terreno."
-                  : "Ajusta la búsqueda o los filtros. Por defecto solo se ven los problemas sin cerrar."}
-              </div>
+                </span>
+              ))}
+              <button type="button" className="enlace" onClick={limpiar}>
+                Quitar todos
+              </button>
             </div>
           ) : null}
-        </div>
+        </section>
+
+        {pasos.length === 0 && puedeEditar ? (
+          <p className="nota">
+            Todavía no hay pasos de gestión. Agrégalos en Checklist, en la lista «Gestión de problemas», y aparecen en cada problema.
+          </p>
+        ) : null}
+
+        {!actual || !original ? (
+          <div className="pb-empty">
+            <b>{grupos.length === 0 ? "Todavía no hay problemas" : "No hay problemas con esos filtros"}</b>
+            <span>
+              {grupos.length === 0
+                ? "Cuando un técnico levante uno en terreno, aparece aquí."
+                : "Quita algún filtro o cambia el estado a «Todos». Por defecto solo se ven los que siguen sin cerrar."}
+            </span>
+            {chips.length || busqueda ? (
+              <button type="button" className="btn-out sm" onClick={limpiar}>
+                Quitar filtros
+              </button>
+            ) : null}
+          </div>
+        ) : (
+          <div className="pb-md">
+            <nav className="pb-slist" aria-label="Tiendas con problemas">
+              <p className="pb-sl-h">
+                <span>Tienda</span>
+                <span>Sin cerrar</span>
+              </p>
+              {filtradas.map((g) => (
+                <button
+                  key={g.sucursalId}
+                  type="button"
+                  className="pb-srow"
+                  aria-pressed={g.sucursalId === actual.sucursalId}
+                  onClick={() => setElegida(g.sucursalId)}
+                >
+                  <span className="pb-sn">
+                    <b>{g.cliente}</b>
+                    <span>{g.nombre}</span>
+                  </span>
+                  <span className="pb-sdots" aria-hidden="true">
+                    {g.items.map((p) => (
+                      <i key={p.id} className={abierto(p) ? `edad-${tramoDe(p.dias)}` : "edad-ok"} />
+                    ))}
+                  </span>
+                  <span className="pb-sc">{g.abiertos}</span>
+                </button>
+              ))}
+            </nav>
+
+            <section className="pb-detail" aria-labelledby="pb-tienda">
+              <header className="pb-dh">
+                <div>
+                  <p className="pb-dh-c">
+                    {original.cliente}, {original.comuna}{" "}
+                    {esDatoDePrueba(original.cliente, original.nombre) ? <span className="flag test">Prueba</span> : null}
+                  </p>
+                  <h2 id="pb-tienda">{original.nombre}</h2>
+                </div>
+                <Desplegable
+                  key={original.sucursalId}
+                  claseBoton="btn-out sm"
+                  clasePanel="pb-hist"
+                  boton={
+                    <>
+                      Historial del local, {plural(original.visitas.length, "visita", "visitas")}
+                      <Icono nombre="abajo" />
+                    </>
+                  }
+                >
+                  {() => (
+                    <ul>
+                      {original.visitas.map((v) => (
+                        <li key={v.folio}>
+                          <Link href={`/admin/visitas/${v.folio}`}>
+                            <span className={`pill ${PILL_VISITA[v.estado]}`}>{ESTADO_VISITA_LABEL[v.estado]}</span>
+                            <b>{v.folio}</b>
+                            <span>
+                              {fechaCL(v.fecha)}. {[v.motivo, v.tecnico].filter(Boolean).join(", ")}
+                              {v.trabajos ? `. Trabajo: ${v.trabajos}` : ""}
+                              {v.observaciones ? `. ${ocultarCredenciales(v.observaciones)}` : ""}
+                            </span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </Desplegable>
+                <dl className="pb-dh-s">
+                  <div>
+                    <dt>Sin cerrar</dt>
+                    <dd className={original.abiertos ? "red" : undefined}>{original.abiertos}</dd>
+                  </div>
+                  <div>
+                    <dt>En total</dt>
+                    <dd>{original.total}</dd>
+                  </div>
+                  <div>
+                    <dt>El más antiguo</dt>
+                    <dd>
+                      {original.abiertos ? (
+                        <>
+                          {masAntiguo(original)} <small>días</small>
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Con visita</dt>
+                    <dd>
+                      {original.items.filter((p) => abierto(p) && p.agenda).length} <small>de {original.abiertos}</small>
+                    </dd>
+                  </div>
+                </dl>
+              </header>
+
+              <ol className="pb-tickets">
+                {actual.items.map((p) => {
+                  const sinCerrar = abierto(p);
+                  const hechas = marcas[p.id] ?? [];
+                  return (
+                    <li
+                      key={p.id}
+                      id={`problema-${p.id}`}
+                      className={`pb-tk${sinCerrar ? "" : " st-resuelto"}${destacado === p.id ? " flash" : ""}`}
+                    >
+                      <div
+                        className={`pb-age-b ${sinCerrar ? `edad-${tramoDe(p.dias)}` : "edad-ok"}`}
+                        title={sinCerrar ? `Abierto hace ${plural(p.dias, "día", "días")}` : `Resuelto en ${plural(p.dias, "día", "días")}`}
+                      >
+                        {sinCerrar ? (
+                          <>
+                            <b>{p.dias}</b>
+                            <span>{p.dias === 1 ? "día" : "días"}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Icono nombre="listo" />
+                            <span>{p.dias} d</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="pb-tk-b">
+                        <div className="pb-tk-top">
+                          <h3>{nombreTipo(p.tipoCodigo)}</h3>
+                          <span className={`pb-st ${claseEstado(p.estado)}`}>{nombreEstado(p.estado)}</span>
+                          <Link className="pb-folio" href={`/admin/visitas/${p.visita.folio}`} title="Abrir el acta donde se levantó">
+                            {p.visita.folio}
+                          </Link>
+                        </div>
+                        {p.descripcion ? <blockquote className="pb-quote">{ocultarCredenciales(p.descripcion)}</blockquote> : null}
+                        {p.solucion ? (
+                          <p className="pb-solucion">
+                            <b>{sinCerrar ? "Sugerencia:" : "Se realizó:"}</b> {ocultarCredenciales(p.solucion)}
+                          </p>
+                        ) : null}
+                        <div className="pb-tk-meta">
+                          <span className="pb-eq">
+                            {p.items.map((it) => (
+                              <span key={it.id}>
+                                {it.etiqueta}
+                                <b>{it.cantidad}</b>
+                              </span>
+                            ))}
+                          </span>
+                          <span className="pb-by">
+                            <span className="mini-av" aria-hidden="true">
+                              {iniciales(p.visita.tecnico)}
+                            </span>
+                            {p.visita.tecnico}, {fechaHoraLegible(p.creadoEn)}
+                          </span>
+                        </div>
+                        {p.agenda ? (
+                          <p className="pb-agenda">
+                            <Icono nombre="visitas" />
+                            <span>
+                              Visita para resolverlo:{" "}
+                              <Link href={`/admin/visitas/${p.agenda.folio}`}>{p.agenda.folio}</Link>, {fechaCL(p.agenda.fecha)},{" "}
+                              {p.agenda.tecnico}
+                            </span>
+                            <span className={`pill ${PILL_VISITA[p.agenda.estado]}`}>{ESTADO_VISITA_LABEL[p.agenda.estado]}</span>
+                          </p>
+                        ) : null}
+                        <div className="pb-tk-act">
+                          {sinCerrar && puede(ref, "visitas.crear") ? (
+                            <button
+                              type="button"
+                              className="pb-cta"
+                              onClick={() =>
+                                setAgendar({
+                                  problemaId: p.id,
+                                  folio: p.visita.folio,
+                                  clienteId: actual.clienteId,
+                                  sucursalId: actual.sucursalId,
+                                  tipoCodigo: p.tipoCodigo,
+                                  tipoNombre: nombreTipo(p.tipoCodigo),
+                                  descripcion: p.descripcion,
+                                  solucion: p.solucion,
+                                  // La fila trae el nombre del técnico, no su id.
+                                  tecnicoId: ref.tecnicos.find((t) => t.nombreCompleto === p.visita.tecnico)?.id ?? null,
+                                })
+                              }
+                            >
+                              <Icono nombre="visitas" />
+                              {p.agenda ? "Agendar otra visita" : "Agendar visita"}
+                            </button>
+                          ) : (
+                            <span className="pb-done">{sinCerrar ? "" : "Cerrado"}</span>
+                          )}
+                          <span className="pb-tools">
+                            {pasos.length ? (
+                              <Desplegable
+                                claseBoton="pb-tool"
+                                clasePanel="pb-pop"
+                                boton={
+                                  <>
+                                    <Icono nombre="checklist" />
+                                    Pasos{" "}
+                                    <span>
+                                      {hechas.length}/{pasos.length}
+                                    </span>
+                                  </>
+                                }
+                              >
+                                {() => (
+                                  <>
+                                    <p className="pb-steps-h">Pasos de gestión</p>
+                                    <ul className="pb-steps">
+                                      {pasos.map((paso) => {
+                                        const marca = hechas.find((m) => m.codigo === paso.codigo);
+                                        return (
+                                          <li key={paso.codigo}>
+                                            <label title={marca?.en ? `${marca.por ?? "Sin autor"} · ${fechaHoraLegible(marca.en)}` : undefined}>
+                                              <input
+                                                type="checkbox"
+                                                checked={Boolean(marca)}
+                                                disabled={!puedeEditar || !sinCerrar || ocupados.includes(`${p.id}:${paso.codigo}`)}
+                                                onChange={() => alternarPaso(p, paso.codigo)}
+                                              />
+                                              {paso.nombre}
+                                            </label>
+                                          </li>
+                                        );
+                                      })}
+                                    </ul>
+                                  </>
+                                )}
+                              </Desplegable>
+                            ) : null}
+                            <Desplegable
+                              claseBoton="pb-tool"
+                              clasePanel="pb-pop"
+                              boton={
+                                <>
+                                  <Icono nombre="bitacora" />
+                                  Bitácora <span>{p.cambios.length + hechas.filter((m) => m.en).length + (p.agenda ? 1 : 0) + 1}</span>
+                                </>
+                              }
+                            >
+                              {() => <Bitacora problema={p} marcas={hechas} pasos={pasos} nombreTipo={nombreTipo} nombreEstado={nombreEstado} />}
+                            </Desplegable>
+                            {/* También resuelto o con visita agendada: si hay que reabrirlo, se puede. */}
+                            {puedeEditar ? (
+                              <Desplegable
+                                claseBoton="pb-tool"
+                                clasePanel="pb-pop"
+                                boton={
+                                  <>
+                                    <Icono nombre="editar" />
+                                    Estado o tipo
+                                  </>
+                                }
+                              >
+                                {(cerrar) => (
+                                  <CambiarProblema
+                                    problema={p}
+                                    visitas={actual.visitas}
+                                    estados={estados}
+                                    onAviso={aviso}
+                                    onHecho={() => {
+                                      cerrar();
+                                      router.refresh();
+                                    }}
+                                  />
+                                )}
+                              </Desplegable>
+                            ) : null}
+                          </span>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+          </div>
+        )}
       </div>
 
+      {checklist ? (
+        <PanelLateral
+          titulo="Checklist de gestión"
+          onCerrar={() => setChecklist(false)}
+        >
+          <ul className="pb-check">
+            {[
+              { t: "Agendar visita a los que no tienen", n: resumen.sinVisita, f: { agenda: "SIN" } },
+              { t: "Revisar los de más de 60 días", n: resumen.tramos[4].items.length, f: { tramo: "60+" } },
+              ...estados
+                .filter((e) => claseEstado(e.codigo) === "warn")
+                .map((e) => ({ t: `Seguir los que están en «${e.nombre}»`, n: resumen.sinCerrar.filter((p) => p.estado === e.codigo).length, f: { estado: e.codigo } })),
+              ...catalogo
+                .filter((t) => /^otro/i.test(t.nombre))
+                .map((t) => ({ t: `Clasificar los «${t.nombre}»`, n: resumen.sinCerrar.filter((p) => p.tipoCodigo === t.codigo).length, f: { tipo: t.codigo } })),
+            ].map((x) => (
+              <li key={x.t}>
+                <span>
+                  <b>{x.t}</b>
+                  <small>{plural(x.n, "problema", "problemas")}</small>
+                </span>
+                <button
+                  type="button"
+                  className="btn-out sm"
+                  disabled={x.n === 0}
+                  onClick={() => {
+                    setChecklist(false);
+                    filtrarPor(x.f);
+                  }}
+                >
+                  Ver
+                </button>
+              </li>
+            ))}
+          </ul>
+          {puede(ref, "checklist.ver") ? (
+            <Link href="/admin/checklist" className="enlace">
+              Editar los pasos en Checklist
+            </Link>
+          ) : null}
+        </PanelLateral>
+      ) : null}
+
       {agendar ? (
-        <VisitaDialogo
-          origen={agendar}
+        <NuevaVisitaHoja
+          precarga={precargaDeProblema(agendar, ref.motivos, agendar.tecnicoId)}
           onCerrar={() => setAgendar(null)}
+          onAviso={aviso}
           onHecho={(m) => {
             aviso(m);
             router.refresh();
@@ -861,269 +722,19 @@ export default function ProblemasView({ datos }: { datos: DatosProblemas }) {
       ) : null}
 
       <Toast texto={toast} variante="panel" />
-    </>
-  );
-}
-
-function Flecha({ abierta }: { abierta: boolean }) {
-  return (
-    <svg
-      width="13"
-      height="13"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.4"
-      className="flex-none transition-transform"
-      style={{ transform: `rotate(${abierta ? 180 : 0}deg)` }}
-    >
-      <path d="M6 9l6 6 6-6" />
-    </svg>
-  );
-}
-
-/** El checklist de gestión de un problema: un paso por casilla. */
-function Gestion({
-  pasos,
-  marcas,
-  ocupados,
-  problemaId,
-  editable,
-  onPaso,
-}: {
-  pasos: CatalogoGestionProblema[];
-  marcas: GestionMarca[];
-  ocupados: string[];
-  problemaId: number;
-  editable: boolean;
-  onPaso: (codigo: string) => void;
-}) {
-  return (
-    <div className="mt-3.5">
-      <div className="flex items-baseline gap-2.5 mb-2">
-        <div className="font-extrabold text-cap ">Gestión</div>
-        <div className="text-cap opacity-62 tabular-nums">
-          {marcas.length} de {pasos.length} {pasos.length === 1 ? "paso" : "pasos"}
-        </div>
-      </div>
-      <div className="flex flex-wrap gap-1.5">
-        {pasos.map((paso) => {
-          const marca = marcas.find((m) => m.codigo === paso.codigo);
-          const hecho = Boolean(marca);
-          return (
-            <button
-              key={paso.codigo}
-              type="button"
-              role="checkbox"
-              aria-checked={hecho}
-              disabled={!editable || ocupados.includes(`${problemaId}:${paso.codigo}`)}
-              onClick={() => onPaso(paso.codigo)}
-              title={
-                marca
-                  ? marca.en
-                    ? `${marca.por ?? "Sin autor"} · ${fechaHoraLegible(marca.en)}`
-                    : "Guardando…"
-                  : editable
-                    ? "Marcar como hecho"
-                    : undefined
-              }
-              className="min-h-[34px] inline-flex items-center gap-2 px-3 border text-meta leading-[1.2] cursor-pointer disabled:cursor-default"
-              style={{
-                background: hecho ? "var(--color-text)" : "var(--color-bg)",
-                color: hecho ? "var(--color-bg)" : "var(--color-text)",
-                borderColor: hecho ? "var(--color-text)" : "rgba(31,28,33,.35)",
-                fontWeight: hecho ? 800 : 400,
-              }}
-            >
-              <span className="w-3.5 h-3.5 flex-none border-2 border-current grid place-items-center" aria-hidden="true">
-                {hecho ? (
-                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="5">
-                    <path d="M4 12l5 5L20 6" />
-                  </svg>
-                ) : null}
-              </span>
-              <span>{paso.nombre}</span>
-            </button>
-          );
-        })}
-      </div>
     </div>
   );
 }
 
-/**
- * La bitácora de un problema: cuándo se levantó, cada cambio de estado o de
- * tipo con quién lo hizo y su nota, cada paso de gestión marcado, la visita
- * agendada para resolverlo y el cierre. De lo más viejo a lo más nuevo.
- */
-function Bitacora({
-  problema: p,
-  marcas,
-  pasos,
-  nombreTipo,
-  nombreEstado,
-}: {
-  problema: ProblemaPanel;
-  marcas: GestionMarca[];
-  pasos: CatalogoGestionProblema[];
-  nombreTipo: (codigo: string) => string;
-  nombreEstado: (codigo: string) => string;
-}) {
-  const filas: { en: string; titulo: string; detalle: string; nota?: string | null; fuerte?: boolean }[] = [
-    {
-      en: p.creadoEn,
-      titulo: "Levantado en terreno",
-      detalle: `${p.visita.tecnico} · visita ${p.visita.folio}`,
-      fuerte: true,
-    },
-    ...p.cambios.map((c) => ({
-      en: c.en,
-      titulo:
-        c.campo === "ESTADO"
-          ? `${nombreEstado(c.antes)} → ${nombreEstado(c.ahora)}`
-          : `Reclasificado: ${nombreTipo(c.antes)} → ${nombreTipo(c.ahora)}`,
-      detalle: c.por ?? "Sin autor registrado",
-      nota: c.nota,
-      fuerte: c.campo === "ESTADO" && c.ahora === "RESUELTO",
-    })),
-    ...marcas
-      // Una marca recién hecha todavía no trae su fecha: aparece al refrescar.
-      .filter((m) => m.en)
-      .map((m) => ({
-        en: m.en,
-        titulo: `Gestión: ${pasos.find((x) => x.codigo === m.codigo)?.nombre ?? m.codigo}`,
-        detalle: m.por ?? "Sin autor registrado",
-      })),
-  ].sort((a, b) => a.en.localeCompare(b.en));
-
+function Metrica({ titulo, valor, unidad, children }: { titulo: string; valor: number | string; unidad?: string; children: React.ReactNode }) {
   return (
-    <div className="mt-2.5 px-3.5 py-3 bg-[var(--color-surface)] border border-black/[.25]">
-      <div className="text-cap opacity-62 mb-2.5">Bitácora del problema</div>
-      <ol className="m-0 p-0 list-none border-l-2 border-black/[.3] ml-1.5">
-        {filas.map((fila, i) => (
-          <li key={`${fila.en}-${i}`} className="relative pl-4 pb-3 last:pb-0">
-            <span
-              className="absolute -left-[6px] top-1 w-2.5 h-2.5"
-              style={{ background: fila.fuerte ? "var(--color-text)" : "var(--color-neutral-500)" }}
-              aria-hidden="true"
-            />
-            <div className="text-meta leading-[1.35]">
-              <strong className="font-extrabold">{fila.titulo}</strong>
-            </div>
-            <div className="text-cap opacity-62 mt-0.5 tabular-nums">
-              {fechaHoraLegible(fila.en)} · {fila.detalle}
-            </div>
-            {fila.nota ? <div className="text-meta leading-[1.45] mt-1 max-w-[70ch]">«{fila.nota}»</div> : null}
-          </li>
-        ))}
-        {p.agenda ? (
-          <li className="relative pl-4 pt-0 pb-0 mt-3">
-            <span className="absolute -left-[6px] top-1 w-2.5 h-2.5 bg-[var(--color-neutral-500)]" aria-hidden="true" />
-            <div className="text-meta leading-[1.35]">
-              <strong className="font-extrabold">Visita agendada para resolverlo</strong>
-            </div>
-            <div className="text-cap opacity-62 mt-0.5 tabular-nums">
-              {p.agenda.folio} · {fechaCL(p.agenda.fecha)} · {p.agenda.tecnico} · {ESTADO_VISITA_LABEL[p.agenda.estado].toLowerCase()}
-            </div>
-          </li>
-        ) : null}
-      </ol>
-      {p.estado !== "RESUELTO" ? (
-        <div className="text-cap opacity-62 mt-3">Sigue sin cerrar: lleva {plural(p.dias, "día", "días")} abierto.</div>
-      ) : null}
-    </div>
-  );
-}
-
-/**
- * El historial de una tienda: todas sus visitas, de la más nueva a la más
- * vieja, y bajo cada una los problemas que se levantaron en ella — también los
- * ya resueltos, que la lista de abajo esconde por defecto.
- */
-function HistorialLocal({ grupo, nombreTipo }: { grupo: GrupoProblemas; nombreTipo: (codigo: string) => string }) {
-  const router = useRouter();
-  const resueltos = grupo.items.filter((p) => p.estado === "RESUELTO");
-  const promedio = resueltos.length
-    ? Math.round(resueltos.reduce((acc, p) => acc + p.dias, 0) / resueltos.length)
-    : null;
-  const porFolio = new Map<string, ProblemaPanel[]>();
-  for (const p of grupo.items) porFolio.set(p.visita.folio, [...(porFolio.get(p.visita.folio) ?? []), p]);
-
-  // El tipo que más se repite en el local: si hay uno, es la falla de fondo.
-  const cuenta = new Map<string, number>();
-  for (const p of grupo.items) cuenta.set(p.tipoCodigo, (cuenta.get(p.tipoCodigo) ?? 0) + 1);
-  const repetido = [...cuenta.entries()].sort((a, b) => b[1] - a[1])[0];
-
-  const resumen = [
-    { k: "Visitas al local", v: String(grupo.visitas.length) },
-    { k: "Problemas levantados", v: String(grupo.total) },
-    { k: "Resueltos", v: `${resueltos.length} de ${grupo.total}` },
-    { k: "Tardan en resolverse", v: promedio === null ? "—" : `${plural(promedio, "día", "días")} en promedio` },
-    {
-      k: "Falla que más se repite",
-      v: repetido && repetido[1] > 1 ? `${nombreTipo(repetido[0])} · ${repetido[1]} veces` : "Ninguna se repite",
-    },
-  ];
-
-  return (
-    <div className="px-5 py-4 bg-[var(--color-surface)] border-b-2 border-[var(--color-text)]">
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-x-5 gap-y-3">
-        {resumen.map((r) => (
-          <div key={r.k} className="min-w-0">
-            <div className="text-cap opacity-62">{r.k}</div>
-            <div className="font-extrabold text-ui mt-1">{r.v}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="text-cap opacity-62 mt-4 mb-2">
-        Visitas al local, de la más reciente a la más antigua
-      </div>
-      <div className="flex flex-col gap-2 max-h-[420px] overflow-y-auto pr-1">
-        {grupo.visitas.map((v) => {
-          const problemas = porFolio.get(v.folio) ?? [];
-          return (
-            <div key={v.folio} className="px-3 py-2.5 bg-white border border-[var(--color-line)]">
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="font-extrabold text-ui tabular-nums">{fechaCL(v.fecha)}</div>
-                <Tag variant={ESTADO_VISITA_TAG[v.estado]}>{ESTADO_VISITA_LABEL[v.estado]}</Tag>
-                <span className="text-cap opacity-62">
-                  {v.tecnico}
-                  {v.motivo ? ` · ${v.motivo}` : ""}
-                </span>
-                <button
-                  onClick={() => router.push(`/admin/visitas/${v.folio}`)}
-                  className="ml-auto min-h-7 px-2 bg-transparent border border-black/[.3] text-cap leading-none cursor-pointer hover:bg-black/[.07]"
-                >
-                  {v.folio}
-                </button>
-              </div>
-              {v.trabajos ? (
-                <div className="text-meta leading-[1.45] mt-1.5">
-                  <strong className="font-extrabold">Trabajo:</strong> {v.trabajos}
-                </div>
-              ) : null}
-              {v.observaciones ? <div className="text-meta leading-[1.45] mt-1 max-w-[90ch]">{v.observaciones}</div> : null}
-              {problemas.length > 0 ? (
-                <div className="flex flex-col gap-1 mt-2">
-                  {problemas.map((p) => (
-                    <div key={p.id} className="flex items-center gap-2 flex-wrap text-meta">
-                      <span
-                        className="w-2 h-2 flex-none"
-                        style={{ background: p.estado === "RESUELTO" ? "var(--color-neutral-600)" : "var(--color-danger)" }}
-                        aria-hidden="true"
-                      />
-                      <span className="font-extrabold">{nombreTipo(p.tipoCodigo)}</span>
-                      <EstadoProblemaTag estado={p.estado} />
-                      <span className="text-cap opacity-62 tabular-nums">{textoAntiguedad(p).toLowerCase()}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
+    <div className="pb-m">
+      <dt>{titulo}</dt>
+      <dd>
+        <b>{valor}</b>
+        {unidad ? <small>{unidad}</small> : null}
+      </dd>
+      <dd className="pb-m-n">{children}</dd>
     </div>
   );
 }

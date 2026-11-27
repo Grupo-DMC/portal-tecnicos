@@ -85,6 +85,7 @@ sql/Emigracion-Final.sql
 
 # build aislado de los tests E2E
 /.next-e2e/
+/.next-demo/
 
 # herramientas de IA / agentes (locales, no son parte del producto)
 /.claude/

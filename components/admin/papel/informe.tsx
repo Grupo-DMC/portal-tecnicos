@@ -51,11 +51,11 @@ export function FilaInforme({
 
   return (
     <div
-      className="mt-2.5 border border-black/[.2] p-3"
+      className="mt-2.5 border border-[var(--color-line)] rounded-[10px] p-3"
       style={inf.error ? { background: "var(--color-danger-100)" } : { background: "var(--color-surface-3)" }}
     >
       <div className="flex flex-wrap items-end gap-3">
-        <span className="w-6 h-6 mb-2.5 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap tabular-nums">
+        <span className="w-6 h-6 mb-2.5 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-semibold text-cap tabular-nums">
           {n}
         </span>
         <div className="field w-[150px]">
@@ -81,7 +81,7 @@ export function FilaInforme({
           </select>
         </div>
         <div className="field flex-1 min-w-[200px] border-l border-[var(--color-line-control)] pl-2.5">
-          <label htmlFor={id("motivo")} className="font-extrabold">
+          <label htmlFor={id("motivo")} className="font-semibold">
             Motivo de la visita
           </label>
           <SelectBuscable
@@ -324,11 +324,11 @@ export function TrabajosDelInforme({
   };
 
   return (
-    <div className="mt-3 sm:ml-9 pl-3 border-l-2 border-black/[.3]">
+    <div className="mt-3 sm:ml-9 pl-3 border-l-2 border-[var(--color-line)]">
       <div className="flex items-baseline gap-2 mb-1.5">
         <span className="text-cap opacity-62">Trabajos realizados (opcional)</span>
         {trabajos.length ? (
-          <span className="text-cap font-extrabold tabular-nums">{trabajos.length} marcados</span>
+          <span className="text-cap font-semibold tabular-nums">{trabajos.length} marcados</span>
         ) : null}
       </div>
       {hayAlgunaSeccion(delMotivo) ? (

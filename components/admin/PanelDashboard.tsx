@@ -1,450 +1,398 @@
 "use client";
 
-import { useState } from "react";
+// Panel de operación: indicadores, técnicos frente a la meta, estados y fallas.
+
+import { useState, type CSSProperties } from "react";
 import Link from "next/link";
 import type { PanelData, Rango } from "@/lib/ui/panel-data";
+import type { EstadoVisita } from "@/lib/types";
+import { fechaCL } from "@/lib/ui/fecha";
+import { iniciales } from "@/lib/ui/cuenta";
+import { plural } from "@/lib/ui/plural";
+import { esDatoDePrueba } from "@/lib/ui/pruebas";
+import ProblemasAnillo from "@/components/admin/panel/ProblemasAnillo";
+import LineaSemanal from "@/components/admin/panel/LineaSemanal";
 
 const RANGOS: Rango[] = ["Hoy", "Semana", "Mes"];
+
+const PERIODO: Record<Rango, string> = { Hoy: "hoy", Semana: "de la semana", Mes: "del mes" };
+const CUANDO: Record<Rango, string> = { Hoy: "para hoy", Semana: "de esta semana", Mes: "de este mes" };
+
+const COLOR_ESTADO: Record<EstadoVisita, string> = {
+  PROGRAMADA: "var(--lilac)",
+  EN_CURSO: "var(--purple)",
+  COMPLETADA: "var(--green)",
+  CANCELADA: "var(--grey)",
+  PENDIENTE: "var(--red)",
+  REAGENDADA: "var(--amber-bar)",
+  CANCELADA_ADMIN: "var(--muted)",
+};
 
 export default function PanelDashboard({ data }: { data: Record<Rango, PanelData> }) {
   const [rango, setRango] = useState<Rango>("Hoy");
   const d = data[rango];
+  const k = d.kpis;
+  const sobreMeta = k.programadas > 0 && k.pctCumpl >= d.meta;
+  const promedio = d.tiempo.prom;
+  const maximoTiempo = Math.max(10, Math.ceil(Math.max(0, ...d.tiempo.porMotivo.map((t) => t.min)) / 10) * 10);
+  // A lo sumo unas 8 marcas en el eje, siempre en múltiplos de 10.
+  const marcaTiempo = Math.max(10, Math.ceil(maximoTiempo / 80) * 10);
+  const topeTiempo = Math.ceil(maximoTiempo / marcaTiempo) * marcaTiempo;
 
   return (
-    <>
-      <div className="lg:sticky lg:top-0 z-10 bg-[var(--color-bg)] border-b-2 border-[var(--color-divider)] flex items-end gap-x-5 gap-y-3 px-4 md:px-7 pt-4 md:pt-[22px] pb-4 flex-wrap">
-        <div className="min-w-0">
-          <h1 className="font-extrabold text-h2 md:text-h1 leading-[1.08] tracking-[-.03em]">Panel de operación</h1>
-        </div>
-        <div className="ml-auto seg">
-          {RANGOS.map((r) => (
-            <label
-              key={r}
-              className="seg-opt"
-              style={{
-                background: rango === r ? "var(--color-accent)" : "transparent",
-                color: rango === r ? "#fff" : "var(--color-text)",
-              }}
-            >
-              <input
-                type="radio"
-                name="rango"
-                className="sr-only"
-                checked={rango === r}
-                onChange={() => setRango(r)}
-              />
-              <span>{r}</span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      <div className="pb-10 animate-fade-in">
-        <div className="grid grid-cols-2 lg:grid-cols-4 border-b-2 border-[var(--color-divider)]">
-          <KpiCard
-            label={`Visitas · ${rango.toLowerCase()}`}
-            n={d.kpis.programadas}
-            unidad="programadas"
-            sub={rango === "Hoy" ? `${d.kpis.tecnicosHoy} ${d.kpis.tecnicosHoy === 1 ? "técnico" : "técnicos"} en terreno` : `${d.kpis.programadas - d.kpis.cerradas} sin cerrar a tiempo`}
-            accion="Ver visitas"
-            href="/admin/visitas"
-          />
-          <KpiCard
-            label={`Cumplimiento · ${rango.toLowerCase()}`}
-            n={`${d.kpis.pctCumpl}%`}
-            sub={`${d.kpis.cerradas} de ${d.kpis.programadas} cerradas a tiempo`}
-            accion="Ver completadas"
-            href="/admin/visitas?estado=COMPLETADA"
-          />
-          <KpiCard
-            label="Problemas abiertos"
-            n={d.kpis.problemasAbiertosTotal}
-            unidad="sin resolver"
-            sub="Abiertos + pendientes, en total"
-            accion="Ver problemas"
-            href="/admin/problemas"
-            color={d.kpis.problemasAbiertosTotal > 0 ? "var(--color-danger)" : undefined}
-          />
-          <KpiCard
-            label="Esperan nueva fecha"
-            n={d.kpis.porReagendar}
-            unidad={d.kpis.porReagendar === 1 ? "visita" : "visitas"}
-            sub={`Reagendadas o pendientes, en total · ${d.kpis.reagendas} ${
-              rango === "Hoy" ? "eran para hoy" : rango === "Semana" ? "de esta semana" : "de este mes"
-            }`}
-            accion="Ver reagendas"
-            href="/admin/reagendas"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2">
-          <div className="p-4 md:p-6 lg:border-r border-b border-black/[.12]">
-            <div className="flex items-baseline gap-2.5">
-              <h2 className="font-extrabold text-lead m-0">Visitas del día por estado</h2>
-              <span className="ml-auto text-cap opacity-60">{d.totalHoy} visitas</span>
-            </div>
-            {d.totalHoy > 0 ? (
-              <div className="flex h-3.5 mt-4 border border-[var(--color-divider)]">
-                {d.estadoHoy.map((e) => (
-                  <div key={e.estado} style={{ width: `${e.pct}%`, background: e.color }} className="border-r border-black/[.15]" />
-                ))}
-              </div>
-            ) : (
-              <div className="mt-4 h-3.5 bg-[var(--color-surface)]" aria-hidden="true" />
-            )}
-            <div className="mt-4">
-              {d.estadoHoy.map((e) => (
-                <Link
-                  key={e.estado}
-                  href={`/admin/visitas?estado=${e.estado}`}
-                  className="w-full flex items-center gap-2.5 py-2.5 border-b border-black/[.1] hover:bg-black/5"
-                >
-                  <span className="w-2.5 h-2.5 shrink-0 border border-black/[.35]" style={{ background: e.color }} />
-                  <span className="text-meta">{e.label}</span>
-                  <span className="ml-auto font-extrabold text-ui tabular-nums">{e.n}</span>
-                  <span className="w-11 text-right text-cap opacity-62 tabular-nums">{e.pct}%</span>
-                </Link>
-              ))}
-            </div>
+    <div className="dmc pv">
+      <div className="pv-wrap">
+        <header className="pv-top">
+          <div>
+            <h1>Panel de operación</h1>
+            <p>{fechaLarga(d.hoy)}</p>
           </div>
-
-          <CumplimientoPanel cumplimiento={d.cumplimiento} porTecnico={rango === "Hoy" ? d.carga : null} hoy={d.hoy} />
-
-          <div className="p-4 md:p-6 lg:border-r border-b border-black/[.12]">
-            <div className="flex items-baseline gap-2.5">
-              <h2 className="font-extrabold text-lead m-0">Problemas abiertos por tipo</h2>
-              <span className="ml-auto text-cap opacity-60">
-                {d.kpis.problemasAbiertosTotal} abiertos
-              </span>
-            </div>
-            <p className="mt-1.5 mb-0 text-cap opacity-62">Haz clic en un tipo para ver las visitas donde se registró.</p>
-            <div className="mt-2.5">
-              {d.problemasTipo.map((p) => (
-                <div key={p.codigo} className="py-2.5 border-b border-black/[.1]">
-                  <div className="flex items-baseline gap-2.5">
-                    <span className="text-meta min-w-0">{p.nombre}</span>
-                    <span className="ml-auto font-extrabold text-ui tabular-nums">{p.n}</span>
-                  </div>
-                  <div className="h-2 mt-1.5 bg-[var(--color-neutral-300)]">
-                    <div className="h-2" style={{ width: `${p.pct}%`, background: "var(--color-accent)" }} />
-                  </div>
-                </div>
-              ))}
-              {d.problemasTipo.length === 0 ? (
-                <div className="py-5 text-meta opacity-66">Sin problemas registrados en este período.</div>
-              ) : null}
-            </div>
-          </div>
-
-          {/* En «Hoy» el cumplimiento ya se lee por técnico: esta tabla repetiría lo mismo. */}
-          {rango !== "Hoy" ? (
-          <div className="p-4 md:p-6 border-b border-black/[.12]">
-            <h2 className="font-extrabold text-lead m-0 mb-1">Carga por técnico</h2>
-            <p className="m-0 mb-2 text-cap opacity-62">Programadas vs realizadas hoy.</p>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Técnico</th>
-                  <th className="text-right">Prog.</th>
-                  <th className="text-right">Real.</th>
-                  <th style={{ width: 140 }}>Avance</th>
-                </tr>
-              </thead>
-              <tbody>
-                {d.carga.map((c) => (
-                  <tr key={c.tecnicoId}>
-                    <td className="font-semibold">{c.nombre}</td>
-                    <td className="text-right tabular-nums">{c.programadas}</td>
-                    <td className="text-right tabular-nums">{c.realizadas}</td>
-                    <td>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-[var(--color-neutral-300)]">
-                          <div className="h-2" style={{ width: `${c.pct}%`, background: "var(--color-text)" }} />
-                        </div>
-                        <span className="text-cap opacity-66 tabular-nums">{c.pct}%</span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          ) : null}
-
-          <div
-            className={`p-4 md:p-6 max-lg:border-b border-black/[.12] ${rango === "Hoy" ? "border-b" : "lg:border-r"}`}
-          >
-            <h2 className="font-extrabold text-lead m-0 mb-1">Sucursales con más fallas</h2>
-            <p className="m-0 mb-2 text-cap opacity-62">Total histórico de problemas registrados.</p>
-            <div>
-              {d.sucursalesFallas.map((s, i) => (
-                <div key={s.sucursalId} className="w-full flex items-center gap-3 py-2.5 border-b border-black/[.1]">
-                  <div className="font-extrabold text-meta tabular-nums opacity-52 w-5">{i + 1}</div>
-                  <div className="min-w-0">
-                    <div className="font-extrabold text-ui">{s.sucursal.nombre}</div>
-                    <div className="text-cap opacity-62">
-                      {s.sucursal.comuna}
-                    </div>
-                  </div>
-                  <div className="ml-auto flex items-center gap-2.5">
-                    <span className="tag tag-outline">{s.sinCerrar} sin cerrar</span>
-                    <span className="font-extrabold text-lead tabular-nums">{s.total}</span>
-                  </div>
-                </div>
-              ))}
-              {d.sucursalesFallas.length === 0 ? (
-                <div className="py-5 text-meta opacity-66">Sin fallas registradas.</div>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="p-4 md:p-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div>
-                <h2 className="font-extrabold text-lead m-0 mb-3">Tiempo en sitio</h2>
-                <div className="flex items-baseline gap-1.5">
-                  <div className="num font-bold text-display leading-none tracking-[-.03em] tabular-nums">{d.tiempo.prom}</div>
-                  <div className="text-meta opacity-62">min prom.</div>
-                </div>
-                <div className="mt-3.5">
-                  {d.tiempo.porMotivo.map((t) => (
-                    <div key={t.label} className="py-2 border-b border-black/[.1]">
-                      <div className="flex gap-2 text-cap">
-                        <span className="min-w-0 opacity-75">{t.label}</span>
-                        <span className="ml-auto tabular-nums font-semibold">{t.min} min</span>
-                      </div>
-                      <div className="h-1.5 mt-1.5 bg-[var(--color-neutral-300)]">
-                        <div className="h-1.5" style={{ width: `${t.pct}%`, background: "var(--color-text)" }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <h2 className="font-extrabold text-lead m-0 mb-3">Reagendamientos</h2>
-                <div className="flex items-baseline gap-2">
-                  <div className="num font-bold text-display leading-none tracking-[-.03em] tabular-nums">
-                    {d.reagendasLista.length}
-                  </div>
-                  <div className="text-meta opacity-62">últimos registrados</div>
-                </div>
-                <div className="mt-3.5">
-                  {d.reagendasLista.map((r) => (
-                    <Link
-                      key={r.reagendamiento.id}
-                      href={`/admin/visitas/${r.visita.folio}`}
-                      className="w-full block text-left py-2.5 border-b border-black/[.1] hover:bg-black/5"
-                    >
-                      <div className="flex gap-2 items-baseline">
-                        <span className="font-extrabold text-meta min-w-0">{r.visita.sucursal?.nombre}</span>
-                        <span className="ml-auto text-cap tabular-nums opacity-62">{r.visita.folio}</span>
-                      </div>
-                      <div className="text-cap opacity-70 mt-1">{r.reagendamiento.motivo}</div>
-                    </Link>
-                  ))}
-                  {d.reagendasLista.length === 0 ? (
-                    <div className="py-3.5 text-meta opacity-66">Sin reagendamientos.</div>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
-/**
- * "Cumplimiento vs programado": el porcentaje del rango y una barra por día
- * trabajado. Los días sin visitas programadas no aparecen. Al pasar el mouse
- * por una barra se explica ese día; al hacer clic se abren sus visitas.
- */
-function CumplimientoPanel({
-  cumplimiento,
-  porTecnico,
-  hoy,
-}: {
-  cumplimiento: PanelData["cumplimiento"];
-  /** En «Hoy»: el avance de cada técnico en vez de una sola barra del día. */
-  porTecnico: PanelData["carga"] | null;
-  hoy: string;
-}) {
-  const [hover, setHover] = useState<string | null>(null);
-  const dia = cumplimiento.dias.find((x) => x.fecha === hover) ?? null;
-
-  return (
-    <div className="p-4 md:p-6 border-b border-black/[.12]">
-      <div className="flex items-baseline gap-2.5">
-        <h2 className="font-extrabold text-lead m-0">Cumplimiento vs programado</h2>
-        <span className="ml-auto text-cap opacity-60">{cumplimiento.rangoTexto}</span>
-      </div>
-
-      <div className="flex items-end gap-3.5 mt-3.5">
-        <div className="num font-bold text-hero leading-none tracking-[-.03em] tabular-nums">
-          {cumplimiento.pct}%
-        </div>
-        <div className="text-cap opacity-66 pb-2">
-          {cumplimiento.detalle}
-          <br />
-          Meta interna {cumplimiento.meta}%
-        </div>
-      </div>
-
-      {porTecnico ? (
-        <PorTecnico filas={porTecnico} meta={cumplimiento.meta} hoy={hoy} />
-      ) : (
-      <>
-      <div
-        className="mt-3.5 px-3 py-2.5 text-cap min-h-5 border"
-        style={{
-          background: dia ? "var(--color-accent-200)" : "var(--color-surface)",
-          borderColor: dia ? "var(--color-accent)" : "var(--color-divider)",
-        }}
-      >
-        {dia
-          ? `${dia.label} · ${dia.pct}% · ${dia.cerradas} de ${dia.programadas} cerradas a tiempo · click para ver sus visitas`
-          : "Toca o pasa el mouse por un día para ver su detalle; haz clic para abrir esas visitas."}
-      </div>
-
-      {cumplimiento.dias.length > 0 ? (
-        <>
-          <div className="flex items-end gap-2.5 h-[118px] mt-3.5 border-b-2 border-[var(--color-divider)]">
-            {cumplimiento.dias.map((day) => {
-              const activo = hover === day.fecha;
-              return (
-                <Link
-                  key={day.fecha}
-                  href={`/admin/visitas?fecha=${day.fecha}`}
-                  onMouseEnter={() => setHover(day.fecha)}
-                  onMouseLeave={() => setHover(null)}
-                  aria-label={`${day.label} ${day.pct}%`}
-                  className="flex-1 flex flex-col justify-end items-stretch h-full"
-                  style={{ background: activo ? "rgba(31,28,33,.07)" : "transparent" }}
-                >
-                  <div
-                    className="text-cap font-extrabold text-center tabular-nums mb-1.5"
-                    style={{ opacity: activo ? 1 : 0.5 }}
-                  >
-                    {day.pctTxt}
-                  </div>
-                  <div
-                    style={{
-                      height: `${day.h}%`,
-                      background: activo
-                        ? "var(--color-accent-active)"
-                        : day.esHoy
-                          ? "var(--color-accent)"
-                          : "var(--color-neutral-600)",
-                    }}
-                  />
-                </Link>
-              );
-            })}
-          </div>
-          <div className="flex gap-2.5 mt-1.5">
-            {cumplimiento.dias.map((day) => (
-              <div
-                key={day.fecha}
-                className="flex-1 text-center text-cap "
-                style={{
-                  opacity: hover === day.fecha || day.esHoy ? 1 : 0.45,
-                  fontWeight: hover === day.fecha || day.esHoy ? 800 : 400,
-                }}
-              >
-                {day.label}
-              </div>
+          <div className="pv-seg" role="group" aria-label="Período">
+            {RANGOS.map((r) => (
+              <button key={r} type="button" aria-pressed={rango === r} onClick={() => setRango(r)}>
+                {r}
+              </button>
             ))}
           </div>
-        </>
-      ) : (
-        <div className="py-8 text-meta opacity-66">Sin días trabajados en este período.</div>
-      )}
-      </>
-      )}
-    </div>
-  );
-}
+        </header>
 
-/**
- * El cumplimiento del día leído por técnico: cuántas de sus visitas de hoy ya
- * cerró, con la meta interna marcada en cada barra. Cada fila abre sus visitas.
- */
-function PorTecnico({ filas, meta, hoy }: { filas: PanelData["carga"]; meta: number; hoy: string }) {
-  const orden = [...filas].sort((a, b) => a.pct - b.pct || b.programadas - a.programadas);
-  if (orden.length === 0) {
-    return <div className="py-8 text-meta opacity-66">Nadie tiene visitas programadas hoy.</div>;
-  }
-  return (
-    <div className="mt-4">
-      <div className="flex items-center gap-3 pb-2 border-b border-[var(--color-line-control)] text-cap font-semibold text-[var(--color-muted)]">
-        <span className="flex-1">Técnico</span>
-        <span className="w-[72px] text-right">Cerradas</span>
-        <span className="w-[38%] min-w-[120px]">Avance · meta {meta}%</span>
+        <section className="pv-strip" aria-label="Indicadores">
+          <Indicador
+            href="/admin/visitas"
+            titulo={`Visitas ${PERIODO[rango]}`}
+            valor={k.programadas}
+            unidad={k.programadas === 1 ? "programada" : "programadas"}
+            nota={plural(k.tecnicos, "técnico en terreno", "técnicos en terreno")}
+          />
+          <Indicador
+            href="#tecnicos"
+            titulo="Cerradas a tiempo"
+            valor={k.cerradas}
+            unidad={`de ${k.programadas}`}
+            nota={
+              k.programadas === 0
+                ? "Sin visitas en el período"
+                : sobreMeta
+                  ? "Sobre la meta"
+                  : `${plural(d.meta - k.pctCumpl, "punto", "puntos")} bajo la meta`
+            }
+            tono={sobreMeta ? "ok" : undefined}
+          />
+          <Indicador
+            href="/admin/problemas"
+            titulo="Problemas abiertos"
+            valor={k.problemasAbiertosTotal}
+            unidad="sin resolver"
+            nota="Abiertos y pendientes, en total"
+            tono={k.problemasAbiertosTotal > 0 ? "red" : undefined}
+          />
+          <Indicador
+            href="#reagendamientos"
+            titulo="Esperan nueva fecha"
+            valor={k.porReagendar}
+            unidad={k.porReagendar === 1 ? "visita" : "visitas"}
+            nota={`${k.reagendas} ${k.reagendas === 1 ? "era" : "eran"} ${CUANDO[rango]}`}
+          />
+        </section>
+
+        <div className="pv-grid">
+          <section className="pv-card s8" id="tecnicos" aria-labelledby="pvTecnicos">
+            <Cabecera
+              id="pvTecnicos"
+              titulo="Técnicos"
+              bajada={`Cerradas dentro de la fecha programada, frente a la meta de ${d.meta}%.`}
+              etiqueta={
+                rango === "Hoy" ? `Hoy, ${fechaCL(d.hoy).slice(0, 5)}` : rango === "Semana" ? "Esta semana" : "Este mes"
+              }
+            />
+            {d.tecnicos.length === 0 ? (
+              <p className="pv-vacio">Nadie tiene visitas programadas en este período.</p>
+            ) : (
+              <ul className="pv-techs">
+                {d.tecnicos.map((t) => {
+                  const ok = t.pct >= d.meta;
+                  const falta = d.meta - t.pct;
+                  return (
+                    <li key={t.tecnicoId}>
+                      <Link
+                        className="pv-tech"
+                        href={`/admin/visitas?${rango === "Hoy" ? `fecha=${d.hoy}&` : ""}tecnico=${t.tecnicoId}`}
+                      >
+                        <span className="av" aria-hidden="true">
+                          {iniciales(t.nombre)}
+                        </span>
+                        <span className="pv-t-name">
+                          <b>{t.nombre}</b>
+                          <small>
+                            {t.realizadas} de {t.programadas} a tiempo
+                          </small>
+                        </span>
+                        <span className="pv-t-bar" aria-hidden="true">
+                          <i className={ok ? "ok" : undefined} style={{ width: `${t.pct}%` }} />
+                          <span className="mark" style={{ left: `${d.meta}%` }} />
+                        </span>
+                        <b className="pv-t-pct">{t.pct}%</b>
+                        {t.realizadas === 0 && rango === "Hoy" ? (
+                          <span className="pv-chip">Sin cierres aún</span>
+                        ) : ok ? (
+                          <span className="pv-chip ok">Sobre la meta</span>
+                        ) : (
+                          <span className="pv-chip warn">
+                            {falta} {falta === 1 ? "pt" : "pts"} bajo
+                          </span>
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
+          <section className="pv-card s4" aria-labelledby="pvEstados">
+            <Cabecera id="pvEstados" titulo="Estado de las visitas" etiqueta={plural(k.programadas, "visita", "visitas")} />
+            <div className="pv-stack" role="img" aria-label={d.estados.map((e) => `${e.label}: ${e.n}`).join(", ")}>
+              {d.estados
+                .filter((e) => e.n > 0)
+                .map((e) => (
+                  <span key={e.estado} style={{ flexGrow: e.n, background: COLOR_ESTADO[e.estado] }} title={`${e.label}: ${e.n}`} />
+                ))}
+            </div>
+            <ul className="pv-states">
+              {d.estados.map((e) => (
+                <li key={e.estado} className={e.n ? undefined : "zero"}>
+                  <Link href={`/admin/visitas?estado=${e.estado}`}>
+                    <span className="dot" style={{ background: COLOR_ESTADO[e.estado] }} aria-hidden="true" />
+                    <span>{e.label}</span>
+                    <b>{e.n}</b>
+                    <small>{e.pct}%</small>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="pv-card s6" aria-labelledby="pvTipos">
+            <Cabecera
+              id="pvTipos"
+              titulo="Problemas abiertos por tipo"
+              etiqueta={plural(k.problemasAbiertosTotal, "abierto", "abiertos")}
+              alerta={k.problemasAbiertosTotal > 0}
+            />
+            <ProblemasAnillo problemas={d.problemasTipo} total={k.problemasAbiertosTotal} />
+          </section>
+
+          <section className="pv-card s6" aria-labelledby="pvResolucion">
+            <Cabecera
+              id="pvResolucion"
+              titulo="Tiempo promedio de resolución"
+              bajada={`Horas desde que se levanta el problema hasta que se cierra. Semanal, últimas ${d.resolucion.length} semanas.`}
+            />
+            <LineaSemanal
+              semanas={d.resolucion.map((s) => ({
+                desde: s.desde,
+                valor: s.horas,
+                detalle: plural(s.resueltos, "problema resuelto", "problemas resueltos"),
+              }))}
+              unidad=" h"
+              nombre="Tiempo promedio de resolución"
+              vacio={`Todavía no se resuelve ningún problema en las últimas ${d.resolucion.length} semanas.`}
+            />
+          </section>
+
+          <section className="pv-card s12" aria-labelledby="pvRealizadas">
+            <Cabecera
+              id="pvRealizadas"
+              titulo="Visitas realizadas"
+              bajada={`Completadas por semana, últimas ${d.realizadas.length} semanas.`}
+              etiqueta={plural(d.realizadas.reduce((n, s) => n + s.n, 0), "visita", "visitas")}
+            />
+            <LineaSemanal
+              semanas={d.realizadas.map((s) => ({ desde: s.desde, valor: s.n, detalle: plural(s.n, "visita completada", "visitas completadas") }))}
+              unidad=""
+              nombre="Visitas completadas"
+              vacio="Todavía no hay visitas completadas."
+            />
+          </section>
+
+          <section className="pv-card s4" aria-labelledby="pvFallas">
+            <Cabecera id="pvFallas" titulo="Sucursales con más fallas" />
+            {d.sucursalesFallas.length === 0 ? (
+              <p className="pv-vacio">Sin fallas registradas.</p>
+            ) : (
+              <ol className="rank">
+                {d.sucursalesFallas.map((s) => (
+                  <li key={s.sucursalId}>
+                    <span className="rk-name">
+                      <span className="rk-client">{s.sucursal.cliente}, </span>
+                      {s.sucursal.nombre}{" "}
+                      {esDatoDePrueba(s.sucursal.cliente, s.sucursal.nombre) ? <span className="flag test">Prueba</span> : null}
+                    </span>
+                    <span className="rk-area">{s.sucursal.comuna}</span>
+                    <span className="rk-count">
+                      <b>{s.total}</b>
+                      {s.sinCerrar ? <span className="open-tag">{s.sinCerrar} sin cerrar</span> : null}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+
+          <section className="pv-card s8" aria-labelledby="pvTiempo">
+            <Cabecera
+              id="pvTiempo"
+              titulo="Tiempo en sitio por tipo de trabajo"
+              etiqueta={
+                <>
+                  <b>{promedio}</b> min promedio
+                </>
+              }
+            />
+            {d.tiempo.porMotivo.length === 0 ? (
+              <p className="pv-vacio">Todavía no hay visitas cerradas con hora de inicio y término.</p>
+            ) : (
+              <>
+                <ul className="pv-dots" style={{ "--avg": `${Math.min(100, (100 * promedio) / topeTiempo)}%` } as CSSProperties}>
+                  {d.tiempo.porMotivo.map((t) => {
+                    const ancho = `${(100 * t.min) / topeTiempo}%`;
+                    return (
+                      <li key={t.label} className={t.min <= 5 ? "short" : undefined}>
+                        <span className="pv-d-name" title={t.label}>
+                          {t.label}
+                        </span>
+                        <span className="pv-d-track" aria-hidden="true">
+                          <i style={{ width: ancho }} />
+                          <b style={{ left: ancho }} />
+                        </span>
+                        <span className="pv-d-val">{t.min} min</span>
+                      </li>
+                    );
+                  })}
+                  <li className="pv-d-axis" aria-hidden="true">
+                    <span />
+                    <span className="pv-d-track">
+                      {Array.from({ length: topeTiempo / marcaTiempo + 1 }, (_, i) => (
+                        <em key={i} style={{ left: `${(100 * i * marcaTiempo) / topeTiempo}%` }}>
+                          {i * marcaTiempo}
+                        </em>
+                      ))}
+                    </span>
+                    <span />
+                  </li>
+                </ul>
+                <div className="t-legend" aria-hidden="true">
+                  <span>
+                    <i className="lg-dot" />
+                    Duración promedio
+                  </span>
+                  <span>
+                    <i className="lg-dot short" />5 min o menos: revisar el registro
+                  </span>
+                  <span>
+                    <i className="lg-line" />
+                    Promedio general
+                  </span>
+                </div>
+              </>
+            )}
+          </section>
+
+          <section className="pv-card s12" id="reagendamientos" aria-labelledby="pvReagendas">
+            <Cabecera
+              id="pvReagendas"
+              titulo="Reagendamientos"
+              bajada={`${plural(d.reagendasLista.length, "registro", "registros")}.`}
+            />
+            {d.reagendasLista.length === 0 ? (
+              <p className="pv-vacio">No hay reagendamientos.</p>
+            ) : (
+              <ul className="resched">
+                {d.reagendasLista.map((r) => (
+                  <li key={r.reagendamiento.id}>
+                    <Link href={`/admin/visitas/${r.visita.folio}`}>
+                      <span className="rs-name">{r.visita.sucursal.nombre}</span>
+                      <span className="rs-folio">{r.visita.folio}</span>
+                      <span className="rs-why">
+                        {/autom[aá]tic/i.test(r.reagendamiento.motivo) ? (
+                          <span className="flag auto">Cancelada automáticamente</span>
+                        ) : null}
+                        {esDatoDePrueba(r.visita.sucursal.nombre, r.reagendamiento.motivo) ? (
+                          <span className="flag test">Prueba</span>
+                        ) : null}
+                        <span>{r.reagendamiento.motivo}</span>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
       </div>
-      {orden.map((t) => (
-        <Link
-          key={t.tecnicoId}
-          href={`/admin/visitas?fecha=${hoy}&tecnico=${t.tecnicoId}`}
-          className="flex items-center gap-3 py-2.5 border-b border-[var(--color-line)] hover:bg-[rgba(31,28,33,.04)]"
-        >
-          <span className="flex-1 min-w-0 truncate text-ui font-semibold">{t.nombre}</span>
-          <span className="w-[72px] text-right text-meta text-[var(--color-muted)]">
-            <span className="num text-[var(--color-text)]">{t.realizadas}</span> de <span className="num">{t.programadas}</span>
-          </span>
-          <span className="w-[38%] min-w-[120px] flex items-center gap-2">
-            <span className="relative flex-1 h-2 bg-[var(--color-neutral-300)]">
-              <span
-                className="absolute inset-y-0 left-0"
-                style={{ width: `${t.pct}%`, background: t.pct >= meta ? "var(--color-text)" : "var(--color-accent)" }}
-              />
-              <span
-                className="absolute -top-1 -bottom-1 w-px bg-[var(--color-text)]"
-                style={{ left: `${meta}%` }}
-                aria-hidden="true"
-              />
-            </span>
-            <span className="num w-9 text-right text-cap">{t.pct}%</span>
-          </span>
-        </Link>
-      ))}
     </div>
   );
 }
 
-function KpiCard({
-  label,
-  n,
-  unidad,
-  sub,
-  accion,
+/** «Miércoles, 25 de noviembre de 2026». */
+function fechaLarga(iso: string): string {
+  const texto = new Date(`${iso}T00:00:00Z`).toLocaleDateString("es-CL", {
+    timeZone: "UTC",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+function Indicador({
   href,
-  color = "var(--color-text)",
+  titulo,
+  valor,
+  unidad,
+  nota,
+  tono,
 }: {
-  label: string;
-  n: number | string;
-  unidad?: string;
-  sub: string;
-  accion: string;
   href: string;
-  color?: string;
+  titulo: string;
+  valor: number;
+  unidad: string;
+  nota: string;
+  tono?: "ok" | "red";
 }) {
   return (
-    <Link href={href} className="block text-left px-4 md:px-6 pt-4 md:pt-[22px] pb-4.5 border-r max-lg:border-b border-black/[.2] hover:bg-black/5">
-      <div className="text-cap opacity-66">{label}</div>
-      <div className="flex items-baseline gap-2 mt-3">
-        <div className="num font-bold text-h1 md:text-display leading-none tracking-[-.03em] tabular-nums" style={{ color }}>
-          {n}
-        </div>
-        {unidad ? <div className="text-cap opacity-62">{unidad}</div> : null}
-      </div>
-      <div className="text-cap opacity-66 mt-2.5">{sub}</div>
-      <div className="flex items-center gap-1.5 mt-2.5 text-cap text-[var(--color-accent-active)]">
-        <span>{accion}</span>
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
-          <path d="M5 12h14M13 6l6 6-6 6" />
-        </svg>
-      </div>
+    <Link href={href} className={tono ? `pv-kpi ${tono}` : "pv-kpi"}>
+      <span className="pv-k-l">{titulo}</span>
+      <span className="pv-k-v">
+        {valor.toLocaleString("es-CL")}
+        <small>{unidad}</small>
+      </span>
+      <span className="pv-k-n">{nota}</span>
     </Link>
+  );
+}
+
+function Cabecera({
+  id,
+  titulo,
+  bajada,
+  etiqueta,
+  alerta,
+}: {
+  id: string;
+  titulo: string;
+  bajada?: string;
+  etiqueta?: React.ReactNode;
+  alerta?: boolean;
+}) {
+  return (
+    <header className="pv-head">
+      <div>
+        <h2 id={id}>{titulo}</h2>
+        {bajada ? <p>{bajada}</p> : null}
+      </div>
+      {etiqueta ? <span className={alerta ? "pv-tag red" : "pv-tag"}>{etiqueta}</span> : null}
+    </header>
   );
 }

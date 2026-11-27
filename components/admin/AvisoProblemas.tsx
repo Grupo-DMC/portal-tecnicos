@@ -92,10 +92,10 @@ export default function AvisoProblemas({ aviso, deshabilitado }: { aviso: AvisoP
       role="alert"
       className="mt-4 border-2 border-[var(--color-danger)] bg-[var(--color-surface)] px-4 py-3.5"
     >
-      <div className="text-cap font-extrabold text-[var(--color-danger)]">
+      <div className="text-cap font-semibold text-[var(--color-danger)]">
         Atención
       </div>
-      <p className="m-0 mt-1 font-extrabold text-body leading-[1.3]">
+      <p className="m-0 mt-1 font-semibold text-body leading-[1.3]">
         {problemas.length === 1
           ? "Esta sucursal tiene un problema sin resolver"
           : `Esta sucursal tiene ${problemas.length} problemas sin resolver`}
@@ -139,7 +139,7 @@ export default function AvisoProblemas({ aviso, deshabilitado }: { aviso: AvisoP
                   aria-checked={marcado}
                   disabled={deshabilitado}
                   onClick={() => alternar(p.id)}
-                  className="w-full flex items-start gap-2.5 px-3 py-2 border border-black/[.35] text-left cursor-pointer"
+                  className="w-full flex items-start gap-2.5 px-3 py-2 border border-[var(--color-line)] rounded-[10px] text-left cursor-pointer"
                   style={{
                     background: marcado ? "var(--color-text)" : "var(--color-bg)",
                     color: marcado ? "var(--color-bg)" : "var(--color-text)",
@@ -148,7 +148,7 @@ export default function AvisoProblemas({ aviso, deshabilitado }: { aviso: AvisoP
                   {contenido}
                 </button>
               ) : (
-                <div className="flex items-start gap-2.5 px-3 py-2 border border-[var(--color-divider)]">{contenido}</div>
+                <div className="flex items-start gap-2.5 px-3 py-2 border border-[var(--color-line)] rounded-[10px]">{contenido}</div>
               )}
             </li>
           );
@@ -156,7 +156,7 @@ export default function AvisoProblemas({ aviso, deshabilitado }: { aviso: AvisoP
       </ul>
 
       <fieldset className="m-0 mt-3.5 p-0 border-0" disabled={deshabilitado}>
-        <legend className="p-0 font-extrabold text-ui">¿Esta visita es para resolver alguno de estos problemas?</legend>
+        <legend className="p-0 font-semibold text-ui">¿Esta visita es para resolver alguno de estos problemas?</legend>
         <div className="flex flex-wrap gap-2 mt-2">
           {(
             [
@@ -172,7 +172,7 @@ export default function AvisoProblemas({ aviso, deshabilitado }: { aviso: AvisoP
                 role="radio"
                 aria-checked={activo}
                 onClick={() => setRespuesta(valor)}
-                className="min-h-10 px-3.5 border border-black/[.35] text-meta cursor-pointer"
+                className="min-h-10 px-3.5 border border-[var(--color-line)] rounded-[10px] text-meta cursor-pointer"
                 style={{
                   background: activo ? "var(--color-accent)" : "var(--color-bg)",
                   color: activo ? "#fff" : "var(--color-text)",
@@ -186,7 +186,7 @@ export default function AvisoProblemas({ aviso, deshabilitado }: { aviso: AvisoP
         </div>
         <p className="m-0 mt-2 text-cap opacity-70">
           {resuelve
-            ? "Marca arriba los que va a resolver: quedan como «Agendado» y el técnico confirma en el acta si quedaron solucionados."
+            ? null
             : respuesta === "OTRA_COSA"
               ? "Los problemas siguen como están. Queda registrado que se avisó y que la visita es por otra cosa."
               : "Responde para poder guardar."}

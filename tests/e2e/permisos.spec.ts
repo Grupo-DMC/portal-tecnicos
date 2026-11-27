@@ -45,9 +45,11 @@ test.describe("permisos por rol", () => {
     await expect(page.getByRole("heading", { name: "Panel de operación" })).toBeVisible();
   });
 
-  test("en el celular, el botón de cambiar de panel queda a la vista en la barra de arriba", async ({ page }) => {
+  test("en el celular, el botón de cambiar de panel está en el cajón del menú", async ({ page }) => {
+    // Como en la demo: la barra de arriba solo lleva hamburguesa, logo y campana.
     await page.setViewportSize({ width: 375, height: 740 });
     await entrarComo(page, "doble");
+    await page.getByRole("button", { name: "Abrir el menú" }).click();
     const boton = page.getByRole("button", { name: "Ir al panel de técnico" }).first();
     await expect(boton).toBeVisible();
     await boton.click();

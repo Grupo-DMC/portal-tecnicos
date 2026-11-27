@@ -75,9 +75,9 @@ export default function ContactosSeccion({
   }
 
   return (
-    <div className="p-4 md:p-6 border-b border-black/[.12]">
+    <div className="p-4 md:p-6 border-b border-[var(--color-line)]">
       <div className="flex items-center gap-2.5 flex-wrap">
-        <h2 className="font-extrabold text-lead m-0">{titulo}</h2>
+        <h2 className="font-semibold text-lead m-0">{titulo}</h2>
         <span className="text-cap opacity-60">{filas.length}</span>
         {cargoInicial && puede(ref, "contactos.crear") ? (
           <button type="button" className="btn btn-secondary ml-auto" onClick={() => setDialogo({ contacto: null })}>
@@ -95,7 +95,7 @@ export default function ContactosSeccion({
             const c = porId.get(f.contactoId);
             if (!c) return null;
             return (
-              <li key={`${f.contactoId}-${f.cargoId ?? i}`} className="flex items-start gap-3 py-2.5 border-b border-black/[.1]">
+              <li key={`${f.contactoId}-${f.cargoId ?? i}`} className="flex items-start gap-3 py-2.5 border-b border-[var(--color-line)]">
                 <div className="min-w-0 flex-1">
                   <div className="font-bold text-ui">
                     {c.nombre} <span className="font-normal opacity-72">· {f.cargo}</span>
@@ -131,7 +131,7 @@ export default function ContactosSeccion({
       )}
 
       {error ? (
-        <p role="alert" className="mt-3 mb-0 text-meta font-extrabold text-[var(--color-danger-800)]">
+        <p role="alert" className="mt-3 mb-0 text-meta font-semibold text-[var(--color-danger-800)]">
           {error}
         </p>
       ) : null}

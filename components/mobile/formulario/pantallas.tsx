@@ -1,10 +1,12 @@
 "use client";
+import Espera from "@/components/ui/Espera";
 
 import { Toast } from "@/components/ui/Toast";
 import { reloj } from "@/lib/ui/video";
 import { horaDeMarca, minutosDelPlazo } from "@/lib/reserva";
 import { entrada } from "@/components/mobile/formulario/piezas";
 import type { FormularioVisitaApi } from "@/components/mobile/formulario/useFormularioVisita";
+import { ocultarRut } from "@/lib/ui/reservado";
 
 // Las pantallas del acta que no son el formulario: en espera de señal, guardada
 // y la revisión antes de guardar.
@@ -24,7 +26,7 @@ export function PantallaEnEspera({ fv }: { fv: FormularioVisitaApi }) {
           <path d="M4 19h16" />
         </svg>
       </div>
-      <h1 className="font-extrabold text-display leading-[1.05] tracking-[-.03em] mt-5 mb-2">
+      <h1 className="font-semibold text-display leading-[1.05] tracking-[-.01em] mt-5 mb-2">
         Acta guardada
         <br />
         en el celular
@@ -44,9 +46,9 @@ export function PantallaEnEspera({ fv }: { fv: FormularioVisitaApi }) {
         <button
           onClick={() => void reintentarPendiente(true)}
           disabled={enviando}
-          className="w-full min-h-[58px] flex items-center justify-between px-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] font-extrabold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)] disabled:opacity-60"
+          className="w-full min-h-[58px] flex items-center justify-between px-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] font-semibold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)] disabled:opacity-60"
         >
-          <span>{enviando ? "Enviando…" : "Intentar enviarla ahora"}</span>
+          <Espera activo={enviando} accion="Enviando">Intentar enviarla ahora</Espera>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
             <path d="M4 12a8 8 0 018-8c3 0 5.5 1.7 7 4M20 12a8 8 0 01-8 8c-3 0-5.5-1.7-7-4" />
             <path d="M19 4v4h-4M5 20v-4h4" />
@@ -54,7 +56,7 @@ export function PantallaEnEspera({ fv }: { fv: FormularioVisitaApi }) {
         </button>
         <button
           onClick={() => router.push("/tecnico/visitas")}
-          className="w-full min-h-[50px] px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
+          className="w-full min-h-[50px] px-4 bg-transparent border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] font-semibold text-ui cursor-pointer text-left hover:bg-black/[.07]"
         >
           Seguir a la siguiente visita
         </button>
@@ -80,7 +82,7 @@ export function PantallaOk({ fv }: { fv: FormularioVisitaApi }) {
           <path d="M4 12l5 5L20 6" />
         </svg>
       </div>
-      <h1 className="font-extrabold text-display leading-[1.05] tracking-[-.03em] mt-5 mb-2">
+      <h1 className="font-semibold text-display leading-[1.05] tracking-[-.01em] mt-5 mb-2">
         {edicion ? "Cambios" : "Visita"}
         <br />
         {edicion ? "guardados" : "guardada"}
@@ -90,7 +92,7 @@ export function PantallaOk({ fv }: { fv: FormularioVisitaApi }) {
         {edicion ? "" : ` · ${horaTermino}`}
       </div>
       <div className="h-0.5 bg-[var(--color-divider)] mt-5 mb-4" />
-      <div className="flex gap-2.5 items-start px-3.5 py-3 bg-[var(--color-surface)] border border-[var(--color-line-control)]">
+      <div className="flex gap-2.5 items-start px-3.5 py-3 bg-[var(--color-surface)] border border-[var(--color-line)] rounded-[10px]">
         <div className="text-meta">
           {edicion
             ? "El acta quedó corregida y la firma de la tienda se conservó. La edición quedó registrada con lo que cambiaste y el motivo: coordinación la ve en el panel."
@@ -100,7 +102,7 @@ export function PantallaOk({ fv }: { fv: FormularioVisitaApi }) {
       <div className="mt-auto pt-6.5 flex flex-col gap-2.5">
         <button
           onClick={() => router.push("/tecnico/visitas")}
-          className="w-full min-h-[58px] flex items-center justify-between px-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] font-extrabold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)]"
+          className="w-full min-h-[58px] flex items-center justify-between px-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] font-semibold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)]"
         >
           <span>{edicion ? "Volver a mis visitas" : "Siguiente visita"}</span>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -111,14 +113,14 @@ export function PantallaOk({ fv }: { fv: FormularioVisitaApi }) {
         {!edicion ? (
           <button
             onClick={() => router.push(`/tecnico/visitas/${encodeURIComponent(visita.folio)}/editar`)}
-            className="w-full min-h-[50px] px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
+            className="w-full min-h-[50px] px-4 bg-transparent border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] font-semibold text-ui cursor-pointer text-left hover:bg-black/[.07]"
           >
             ¿Quieres editarla? Corregir el acta
           </button>
         ) : null}
         <button
           onClick={() => router.push("/tecnico")}
-          className="w-full min-h-[50px] px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
+          className="w-full min-h-[50px] px-4 bg-transparent border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] font-semibold text-ui cursor-pointer text-left hover:bg-black/[.07]"
         >
           Ir al inicio
         </button>
@@ -127,7 +129,7 @@ export function PantallaOk({ fv }: { fv: FormularioVisitaApi }) {
             sobre una visita ya cerrada. */}
         <button
           onClick={() => router.push(`/tecnico/visitas/${visita.folio}/revisar`)}
-          className="w-full min-h-[50px] px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
+          className="w-full min-h-[50px] px-4 bg-transparent border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] font-semibold text-ui cursor-pointer text-left hover:bg-black/[.07]"
         >
           Ver acta
         </button>
@@ -191,7 +193,7 @@ export function PantallaRevision({ fv }: { fv: FormularioVisitaApi }) {
   return (
     <div className="animate-fade-in">
       <div className="px-4 pt-5">
-        <h1 className="font-extrabold text-h1 leading-[1.06] tracking-[-.03em] mb-1.5">
+        <h1 className="font-semibold text-h1 leading-[1.06] tracking-[-.01em] mb-1.5">
           {edicion ? "Revisa cómo" : "Revisa lo que"}
           <br />
           {edicion ? "queda el acta" : "se va a guardar"}
@@ -203,14 +205,14 @@ export function PantallaRevision({ fv }: { fv: FormularioVisitaApi }) {
         </p>
       </div>
 
-      <div className="mx-4 border border-[var(--color-divider)] bg-[var(--color-surface-3)]">
-        <div className="px-4 py-3.5 border-b-2 border-[var(--color-divider)] flex items-center gap-2.5">
-          <div className="font-extrabold text-meta ">Acta de visita</div>
+      <div className="mx-4 border border-[var(--color-line)] rounded-[10px] bg-[var(--color-surface-3)]">
+        <div className="px-4 py-3.5 border-b border-[var(--color-line)] flex items-center gap-2.5">
+          <div className="font-semibold text-meta ">Acta de visita</div>
           <span className="tag tag-accent ml-auto">{edicion ? "Acta corregida" : "Quedará Completada"}</span>
         </div>
         <div className="px-4 pt-1 pb-3.5">
           {resumen.map((r) => (
-            <div key={r.k} className="py-3.5 border-b border-black/[.2]">
+            <div key={r.k} className="py-3.5 border-b border-[var(--color-line)]">
               <div className="text-cap opacity-66">{r.k}</div>
               <div className="text-lead leading-[1.4] mt-1.5">{r.v}</div>
             </div>
@@ -223,13 +225,13 @@ export function PantallaRevision({ fv }: { fv: FormularioVisitaApi }) {
                 {trabajosVigentes.map((t) => (
                   <div key={t.id} className="border-l border-[var(--color-line-control)] pl-3">
                     <div className="text-cap opacity-62">{nombreMotivo(motivoDe(t))}</div>
-                    <div className="font-extrabold text-lead leading-[1.25]">{nombreTrabajo(t.codigo)}</div>
+                    <div className="font-semibold text-lead leading-[1.25]">{nombreTrabajo(t.codigo)}</div>
                     {t.subs.length > 0 ? (
                       <div className="flex flex-wrap gap-1.5 mt-1.5">
                         {t.subs.map((s) => (
                           <span
                             key={s.etiqueta}
-                            className="px-2 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap leading-[1.2] tabular-nums"
+                            className="px-2 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-semibold text-cap leading-[1.2] tabular-nums"
                           >
                             {s.etiqueta}
                             {s.cantidad > 1 ? ` × ${s.cantidad}` : ""}
@@ -250,7 +252,7 @@ export function PantallaRevision({ fv }: { fv: FormularioVisitaApi }) {
               <div className="flex flex-col gap-2">
                 {porResolver.map((p) => (
                   <div key={p.id} className="border-l border-[var(--color-accent-300)] pl-3 flex items-baseline justify-between gap-3">
-                    <span className="font-extrabold text-lead leading-[1.25]">{p.tipo}</span>
+                    <span className="font-semibold text-lead leading-[1.25]">{p.tipo}</span>
                     <span className="text-ui flex-none">
                       {resoluciones[p.id] === undefined ? "Sin responder" : resoluciones[p.id] ? "Solucionado" : "No solucionado"}
                     </span>
@@ -266,13 +268,13 @@ export function PantallaRevision({ fv }: { fv: FormularioVisitaApi }) {
               <div className="flex flex-col gap-2.5">
                 {problemas.map((p) => (
                   <div key={p.id} className="border-l border-[var(--color-accent-300)] pl-3">
-                    <div className="font-extrabold text-lead leading-[1.25]">{nombreProblema(p.codigo)}</div>
+                    <div className="font-semibold text-lead leading-[1.25]">{nombreProblema(p.codigo)}</div>
                     {p.items.length > 0 ? (
                       <div className="flex flex-wrap gap-1.5 mt-1.5">
                         {p.items.map((z) => (
                           <span
                             key={z.etiqueta}
-                            className="px-2 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap leading-[1.2] tabular-nums"
+                            className="px-2 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-semibold text-cap leading-[1.2] tabular-nums"
                           >
                             {z.etiqueta} × {z.cantidad}
                           </span>
@@ -296,7 +298,7 @@ export function PantallaRevision({ fv }: { fv: FormularioVisitaApi }) {
                     key={f.id}
                     src={f.src}
                     alt=""
-                    className="w-full aspect-square object-cover border border-black/[.3]"
+                    className="w-full aspect-square object-cover border border-[var(--color-line)] rounded-[10px]"
                   />
                 ))}
               </div>
@@ -310,7 +312,7 @@ export function PantallaRevision({ fv }: { fv: FormularioVisitaApi }) {
               </div>
               <div className="grid gap-2">
                 {videosTrabajo.map((v) => (
-                  <div key={v.id} className="flex items-center gap-2.5 border border-black/[.3] px-2.5 py-2">
+                  <div key={v.id} className="flex items-center gap-2.5 border border-[var(--color-line)] rounded-[10px] px-2.5 py-2">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="flex-none">
                       <path d="M3 7h11v10H3z" />
                       <path d="M14 11l7-4v10l-7-4z" />
@@ -328,7 +330,7 @@ export function PantallaRevision({ fv }: { fv: FormularioVisitaApi }) {
           ) : null}
 
           {interno.trim() || internos.length || fotosInternas.length || videosInternos.length ? (
-            <div className="mt-4 px-3 py-3 bg-[var(--color-surface)] border border-[var(--color-line-control)]">
+            <div className="mt-4 px-3 py-3 bg-[var(--color-surface)] border border-[var(--color-line)] rounded-[10px]">
               <div className="text-cap opacity-62">
                 Comentario interno · no lo ve el cliente
               </div>
@@ -337,7 +339,7 @@ export function PantallaRevision({ fv }: { fv: FormularioVisitaApi }) {
                   {internos.map((c) => (
                     <span
                       key={c}
-                      className="px-2 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap leading-[1.2]"
+                      className="px-2 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-semibold text-cap leading-[1.2]"
                     >
                       {nombreInterno(c)}
                     </span>
@@ -362,7 +364,7 @@ export function PantallaRevision({ fv }: { fv: FormularioVisitaApi }) {
                 <div className="h-px bg-[var(--color-text)] mt-1" />
                 <div className="text-cap mt-1.5">
                   {firma.nombre}
-                  {firma.rut ? ` · ${firma.rut}` : ""}
+                  {firma.rut ? ` · ${ocultarRut(firma.rut)}` : ""}
                 </div>
                 <div className="text-cap opacity-62">Responsable de tienda</div>
               </div>
@@ -409,13 +411,13 @@ export function PantallaRevision({ fv }: { fv: FormularioVisitaApi }) {
             void guardarVisita();
           }}
           disabled={guardando}
-          className="w-full min-h-[62px] flex items-center justify-between px-4.5 border-0 font-extrabold text-lead cursor-pointer text-left hover:brightness-95"
+          className="w-full min-h-[62px] flex items-center justify-between px-4.5 border-0 font-semibold text-lead cursor-pointer text-left hover:brightness-95"
           style={{
             background: puedeGuardar ? "var(--color-accent)" : "var(--color-neutral-500)",
             color: puedeGuardar ? "var(--color-bg)" : "var(--color-surface-3)",
           }}
         >
-          <span>{guardando ? "Guardando…" : edicion ? "Guardar cambios" : "Guardar visita"}</span>
+          <Espera activo={guardando} accion="Guardando">{edicion ? "Guardar cambios" : "Guardar visita"}</Espera>
           <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
             <path d="M4 12l5 5L20 6" />
           </svg>
@@ -423,7 +425,7 @@ export function PantallaRevision({ fv }: { fv: FormularioVisitaApi }) {
         <button
           onClick={() => setPaso("form")}
           disabled={guardando}
-          className="w-full min-h-[50px] mt-2.5 px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07] disabled:opacity-60"
+          className="w-full min-h-[50px] mt-2.5 px-4 bg-transparent border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] font-semibold text-ui cursor-pointer text-left hover:bg-black/[.07] disabled:opacity-60"
         >
           Volver a corregir
         </button>
@@ -455,7 +457,7 @@ export function BloqueoDeActa({ fv }: { fv: FormularioVisitaApi }) {
       className="fixed inset-0 z-50 flex justify-center bg-[rgba(31,28,33,.72)]"
     >
       <div className="w-full max-w-[460px] bg-[var(--color-bg)] flex flex-col px-4 pt-11 pb-6.5 overflow-y-auto">
-        <h1 id="bloqueo-titulo" className="font-extrabold text-h1 leading-[1.08] tracking-[-.03em] m-0">
+        <h1 id="bloqueo-titulo" className="font-semibold text-h1 leading-[1.08] tracking-[-.01em] m-0">
           {bloqueo.tipo === "reserva" ? "Otro técnico tomó esta acta" : "El otro técnico ya cerró esta visita"}
         </h1>
         <div className="h-0.5 bg-[var(--color-divider)] mt-4 mb-4" />
@@ -477,14 +479,14 @@ export function BloqueoDeActa({ fv }: { fv: FormularioVisitaApi }) {
           {bloqueo.tipo === "reserva" ? (
             <button
               onClick={() => void recuperarReserva()}
-              className="w-full min-h-[54px] px-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)]"
+              className="w-full min-h-[54px] px-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-semibold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)]"
             >
               Intentar recuperarla
             </button>
           ) : null}
           <button
             onClick={() => router.push(detalle)}
-            className="w-full min-h-[50px] px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
+            className="w-full min-h-[50px] px-4 bg-transparent border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] font-semibold text-ui cursor-pointer text-left hover:bg-black/[.07]"
           >
             Volver a la visita
           </button>

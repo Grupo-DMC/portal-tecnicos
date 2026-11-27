@@ -135,7 +135,7 @@ export default function ContactoDialogo({
       <div className="mt-5">
         <div className="text-cap opacity-72 mb-2">Cargos y alcance</div>
         {cargos.map((c, i) => (
-          <div key={c.key} className="mb-3 p-3 border border-black/[.2] grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div key={c.key} className="mb-3 p-3 border border-[var(--color-line)] rounded-[10px] grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="field min-w-0">
               <label htmlFor={`cg-cargo-${c.key}`}>Cargo {cargos.length > 1 ? i + 1 : ""}</label>
               <input
@@ -191,7 +191,7 @@ export default function ContactoDialogo({
         </button>
       </div>
       {error ? (
-        <p role="alert" className="mt-4 mb-0 text-meta font-extrabold text-[var(--color-danger-800)]">
+        <p role="alert" className="mt-4 mb-0 text-meta font-semibold text-[var(--color-danger-800)]">
           {error}
         </p>
       ) : null}

@@ -13,7 +13,7 @@ import type { AdjuntoTrabajo } from "@/lib/types";
  * botón para elegir archivos y la lista de los que están por subir.
  */
 
-const CELDA = "relative aspect-square overflow-hidden border border-[var(--color-divider)] bg-[var(--color-surface-3)]";
+const CELDA = "relative aspect-square overflow-hidden border border-[var(--color-line)] rounded-[10px] bg-[var(--color-surface-3)]";
 
 function Miniatura({ a }: { a: AdjuntoTrabajo }) {
   return a.tipo === "FOTO" ? (

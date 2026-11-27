@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 const { despachar } = vi.hoisted(() => ({ despachar: vi.fn() }));
-vi.mock("@/lib/data/correo-avisos", () => ({ despacharCorreos: despachar, limpiarCorreos: vi.fn() }));
+// La ruta limpia en los primeros 10 minutos de cada hora: la simulación devuelve una promesa.
+vi.mock("@/lib/data/correo-avisos", () => ({ despacharCorreos: despachar, limpiarCorreos: vi.fn(async () => {}) }));
 
 import { GET } from "@/app/api/cron/correos/route";
 

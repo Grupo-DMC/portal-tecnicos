@@ -6,8 +6,9 @@ import { visitaParaTecnico } from "@/lib/data/visita-reducida";
 import { listarMalls, listarSucursales } from "@/lib/data/maestros";
 import { diaDeVisita, hoyISO, sumarDias } from "@/lib/ui/fecha";
 import MobileShell from "@/components/mobile/MobileShell";
-import Tag from "@/components/Tag";
-import { ESTADO_VISITA_BARRA, ESTADO_VISITA_LABEL, ESTADO_VISITA_TAG, textoMotivos } from "@/lib/ui/estado";
+import TarjetaVisita from "@/components/mobile/TarjetaVisita";
+import Icono from "@/components/ui/Icono";
+import { ocultarRut } from "@/lib/ui/reservado";
 import type { Visita } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -86,135 +87,88 @@ export default async function InicioPage() {
 
   const fechaHoy = fechaLarga(HOY);
 
-  const filasDe = (lista: typeof visitas) => (
-    <>
+  const tarjetas = (lista: Visita[]) => (
+    <div className="tp-list">
       {lista.map((v) => (
-        <Link
+        <TarjetaVisita
           key={v.id}
-          href={`/tecnico/visitas/${v.folio}`}
-          className="flex items-center gap-3 px-4 py-3 min-h-[60px] bg-[var(--color-bg)] border-b border-black/[.18] last:border-b-0 hover:bg-black/[.05]"
-          style={{ borderLeft: `4px solid ${ESTADO_VISITA_BARRA[v.estado]}` }}
-        >
-          <div className="min-w-0 flex-1">
-            <div className="font-extrabold text-body leading-[1.2] truncate">
-              {v.cliente?.nombreFantasia} · {v.sucursal?.nombre}
-            </div>
-            <div className="text-cap opacity-62 mt-0.5 truncate">
-              <span className="tabular-nums">{v.horaProgramada ?? "Sin hora"}</span> · {textoMotivos(v)}
-            </div>
-          </div>
-          <Tag variant={ESTADO_VISITA_TAG[v.estado]} className="flex-none">
-            {ESTADO_VISITA_LABEL[v.estado]}
-          </Tag>
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.2"
-            className="flex-none opacity-60"
-          >
-            <path d="M9 6l6 6-6 6" />
-          </svg>
-        </Link>
+          visita={v}
+          tecnicoId={sesion.tecnico!.id}
+          atrasada={v.estado === "PROGRAMADA" && diaDeVisita(v, HOY) < HOY}
+        />
       ))}
-    </>
+    </div>
   );
 
   return (
     <MobileShell titulo="Inicio">
-      <div className="px-4 pt-[22px] pb-[26px] animate-fade-in">
-        <h1 className="font-extrabold text-h1 leading-[1.06] tracking-[-.03em] mb-1.5">
-          Hola,
-          <br />
-          {sesion.tecnico.nombres}
-        </h1>
-        <p className="m-0 text-meta text-[var(--color-muted)]">
-          <span className="first-letter:uppercase inline-block">{fechaHoy}</span>
-          <br />
-          {sesion.tecnico.rut} · Técnico de terreno · {sesion.tecnico.email}
-        </p>
-
-        <div className="h-0.5 bg-[var(--color-divider)] mt-5" />
-        <div className="grid grid-cols-3">
-          <div className="py-3.5 pr-3 border-r border-black/[.2]">
-            <div className="num font-bold text-h1 leading-none tabular-nums">{nHoy}</div>
-            <div className="text-cap opacity-66 mt-1.5">Visitas hoy</div>
-          </div>
-          <div className="py-3.5 px-3 border-r border-black/[.2]">
-            <div className={`num font-bold text-h1 leading-none tabular-nums ${nCurso > 0 ? "text-[var(--color-accent)]" : ""}`}>{nCurso}</div>
-            <div className="text-cap opacity-66 mt-1.5">En curso</div>
-          </div>
-          <div className="py-3.5 pl-3">
-            <div className="num font-bold text-h1 leading-none tabular-nums">{nPend}</div>
-            <div className="text-cap opacity-66 mt-1.5">Por cerrar</div>
-          </div>
+      <div className="tp-main">
+        <div className="tp-hello">
+          <h1>
+            Hola, <b>{sesion.tecnico.nombres}</b>
+          </h1>
+          <p>
+            <b className="primera">{fechaHoy}</b>
+            <br />
+            {ocultarRut(sesion.tecnico.rut)} · Técnico de terreno · {sesion.tecnico.email}
+          </p>
         </div>
-        <div className="h-0.5 bg-[var(--color-divider)]" />
+
+        <div className="tp-kpis">
+          <Link href="/tecnico/visitas">
+            <b>{nHoy}</b>
+            <span>Visitas hoy</span>
+          </Link>
+          <Link href="/tecnico/visitas">
+            <b>{nCurso}</b>
+            <span>En curso</span>
+          </Link>
+          <Link href="/tecnico/visitas" className={nPend > 0 ? "warn" : undefined}>
+            <b>{nPend}</b>
+            <span>Por cerrar</span>
+          </Link>
+        </div>
 
         {dias.length === 0 ? (
-          <div className="mt-6.5 py-6 text-center text-ui opacity-62">No tienes visitas agendadas.</div>
+          <div className="tp-empty">
+            <b>No tienes visitas por hacer</b>
+            <span>Cuando coordinación te asigne una, aparece aquí.</span>
+          </div>
         ) : null}
         {dias.map((d) => (
-          <div key={d.fecha}>
-            <h2
-              className={`text-body font-extrabold leading-[1.2] mt-6.5 mb-2.5 ${
-                d.atrasado ? "text-[var(--color-danger)]" : d.enCurso ? "text-[var(--color-accent)]" : ""
-              }`}
-            >
-              {d.titulo}
-              <span className="font-normal text-[var(--color-muted)]">
-                {" · "}
+          <section className="tp-sec" key={d.fecha}>
+            <div className="tp-h2">
+              <h2 className={d.atrasado ? "atrasado" : undefined}>{d.titulo}</h2>
+              <small>
                 {d.total} {d.total === 1 ? "visita" : "visitas"}
-              </span>
-            </h2>
+              </small>
+            </div>
             {d.grupos.length === 1 && d.grupos[0].clave === "otras" ? (
               // Sin malls que agrupar: las visitas van directo bajo el día.
-              <div className="border border-[var(--color-divider)]">{filasDe(d.grupos[0].visitas)}</div>
+              tarjetas(d.grupos[0].visitas)
             ) : (
-            <div className="flex flex-col gap-3">
-              {d.grupos.map((g) => {
-                return (
-                  <details
-                    key={g.clave}
-                    open={d.grupos.length === 1}
-                    className="group border border-[var(--color-divider)] bg-[var(--color-surface)]"
-                  >
-                    <summary className="list-none [&::-webkit-details-marker]:hidden cursor-pointer flex items-center gap-3 px-4 py-3.5 min-h-[64px]">
-                      <div className="min-w-0 flex-1">
-                        <div className="font-extrabold text-h3 leading-[1.15] truncate">{g.nombre}</div>
-                        {g.direccion ? <div className="text-meta opacity-60 mt-0.5 truncate">{g.direccion}</div> : null}
-                        <div className="text-cap opacity-66 mt-1.5 tabular-nums">
-                          {g.visitas.length} {g.visitas.length === 1 ? "visita" : "visitas"}                        </div>
-                      </div>
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.2"
-                        className="flex-none transition-transform group-open:rotate-180"
-                      >
-                        <path d="M6 9l6 6 6-6" />
-                      </svg>
-                    </summary>
-                    <div className="border-t border-[var(--color-divider-soft)]">{filasDe(g.visitas)}</div>
-                  </details>
-                );
-              })}
-            </div>
+              d.grupos.map((g) => (
+                <details key={g.clave} open={d.grupos.length === 1} className="tp-mall">
+                  <summary>
+                    <span>
+                      <b>{g.nombre}</b>
+                      {g.direccion ? <small>{g.direccion}</small> : null}
+                      <small>
+                        {g.visitas.length} {g.visitas.length === 1 ? "visita" : "visitas"}
+                      </small>
+                    </span>
+                    <Icono nombre="abajo" />
+                  </summary>
+                  {tarjetas(g.visitas)}
+                </details>
+              ))
             )}
-          </div>
+          </section>
         ))}
 
-        <Link
-          href="/tecnico/visitas"
-          className="w-full min-h-[52px] flex items-center justify-between px-4 mt-5 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui hover:bg-black/[.07]"
-        >
-          <span>Ver todas mis visitas</span>
-          <span className="tabular-nums opacity-62">{visitas.length}</span>
+        <Link href="/tecnico/visitas" className="tp-more">
+          Ver todas mis visitas
+          <span>{visitas.length}</span>
         </Link>
       </div>
     </MobileShell>

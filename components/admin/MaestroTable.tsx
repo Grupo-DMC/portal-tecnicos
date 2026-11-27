@@ -9,6 +9,7 @@ import FiltrosBar, { type CampoFiltro, type ChipFiltro } from "@/components/admi
 import Dialogo, { type CampoDef, type FormValores } from "@/components/admin/Dialogo";
 import Confirmar, { type ConfirmarCfg } from "@/components/ui/Confirmar";
 import { Toast, useToast } from "@/components/ui/Toast";
+import Icono from "@/components/ui/Icono";
 import { puede, useReferencias } from "@/lib/ui/referencias";
 
 export interface Column<T> {
@@ -174,7 +175,7 @@ export default function MaestroTable<T extends { id: number }>({
       <AdminHeader title={title} pestanas={pestanas}>
         {puedeCrear ? accionesCabecera : null}
         {puedeCrear ? (
-          <button onClick={() => setDialogo({ id: null, form: emptyRow })} className="btn btn-primary">
+          <button type="button" onClick={() => setDialogo({ id: null, form: emptyRow })} className="btn btn-primary">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
               <path d="M12 5v14M5 12h14" />
             </svg>
@@ -183,98 +184,103 @@ export default function MaestroTable<T extends { id: number }>({
         ) : null}
       </AdminHeader>
 
-      <div className="pb-10 animate-fade-in">
+      <div className="wrap tras-cabecera">
         {resumen}
-        <FiltrosBar
-          busqueda={busqueda}
-          phBusqueda={phBusqueda}
-          onBusqueda={setBusqueda}
-          campos={filtros?.campos ?? []}
-          chips={filtros?.chips ?? []}
-          onLimpiar={() => {
-            setBusqueda("");
-            filtros?.limpiar();
-          }}
-          conteo={`${filtradas.length} ${filtradas.length === 1 ? "registro" : "registros"}`}
-        />
+        <section className="v-card" aria-label={title}>
+          <FiltrosBar
+            busqueda={busqueda}
+            phBusqueda={phBusqueda}
+            onBusqueda={setBusqueda}
+            campos={filtros?.campos ?? []}
+            chips={filtros?.chips ?? []}
+            onLimpiar={() => {
+              setBusqueda("");
+              filtros?.limpiar();
+            }}
+            conteo={`${filtradas.length} ${filtradas.length === 1 ? "registro" : "registros"}`}
+          />
 
-        <div className="px-4 md:px-7 overflow-x-auto">
-          <table className="table min-w-[640px]">
-            <thead>
-              <tr>
-                {columns.map((c) => (
-                  <th
-                    key={c.key}
-                    style={{ textAlign: c.align ?? "left" }}
-                    aria-sort={
-                      orden?.key === c.key ? (orden.dir === "desc" ? "descending" : "ascending") : c.valorOrden ? "none" : undefined
-                    }
-                  >
-                    {c.valorOrden ? (
-                      <button
-                        type="button"
-                        onClick={() => alternarOrden(c.key)}
-                        title={
-                          orden?.key !== c.key
-                            ? "Poner arriba los que tienen más"
-                            : orden.dir === "desc"
-                              ? "Ahora arriba los que tienen más · clic para poner arriba los que tienen menos"
-                              : "Ahora arriba los que tienen menos · clic para quitar el orden"
-                        }
-                        className="inline-flex items-center gap-1.5 bg-transparent border-0 p-0 cursor-pointer font-[inherit] text-[inherit] uppercase tracking-[inherit] hover:opacity-70"
-                      >
-                        <span>{c.label}</span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" aria-hidden="true">
-                          {orden?.key === c.key ? (
-                            <path d={orden.dir === "desc" ? "M12 5v14M6 13l6 6 6-6" : "M12 19V5M6 11l6-6 6 6"} />
-                          ) : (
-                            <path d="M8 9l4-4 4 4M8 15l4 4 4-4" opacity="0.45" />
-                          )}
-                        </svg>
-                      </button>
-                    ) : (
-                      c.label
-                    )}
-                  </th>
-                ))}
-                <th style={{ width: accionFila ? 88 : 44 }} />
-              </tr>
-            </thead>
-            <tbody>
-              {filtradas.map((row) => (
-                <tr key={row.id}>
+          <div className="tabla-caja">
+            <table className="vt fichas">
+              <thead>
+                <tr>
                   {columns.map((c) => (
-                    <td key={c.key} style={{ textAlign: c.align ?? "left" }}>
-                      {c.render ? c.render(row) : String((row as unknown as Record<string, unknown>)[c.key] ?? "")}
-                    </td>
+                    <th
+                      key={c.key}
+                      scope="col"
+                      style={{ textAlign: c.align ?? "left" }}
+                      aria-sort={
+                        orden?.key === c.key ? (orden.dir === "desc" ? "descending" : "ascending") : c.valorOrden ? "none" : undefined
+                      }
+                    >
+                      {c.valorOrden ? (
+                        <button
+                          type="button"
+                          onClick={() => alternarOrden(c.key)}
+                          title={
+                            orden?.key !== c.key
+                              ? "Poner arriba los que tienen más"
+                              : orden.dir === "desc"
+                                ? "Ahora arriba los que tienen más · clic para poner arriba los que tienen menos"
+                                : "Ahora arriba los que tienen menos · clic para quitar el orden"
+                          }
+                          className="ordenar"
+                        >
+                          <span>{c.label}</span>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" aria-hidden="true">
+                            {orden?.key === c.key ? (
+                              <path d={orden.dir === "desc" ? "M12 5v14M6 13l6 6 6-6" : "M12 19V5M6 11l6-6 6 6"} />
+                            ) : (
+                              <path d="M8 9l4-4 4 4M8 15l4 4 4-4" opacity="0.45" />
+                            )}
+                          </svg>
+                        </button>
+                      ) : (
+                        c.label
+                      )}
+                    </th>
                   ))}
-                  <td className="text-right whitespace-nowrap max-lg:sticky max-lg:right-0 max-lg:bg-[var(--color-bg)]">
-                    {accionFila ? <span className="inline-block mr-1.5 align-top">{accionFila(row)}</span> : null}
-                    {puedeEditar ? (
-                      <button
-                        onClick={() => setDialogo({ id: row.id, form: toFormValues(row) })}
-                        className="btn btn-icon w-8 h-8 border border-black/[.3]"
-                        aria-label={`Editar ${title.toLowerCase()}`}
-                      >
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M4 20h4l10-10-4-4L4 16v4z" />
-                          <path d="M14 6l4 4" />
-                        </svg>
-                      </button>
-                    ) : null}
-                  </td>
+                  <th scope="col">
+                    <span className="sr">Acciones</span>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtradas.map((row) => (
+                  <tr key={row.id}>
+                    {columns.map((c) => (
+                      <td key={c.key} data-label={c.label} style={{ textAlign: c.align ?? "left" }}>
+                        {c.render ? c.render(row) : String((row as unknown as Record<string, unknown>)[c.key] ?? "")}
+                      </td>
+                    ))}
+                    <td className="acciones">
+                      <span>
+                        {accionFila ? accionFila(row) : null}
+                        {puedeEditar ? (
+                          <button
+                            type="button"
+                            onClick={() => setDialogo({ id: row.id, form: toFormValues(row) })}
+                            className="btn-icono"
+                            aria-label={`Editar ${title.toLowerCase()}`}
+                          >
+                            <Icono nombre="editar" />
+                          </button>
+                        ) : null}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           {filtradas.length === 0 ? (
-            <div className="py-14 text-center">
-              <div className="font-extrabold text-lead mb-1.5">Nada que mostrar</div>
-              <div className="text-meta opacity-66">Ajusta la búsqueda.</div>
+            <div className="v-empty">
+              <b>{rows.length ? "Nada que mostrar" : "Todavía no hay registros"}</b>
+              <span>{rows.length ? "Ajusta la búsqueda o quita filtros." : "Agrega el primero con el botón de arriba."}</span>
             </div>
           ) : null}
-        </div>
+        </section>
       </div>
 
       {dialogo ? (

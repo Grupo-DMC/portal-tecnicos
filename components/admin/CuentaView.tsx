@@ -1,4 +1,5 @@
 "use client";
+import Espera from "@/components/ui/Espera";
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -35,7 +36,7 @@ export default function CuentaView({
 
   return (
     // Grilla: 320 + 24 + 1fr. La identidad queda a la vista mientras se editan los formularios.
-    <div className="px-4 md:px-7 py-6 md:py-8 max-w-[1120px] grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
+    <div className="w-full max-w-[1560px] px-[14px] md:px-7 pt-[18px] md:pt-[22px] pb-8 md:pb-10 grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
       <SeccionFoto perfil={perfil} rol={rol} aviso={aviso} />
       <div className="flex flex-col gap-6 min-w-0">
         <SeccionDatos perfil={perfil} aviso={aviso} />
@@ -54,7 +55,7 @@ function Seccion({ titulo, bajada, children }: { titulo: string; bajada?: string
   return (
     <section className={PANEL}>
       <header className="px-5 md:px-6 pt-5 md:pt-6">
-        <h2 className="font-extrabold text-lead tracking-[-.01em]">{titulo}</h2>
+        <h2 className="font-semibold text-lead tracking-[-.01em]">{titulo}</h2>
         {bajada ? <p className="text-meta text-[var(--color-muted)] mt-1 max-w-[60ch]">{bajada}</p> : null}
       </header>
       <div className="px-5 md:px-6 py-5 md:py-6 min-w-0">{children}</div>
@@ -127,7 +128,7 @@ function SeccionFoto({ perfil, rol, aviso }: { perfil: PerfilCuenta; rol: string
   return (
     <section className={`${PANEL} lg:sticky lg:top-6`}>
       {/* Foto cuadrada a todo el ancho de la tarjeta: es lo primero que se ve. */}
-      <div className="aspect-square max-h-[320px] w-full bg-[var(--color-accent-100)] text-[var(--color-accent-800)] grid place-items-center font-extrabold text-hero overflow-hidden">
+      <div className="aspect-square max-h-[320px] w-full bg-[var(--color-accent-100)] text-[var(--color-accent-800)] grid place-items-center font-semibold text-hero overflow-hidden">
         {foto ? (
           // eslint-disable-next-line @next/next/no-img-element -- ruta propia con sesión; next/image no aporta acá
           <img src={foto} alt={`Foto de ${nombre}`} width={320} height={320} className="w-full h-full object-cover" />
@@ -137,7 +138,7 @@ function SeccionFoto({ perfil, rol, aviso }: { perfil: PerfilCuenta; rol: string
       </div>
       <div className="p-5 md:p-6 flex flex-col gap-5">
         <div className="min-w-0">
-          <h2 className="font-extrabold text-h3 tracking-[-.01em] truncate">{nombre}</h2>
+          <h2 className="font-semibold text-h3 tracking-[-.01em] truncate">{nombre}</h2>
           <p className="text-ui text-[var(--color-muted)] truncate">{perfil.email}</p>
           <span className="tag tag-accent mt-3">{rol}</span>
         </div>
@@ -147,7 +148,7 @@ function SeccionFoto({ perfil, rol, aviso }: { perfil: PerfilCuenta; rol: string
         </dl>
         <div className="flex items-center gap-2 flex-wrap">
           <button type="button" className="btn btn-secondary" disabled={pendiente} onClick={() => entrada.current?.click()}>
-            {pendiente ? "Guardando…" : foto ? "Cambiar foto" : "Subir foto"}
+            <Espera activo={pendiente} accion="Guardando">{foto ? "Cambiar foto" : "Subir foto"}</Espera>
           </button>
           {foto ? (
             <button type="button" className="btn btn-ghost" disabled={pendiente} onClick={quitar}>
@@ -189,7 +190,7 @@ function SeccionDatos({ perfil, aviso }: { perfil: PerfilCuenta; aviso: (t: stri
   }, [state, aviso, router]);
 
   return (
-    <Seccion titulo="Datos" bajada="El correo es con el que entras al sistema.">
+    <Seccion titulo="Datos">
       <form action={accion} className="grid gap-4 sm:grid-cols-2">
         <div className="field sm:col-span-2">
           <label htmlFor="cu-nombre">Nombre</label>
@@ -229,7 +230,7 @@ function SeccionDatos({ perfil, aviso }: { perfil: PerfilCuenta; aviso: (t: stri
         ) : null}
         <PieForm error={state.error}>
           <button type="submit" className="btn btn-primary" disabled={pendiente}>
-            {pendiente ? "Guardando…" : "Guardar datos"}
+            <Espera activo={pendiente} accion="Guardando">Guardar datos</Espera>
           </button>
         </PieForm>
       </form>
@@ -284,7 +285,7 @@ function SeccionPassword({ largoMinimo, aviso }: { largoMinimo: number; aviso: (
         </label>
         <PieForm error={state.error}>
           <button type="submit" className="btn btn-primary" disabled={pendiente}>
-            {pendiente ? "Cambiando…" : "Cambiar contraseña"}
+            <Espera activo={pendiente} accion="Cambiando">Cambiar contraseña</Espera>
           </button>
         </PieForm>
       </form>

@@ -307,7 +307,7 @@ function AltaRapidaDialogo({
         guardando={guardando}
       >
         {error ? (
-          <p role="alert" className="mt-4 mb-0 text-meta font-extrabold text-[var(--color-danger-800)]">
+          <p role="alert" className="mt-4 mb-0 text-meta font-semibold text-[var(--color-danger-800)]">
             {error}
           </p>
         ) : null}

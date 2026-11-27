@@ -50,9 +50,9 @@ export default function CamaraSheet({
       aria-label="Tomar foto"
       className="fixed inset-0 z-50 bg-[rgba(31,28,33,.7)] flex flex-col justify-end items-center"
     >
-      <div className="w-full max-w-[460px] max-h-[94vh] overflow-y-auto bg-[var(--color-bg)] border-t-2 border-[var(--color-text)] animate-up-sheet">
-        <div className="flex items-center gap-2.5 px-4 py-3.5 border-b-2 border-[var(--color-divider)]">
-          <div className="font-extrabold text-lead leading-[1.2]">Tomar foto</div>
+      <div className="w-full max-w-[460px] max-h-[94vh] overflow-y-auto bg-[var(--color-bg)] border-t border-[var(--color-line)] animate-up-sheet">
+        <div className="flex items-center gap-2.5 px-4 py-3.5 border-b border-[var(--color-line)]">
+          <div className="font-semibold text-lead leading-[1.2]">Tomar foto</div>
           <button
             type="button"
             onClick={onCerrar}
@@ -66,7 +66,7 @@ export default function CamaraSheet({
         </div>
 
         <div className="p-4">
-          <label className="relative w-full min-h-[64px] flex items-center justify-between px-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] font-extrabold text-lead cursor-pointer hover:bg-[var(--color-accent-hover)]">
+          <label className="relative w-full min-h-[64px] flex items-center justify-between px-4.5 bg-[var(--color-accent)] text-[var(--color-bg)] font-semibold text-lead cursor-pointer hover:bg-[var(--color-accent-hover)]">
             <span>{tomadas > 0 ? "Tomar otra foto" : "Abrir la cámara"}</span>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
               <path d="M3 8h3l2-3h8l2 3h3v12H3z" />
@@ -88,7 +88,7 @@ export default function CamaraSheet({
               : "Se abre la cámara de tu celular. Cada foto se agrega a la visita al instante."}
           </p>
 
-          <label className="relative w-full min-h-[52px] flex items-center gap-2.5 px-4 mt-3.5 bg-transparent border border-dashed border-black/[.5] text-[var(--color-text)] font-extrabold text-ui cursor-pointer hover:bg-black/[.06]">
+          <label className="relative w-full min-h-[52px] flex items-center gap-2.5 px-4 mt-3.5 bg-transparent border border-dashed border-[var(--color-line)] text-[var(--color-text)] font-semibold text-ui cursor-pointer hover:bg-black/[.06]">
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               <path d="M4 5h16v14H4z" />
               <path d="M4 16l5-5 4 4 3-3 4 4" />
@@ -108,7 +108,7 @@ export default function CamaraSheet({
           <button
             type="button"
             onClick={onCerrar}
-            className="w-full min-h-[50px] mt-2.5 px-4 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07]"
+            className="w-full min-h-[50px] mt-2.5 px-4 bg-transparent border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] font-semibold text-ui cursor-pointer text-left hover:bg-black/[.07]"
           >
             {tomadas > 0 ? "Listo" : "Cancelar"}
           </button>

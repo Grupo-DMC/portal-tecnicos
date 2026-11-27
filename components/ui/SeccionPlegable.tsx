@@ -36,12 +36,12 @@ export default function SeccionPlegable({
   const movil = tono === "movil";
 
   return (
-    <div className="border-2 border-[var(--color-text)] bg-[var(--color-surface-3)]">
+    <div className="border border-[var(--color-line)] rounded-[14px] bg-[var(--color-surface-3)]">
       <button
         type="button"
         onClick={() => setAbierta(!visible)}
         aria-expanded={visible}
-        className={`w-full flex items-center gap-2.5 px-3.5 ${movil ? "min-h-[56px]" : "min-h-11"} border-0 cursor-pointer text-left text-[var(--color-text)] ${visible ? "border-b-2 border-[var(--color-text)]" : ""}`}
+        className={`w-full flex items-center gap-2.5 px-3.5 ${movil ? "min-h-[56px]" : "min-h-11"} border-0 cursor-pointer text-left text-[var(--color-text)] ${visible ? "border-b border-[var(--color-line)]" : ""}`}
         style={{ background: visible ? "var(--color-neutral-300)" : "var(--color-neutral-200)" }}
       >
         {etiqueta ? (
@@ -49,11 +49,11 @@ export default function SeccionPlegable({
             {etiqueta}
           </span>
         ) : null}
-        <span className={`flex-1 min-w-0 font-extrabold ${movil ? "text-lead" : "text-body"} leading-[1.2]`}>
+        <span className={`flex-1 min-w-0 font-semibold ${movil ? "text-lead" : "text-body"} leading-[1.2]`}>
           {titulo}
         </span>
         {marcados > 0 ? (
-          <span className="flex-none text-cap font-extrabold text-[var(--color-accent-800)]">
+          <span className="flex-none text-cap font-semibold text-[var(--color-accent-800)]">
             {marcados} {marcados === 1 ? "marcado" : "marcados"}
           </span>
         ) : null}

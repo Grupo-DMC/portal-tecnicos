@@ -2,6 +2,7 @@ import { autoriaDeBaja } from "@/lib/ui/estado-activo";
 import { notFound } from "next/navigation";
 import SinAcceso from "@/components/admin/SinAcceso";
 import FichaVisitas from "@/components/admin/maestros/FichaVisitas";
+import AgendarVisitaSucursal from "@/components/admin/maestros/AgendarVisitaSucursal";
 import ContactosSeccion from "@/components/admin/contactos/ContactosSeccion";
 import type { DatoFicha } from "@/components/admin/maestros/FichaPartes";
 import { contactosCandidatos } from "@/lib/data/contactos";
@@ -32,6 +33,7 @@ export default async function SucursalFichaPage({ params }: { params: Promise<{ 
   ]);
   if (!s) notFound();
   const verContactos = Boolean(await sesionCon("contactos.ver"));
+  const crearVisitas = Boolean(await sesionCon("visitas.crear"));
   const [cliente, mall, marcas] = await Promise.all([
     getCliente(s.clienteId),
     s.mallId ? getMall(s.mallId) : undefined,
@@ -95,6 +97,20 @@ export default async function SucursalFichaPage({ params }: { params: Promise<{ 
       filas={filas}
       verVisitas={verVisitas}
       hoy={hoyISO()}
+      accionExtra={
+        crearVisitas && s.activo ? (
+          <AgendarVisitaSucursal
+            sucursalId={s.id}
+            nombre={s.nombre}
+            conPlan={cal.valor === true}
+            contacto={
+              propios[0]
+                ? { nombre: candidatos.find((c) => c.id === propios[0].contactoId)?.nombre ?? "", cargo: propios[0].cargo }
+                : null
+            }
+          />
+        ) : undefined
+      }
       secciones={
         verContactos ? (
           <>

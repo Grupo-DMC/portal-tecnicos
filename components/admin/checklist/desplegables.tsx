@@ -205,7 +205,7 @@ export function Desplegable({
                   />
                   <button
                     onClick={() => copiarItem(o)}
-                    className="btn btn-icon w-10 h-10 flex-none border border-black/[.3]"
+                    className="btn btn-icon w-10 h-10 flex-none border border-[var(--color-line)] rounded-[10px]"
                     aria-label={`Copiar ${etiquetaSingular}`}
                     title={`Copiar este ${etiquetaSingular} (con su modo y en su mismo grupo)`}
                   >
@@ -220,7 +220,7 @@ export function Desplegable({
                         accion: () => onCambiar((g) => ({ ...g, items: g.items.filter((x) => x.key !== o.key) })),
                       })
                     }
-                    className="btn btn-icon w-10 h-10 flex-none border border-black/[.3]"
+                    className="btn btn-icon w-10 h-10 flex-none border border-[var(--color-line)] rounded-[10px]"
                     aria-label={`Quitar ${etiquetaSingular}`}
                   >
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
@@ -232,7 +232,7 @@ export function Desplegable({
             </Arrastrable>
           ))}
           {propios.length === 0 ? (
-            <div className="px-3.5 py-2.5 border border-dashed border-black/[.35] text-meta opacity-68">
+            <div className="px-3.5 py-2.5 border border-dashed border-[var(--color-line)] text-meta opacity-68">
               {sub ? `Grupo sin ${etiquetaPlural}: agrega al menos uno o quita el grupo.` : vacioSub}
             </div>
           ) : null}
@@ -264,7 +264,7 @@ export function Desplegable({
   };
 
   return (
-    <div className="border border-black/[.35] bg-[var(--color-surface-3)]">
+    <div className="border border-[var(--color-line)] rounded-[10px] bg-[var(--color-surface-3)]">
       <div
         className="flex items-center gap-2.5 flex-wrap px-3 py-2.5"
         style={{ background: abierto ? "#e3e1e5" : "var(--color-surface)" }}
@@ -275,20 +275,20 @@ export function Desplegable({
           value={grupo.nombre}
           onChange={(e) => onCambiar((g) => ({ ...g, nombre: e.target.value }))}
           placeholder={phNombre}
-          className="input flex-1 min-w-[200px] min-h-10 font-extrabold text-body bg-[var(--color-bg)]"
+          className="input flex-1 min-w-[200px] min-h-10 font-semibold text-body bg-[var(--color-bg)]"
           aria-label={phNombre}
           autoComplete="off"
         />
         <Codigo codigo={grupo.codigo} />
         <span
-          className={`text-cap leading-[1.2] ${alerta ? "font-extrabold text-[var(--color-danger-800)]" : "opacity-62"}`}
+          className={`text-cap leading-[1.2] ${alerta ? "font-semibold text-[var(--color-danger-800)]" : "opacity-62"}`}
         >
           {resumen}
         </span>
         <button
           onClick={onToggle}
           aria-label={abierto ? `Ocultar ${etiquetaPlural}` : `Ver ${etiquetaPlural}`}
-          className="min-h-[34px] flex items-center gap-2 px-2.5 flex-none bg-transparent border border-black/[.3] cursor-pointer text-[var(--color-text)] text-cap leading-none hover:bg-black/[.07]"
+          className="min-h-[34px] flex items-center gap-2 px-2.5 flex-none bg-transparent border border-[var(--color-line)] rounded-[10px] cursor-pointer text-[var(--color-text)] text-cap leading-none hover:bg-black/[.07]"
         >
           <span>{abierto ? `Ocultar ${etiquetaPlural}` : `Ver ${etiquetaPlural}`}</span>
           <svg
@@ -306,7 +306,7 @@ export function Desplegable({
         </button>
         <button
           onClick={onClonar}
-          className="btn btn-icon w-8.5 h-8.5 flex-none border border-black/[.3]"
+          className="btn btn-icon w-8.5 h-8.5 flex-none border border-[var(--color-line)] rounded-[10px]"
           aria-label={`Clonar ${etiquetaSingular === "subtrabajo" ? "trabajo" : "tipo de problema"}`}
           title="Clonar con todos sus subdetalles"
         >
@@ -314,7 +314,7 @@ export function Desplegable({
         </button>
         <button
           onClick={onQuitar}
-          className="btn btn-icon w-8.5 h-8.5 flex-none border border-black/[.3]"
+          className="btn btn-icon w-8.5 h-8.5 flex-none border border-[var(--color-line)] rounded-[10px]"
           aria-label={quitarLabel}
           title={quitarLabel}
         >
@@ -323,7 +323,7 @@ export function Desplegable({
       </div>
 
       {abierto ? (
-        <div className="px-3.5 pt-3.5 pb-4 border-t border-black/[.25]">
+        <div className="px-3.5 pt-3.5 pb-4 border-t border-[var(--color-line)]">
           {nota ? <p className="m-0 mb-3.5 text-cap opacity-72 max-w-[72ch]">{nota}</p> : null}
           {seccion && seccion.opciones.some((o) => o.nombre.trim()) ? (
             <div className="mb-4.5">
@@ -377,14 +377,14 @@ export function Desplegable({
               </div>
               <p className="m-0 mt-1.5 text-cap opacity-62">
                 {enMotivos.lista.some((m) => m.trabajos.includes(grupo.key))
-                  ? "El técnico solo ve este trabajo bajo los motivos marcados. Al marcar uno, el trabajo entra al final de ese motivo."
+                  ? null
                   : "Sin ningún motivo marcado, el técnico no ve este trabajo."}
               </p>
             </div>
           ) : null}
           {conSubgrupos ? (
             <div className="flex flex-col gap-3.5">
-              <div className="border border-black/[.25] bg-[var(--color-surface)] px-3 pt-3 pb-3.5">
+              <div className="border border-[var(--color-line)] rounded-[10px] bg-[var(--color-surface)] px-3 pt-3 pb-3.5">
                 <label className="block text-cap opacity-62 mb-1.5">
                   {subgrupos.length ? "Grupo 1 · nombre" : tituloSub}
                 </label>
@@ -399,7 +399,7 @@ export function Desplegable({
                 {listaDe(null)}
               </div>
               {subgrupos.map((sg, k) => (
-                <div key={sg.key} className="border border-black/[.25] bg-[var(--color-surface)] px-3 pt-3 pb-3.5">
+                <div key={sg.key} className="border border-[var(--color-line)] rounded-[10px] bg-[var(--color-surface)] px-3 pt-3 pb-3.5">
                   <label className="block text-cap opacity-62 mb-1.5">Grupo {k + 2} · nombre</label>
                   <div className="flex gap-2 items-center max-w-[640px]">
                     <input
@@ -419,7 +419,7 @@ export function Desplegable({
                     />
                     <button
                       onClick={() => quitarSubgrupo(sg)}
-                      className="btn btn-icon w-10 h-10 flex-none border border-black/[.3] ml-auto"
+                      className="btn btn-icon w-10 h-10 flex-none border border-[var(--color-line)] rounded-[10px] ml-auto"
                       aria-label={`Quitar el grupo ${k + 2}`}
                       title="Quitar este grupo con sus subtrabajos"
                     >
@@ -436,10 +436,6 @@ export function Desplegable({
                   </svg>
                   <span>Agregar otro grupo de {etiquetaPlural}</span>
                 </button>
-                <p className="m-0 mt-1.5 text-cap opacity-62 max-w-[72ch]">
-                  Cada grupo sale en el celular con su nombre y sus propias opciones. Un mismo {etiquetaSingular} no
-                  puede repetirse en dos grupos del trabajo.
-                </p>
               </div>
             </div>
           ) : (
@@ -531,7 +527,7 @@ export function MotivoDesplegable({
   const sinTrabajos = suyos.length === 0;
 
   return (
-    <div className="border border-black/[.35] bg-[var(--color-surface-3)]">
+    <div className="border border-[var(--color-line)] rounded-[10px] bg-[var(--color-surface-3)]">
       <div
         className="flex items-center gap-2.5 flex-wrap px-3 py-2.5"
         style={{ background: abierto ? "#e3e1e5" : "var(--color-surface)" }}
@@ -542,7 +538,7 @@ export function MotivoDesplegable({
           value={motivo.nombre}
           onChange={(e) => onRenombrar(e.target.value)}
           placeholder="Ej: Calibración de las antenas"
-          className="input flex-1 min-w-[200px] min-h-10 font-extrabold text-body bg-[var(--color-bg)]"
+          className="input flex-1 min-w-[200px] min-h-10 font-semibold text-body bg-[var(--color-bg)]"
           aria-label="Nombre del motivo"
           autoComplete="off"
         />
@@ -566,7 +562,7 @@ export function MotivoDesplegable({
           </select>
         ) : null}
         <span
-          className={`text-cap leading-[1.2] ${sinTrabajos ? "font-extrabold text-[var(--color-accent-800)]" : "opacity-62"}`}
+          className={`text-cap leading-[1.2] ${sinTrabajos ? "font-semibold text-[var(--color-accent-800)]" : "opacity-62"}`}
           title={sinTrabajos ? "Una visita con solo este motivo no se puede cerrar: el técnico no tiene qué registrar." : undefined}
         >
           {sinTrabajos ? "Sin trabajos" : `${suyos.length} ${suyos.length === 1 ? "trabajo" : "trabajos"}`}
@@ -574,7 +570,7 @@ export function MotivoDesplegable({
         <button
           onClick={onToggle}
           aria-expanded={abierto}
-          className="min-h-[34px] flex items-center gap-2 px-2.5 flex-none bg-transparent border border-black/[.3] cursor-pointer text-[var(--color-text)] text-cap leading-none hover:bg-black/[.07]"
+          className="min-h-[34px] flex items-center gap-2 px-2.5 flex-none bg-transparent border border-[var(--color-line)] rounded-[10px] cursor-pointer text-[var(--color-text)] text-cap leading-none hover:bg-black/[.07]"
         >
           <span>{abierto ? "Ocultar trabajos" : "Ver trabajos"}</span>
           <svg
@@ -592,7 +588,7 @@ export function MotivoDesplegable({
         </button>
         <button
           onClick={onClonar}
-          className="btn btn-icon w-8.5 h-8.5 flex-none border border-black/[.3]"
+          className="btn btn-icon w-8.5 h-8.5 flex-none border border-[var(--color-line)] rounded-[10px]"
           aria-label="Clonar motivo"
           title="Clonar con todos sus trabajos"
         >
@@ -600,7 +596,7 @@ export function MotivoDesplegable({
         </button>
         <button
           onClick={onQuitar}
-          className="btn btn-icon w-8.5 h-8.5 flex-none border border-black/[.3]"
+          className="btn btn-icon w-8.5 h-8.5 flex-none border border-[var(--color-line)] rounded-[10px]"
           aria-label="Quitar motivo"
           title="Quitar motivo"
         >
@@ -609,7 +605,7 @@ export function MotivoDesplegable({
       </div>
 
       {abierto ? (
-        <div className="px-3.5 pt-3.5 pb-4 border-t border-black/[.25]">
+        <div className="px-3.5 pt-3.5 pb-4 border-t border-[var(--color-line)]">
           <div className="text-cap opacity-62 mb-2">
             Trabajos que el técnico puede registrar bajo este motivo
           </div>

@@ -270,7 +270,7 @@ export default function SucursalesLoteDialogo({
             <span className="block text-cap uppercase tracking-wider opacity-66">
               {mallDelGrupo ? "Mall" : "A la calle"}
             </span>
-            <span className="block font-extrabold text-ui truncate">
+            <span className="block font-semibold text-ui truncate">
               {mallDelGrupo ? mallDelGrupo.nombre : "Sin mall"}
             </span>
           </span>
@@ -286,7 +286,7 @@ export default function SucursalesLoteDialogo({
         const subtitulo = [n.direccion.trim(), n.comuna.trim()].filter(Boolean).join(", ");
         const incompleta = !nombreDe(n).trim() || !n.direccion.trim() || !n.comuna.trim();
         return (
-        <div key={n.key} className="mt-3 border border-black/[.3] border-l-4 border-l-[var(--color-accent)]">
+        <div key={n.key} className="mt-3 border border-[var(--color-line)] rounded-[10px] border-l-4 border-l-[var(--color-accent)]">
           <div className="flex items-center gap-2.5 pr-3.5 bg-[var(--color-surface)] border-b border-[var(--color-divider-soft)]">
             <button
               type="button"
@@ -307,11 +307,11 @@ export default function SucursalesLoteDialogo({
               >
                 <path d="M6 9l6 6 6-6" />
               </svg>
-              <span className="w-6 h-6 flex-none grid place-items-center bg-[var(--color-accent)] text-white font-extrabold text-cap tabular-nums">
+              <span className="w-6 h-6 flex-none grid place-items-center bg-[var(--color-accent)] text-white font-semibold text-cap tabular-nums">
                 {i + 1}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block font-extrabold text-ui truncate">{titulo}</span>
+                <span className="block font-semibold text-ui truncate">{titulo}</span>
                 <span className="block text-cap opacity-66 truncate">{subtitulo || "Falta la dirección"}</span>
               </span>
               {incompleta ? <span className="tag tag-outline flex-none">Falta completar</span> : null}

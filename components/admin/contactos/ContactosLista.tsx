@@ -53,7 +53,7 @@ export default function ContactosLista({ contactos }: { contactos: Contacto[] })
         ) : (
           <ul className="list-none m-0 p-0">
             {filtrados.map((c) => (
-              <li key={c.id} className="flex items-start gap-3 py-3 border-b border-black/[.1]">
+              <li key={c.id} className="flex items-start gap-3 py-3 border-b border-[var(--color-line)]">
                 <div className="min-w-0 flex-1">
                   <div className="font-bold text-ui">
                     {c.nombre}{" "}

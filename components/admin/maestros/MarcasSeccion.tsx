@@ -64,9 +64,9 @@ export default function MarcasSeccion({
   }
 
   return (
-    <div className="p-4 md:p-6 border-b border-black/[.12]">
+    <div className="p-4 md:p-6 border-b border-[var(--color-line)]">
       <div className="flex items-center gap-2.5 flex-wrap">
-        <h2 className="font-extrabold text-lead m-0">Marcas</h2>
+        <h2 className="font-semibold text-lead m-0">Marcas</h2>
         <span className="text-cap opacity-60">{marcas.length}</span>
         {puede(ref, "marcas.crear") ? (
           <button type="button" className="btn btn-secondary ml-auto" onClick={() => abrir(null)}>
@@ -81,7 +81,7 @@ export default function MarcasSeccion({
           {marcas.map((m) => {
             const n = tiendasPorMarca[m.id] ?? 0;
             return (
-              <li key={m.id} className="flex items-center gap-3 py-2.5 border-b border-black/[.1]">
+              <li key={m.id} className="flex items-center gap-3 py-2.5 border-b border-[var(--color-line)]">
                 <div className="min-w-0 flex-1">
                   <span className="font-bold text-ui">{m.nombre}</span>{" "}
                   <span className="text-cap opacity-62">
@@ -120,7 +120,7 @@ export default function MarcasSeccion({
           guardando={guardando}
         >
           {error ? (
-            <p role="alert" className="mt-4 mb-0 text-meta font-extrabold text-[var(--color-danger-800)]">
+            <p role="alert" className="mt-4 mb-0 text-meta font-semibold text-[var(--color-danger-800)]">
               {error}
             </p>
           ) : null}

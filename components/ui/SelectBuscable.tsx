@@ -136,7 +136,7 @@ export default function SelectBuscable({
         stroke="var(--color-text)"
         strokeWidth="2.2"
         className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
-        style={{ transform: `translateY(-50%) rotate(${abierto ? 180 : 0}deg)` }}
+        style={{ transform: `rotate(${abierto ? 180 : 0}deg)` }}
       >
         <path d="M6 9l6 6 6-6" />
       </svg>
@@ -145,7 +145,7 @@ export default function SelectBuscable({
         <div
           id={id ? `${id}-lista` : undefined}
           role="listbox"
-          className="absolute left-0 right-0 top-full z-30 max-h-[260px] overflow-y-auto bg-[var(--color-bg)] border-2 border-[var(--color-text)] shadow-[0_6px_18px_rgba(0,0,0,.18)]"
+          className="absolute left-0 right-0 top-full z-30 max-h-[260px] overflow-y-auto bg-[var(--color-bg)] border border-[var(--color-line)] rounded-[14px] shadow-[0_6px_18px_rgba(0,0,0,.18)]"
         >
           {filtradas.map((o, i) => {
             const activo = o.v === valor;
@@ -188,7 +188,7 @@ export default function SelectBuscable({
                 cerrar();
                 onAgregar(escrito);
               }}
-              className="sticky bottom-0 w-full flex items-center gap-2 min-h-11 px-3 text-left text-ui font-extrabold cursor-pointer border-0 border-t border-[var(--color-divider)] bg-[var(--color-surface)] text-[var(--color-accent-800)] hover:brightness-95"
+              className="sticky bottom-0 w-full flex items-center gap-2 min-h-11 px-3 text-left text-ui font-semibold cursor-pointer border-0 border-t border-[var(--color-divider)] bg-[var(--color-surface)] text-[var(--color-accent-800)] hover:brightness-95"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                 <path d="M12 5v14M5 12h14" />

@@ -66,12 +66,12 @@ export default function EditorProblemas({
             .map((it) => ({ etiqueta: it.etiqueta, conCantidad: true })),
         ];
         return (
-          <div key={p.id} className="border border-[var(--color-divider-soft)] bg-white">
+          <div key={p.id} className="border border-[var(--color-line)] rounded-[10px] bg-white">
             <div className="flex items-center gap-2.5 pl-4 pr-2 py-2 border-b border-[var(--color-divider-faint)]">
-              <span className="w-6 h-6 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap tabular-nums">
+              <span className="w-6 h-6 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-semibold text-cap tabular-nums">
                 {i + 1}
               </span>
-              <div className="font-extrabold text-body leading-[1.3] flex-1 min-w-0 truncate">
+              <div className="font-semibold text-body leading-[1.3] flex-1 min-w-0 truncate">
                 {nombreProblema(p.codigo)}
               </div>
               {p.dbId ? <EstadoProblemaTag estado={p.estado} /> : <Tag variant="accent">Nuevo</Tag>}

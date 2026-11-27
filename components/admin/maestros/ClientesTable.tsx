@@ -6,6 +6,8 @@ import Link from "next/link";
 import MaestroTable from "@/components/admin/MaestroTable";
 import Tag from "@/components/Tag";
 import EstadoActivo from "@/components/ui/EstadoActivo";
+import Icono from "@/components/ui/Icono";
+import { esDatoDePrueba } from "@/lib/ui/pruebas";
 import { problemaDeBaja } from "@/lib/ui/estado-activo";
 import { guardarClienteAction } from "@/app/actions/maestros";
 import { hoyISO } from "@/lib/ui/fecha";
@@ -122,7 +124,7 @@ export default function ClientesTable({ clientes, sucursales }: { clientes: Clie
         },
       }}
       resumen={
-        <div className="grid grid-cols-2 lg:grid-cols-4 border-b-2 border-[var(--color-divider)]">
+        <section className="pv-strip" aria-label="Resumen de clientes">
           <Cifra label="Clientes activos" n={activos.length} sub={`${clientes.length - activos.length} inactivos`} />
           <Cifra
             label="Locales activos"
@@ -130,26 +132,36 @@ export default function ClientesTable({ clientes, sucursales }: { clientes: Clie
             sub={activos.length ? `${(localesActivos / activos.length).toLocaleString("es-CL", { maximumFractionDigits: 1 })} por cliente` : "—"}
           />
           <Cifra label="Clientes sin locales" n={sinLocales} sub="Activos sin ninguna sucursal activa" />
-          <Cifra label="En plan de calibración" n={enPlan} sub={`de ${activos.length} clientes activos`} />
-        </div>
+          <Cifra
+            label="En plan de calibración"
+            n={enPlan}
+            sub={`de ${activos.length} clientes activos`}
+            activo={fPlan === "si"}
+            onClick={() => setFPlan(fPlan === "si" ? "" : "si")}
+          />
+        </section>
       }
       columns={[
         {
           key: "cliente",
           label: "Cliente",
           render: (c) => (
-            <div className="min-w-[200px]">
-              <div className="font-extrabold text-body leading-[1.25]">{c.nombreFantasia}</div>
-              <div className="text-cap opacity-66 mt-0.5">
+            <div className="celda">
+              <Link href={`/admin/clientes/${c.id}`}>
+                <b>{c.nombreFantasia}</b>
+              </Link>
+              <small>
                 {c.razonSocial !== c.nombreFantasia ? `${c.razonSocial} · ` : ""}
-                <span className="tabular-nums">{c.rut}</span>
-              </div>
+                {c.rut}
+              </small>
+              {esDatoDePrueba(c.nombreFantasia, c.razonSocial) ? <span className="flag test">Prueba</span> : null}
             </div>
           ),
         },
         {
           key: "locales",
           label: "Locales",
+          valorOrden: (c) => de(c).activos,
           render: (c) => {
             const l = de(c);
             const detalle = [
@@ -158,26 +170,17 @@ export default function ClientesTable({ clientes, sucursales }: { clientes: Clie
               l.inactivos ? `${l.inactivos} ${l.inactivos === 1 ? "inactivo" : "inactivos"}` : null,
             ].filter(Boolean);
             return (
-              <div className="flex items-center gap-3 min-w-[220px]">
-                <div
-                  className={`num font-bold text-h2 leading-none tracking-[-.03em] tabular-nums w-[52px] text-right flex-none ${
-                    l.activos ? "" : "opacity-40"
-                  }`}
-                >
-                  {l.activos}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="h-1.5 bg-black/[.08]">
-                    <div
-                      className="h-full bg-[var(--color-accent)]"
-                      style={{ width: `${(l.activos / maxLocales) * 100}%` }}
-                    />
-                  </div>
-                  <div className="text-cap opacity-66 mt-1.5">
+              <div className="cl-locales">
+                <b className={l.activos ? undefined : "cero"}>{l.activos}</b>
+                <span>
+                  <span className="cl-barra" aria-hidden="true">
+                    <i style={{ width: `${(l.activos / maxLocales) * 100}%` }} />
+                  </span>
+                  <small>
                     {l.activos === 1 ? "local activo" : "locales activos"}
                     {detalle.length ? ` · ${detalle.join(" · ")}` : ""}
-                  </div>
-                </div>
+                  </small>
+                </span>
               </div>
             );
           },
@@ -208,26 +211,17 @@ export default function ClientesTable({ clientes, sucursales }: { clientes: Clie
       ]}
       accionFila={(c) => (
         <>
-          <Link
-            href={`/admin/clientes/${c.id}`}
-            className="btn btn-icon w-8 h-8 border border-black/[.3] mr-1.5"
-            aria-label={`Ficha de ${c.nombreFantasia}`}
-            title="Ver ficha y visitas"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7" />
-            </svg>
+          <Link href={`/admin/clientes/${c.id}`} className="btn-icono" aria-label={`Ficha de ${c.nombreFantasia}`} title="Ver ficha y visitas">
+            <Icono nombre="ficha" />
           </Link>
           {verSucursales ? (
             <Link
               href={`/admin/sucursales?cliente=${c.id}`}
-              className="btn btn-icon w-8 h-8 border border-black/[.3]"
+              className="btn-icono"
               aria-label={`Locales de ${c.nombreFantasia}`}
               title="Ver sus locales"
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M4 9l1.5-5h13L20 9M4 9v11h16V9M4 9h16M9 20v-6h6v6" />
-              </svg>
+              <Icono nombre="sucursales" />
             </Link>
           ) : null}
         </>
@@ -297,13 +291,20 @@ export default function ClientesTable({ clientes, sucursales }: { clientes: Clie
   );
 }
 
-/** Una cifra del resumen: el mismo bloque de los KPI del panel, sin enlace. */
-function Cifra({ label, n, sub }: { label: string; n: number; sub: string }) {
-  return (
-    <div className="px-4 md:px-6 pt-4 md:pt-[22px] pb-4.5 border-r max-lg:border-b border-black/[.2]">
-      <div className="text-cap opacity-66">{label}</div>
-      <div className="num font-bold text-h1 md:text-display leading-none tracking-[-.03em] tabular-nums mt-3">{n}</div>
-      <div className="text-cap opacity-66 mt-2.5">{sub}</div>
-    </div>
+/** Una cifra del resumen; la que tiene `onClick` además filtra la lista. */
+function Cifra({ label, n, sub, activo, onClick }: { label: string; n: number; sub: string; activo?: boolean; onClick?: () => void }) {
+  const cuerpo = (
+    <>
+      <span className="pv-k-l">{label}</span>
+      <span className="pv-k-v">{n.toLocaleString("es-CL")}</span>
+      <span className="pv-k-n">{sub}</span>
+    </>
+  );
+  return onClick ? (
+    <button type="button" className="pv-kpi" aria-pressed={activo} onClick={onClick}>
+      {cuerpo}
+    </button>
+  ) : (
+    <div className="pv-kpi">{cuerpo}</div>
   );
 }

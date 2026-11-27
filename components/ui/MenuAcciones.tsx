@@ -83,7 +83,7 @@ export default function MenuAcciones({
         <div
           id={id}
           role="menu"
-          className="absolute right-0 top-[calc(100%+4px)] z-30 min-w-[260px] bg-[var(--color-bg)] border-2 border-[var(--color-text)] shadow-[0_8px_24px_rgba(31,28,33,.14)] animate-up-dlg"
+          className="absolute right-0 top-[calc(100%+4px)] z-30 min-w-[260px] bg-[var(--color-bg)] border border-[var(--color-line)] rounded-[14px] shadow-[0_8px_24px_rgba(31,28,33,.14)] animate-up-dlg"
         >
           {acciones.map((a) => (
             <Item key={a.clave} accion={a} onElegir={() => setAbierto(false)} />

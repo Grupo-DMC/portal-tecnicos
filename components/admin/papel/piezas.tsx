@@ -31,7 +31,7 @@ export function BotonQuitar({ label, onClick }: { label: string; onClick: () => 
     <button
       type="button"
       onClick={onClick}
-      className="btn btn-icon w-8 h-8 flex-none border border-black/[.3]"
+      className="btn btn-icon w-8 h-8 flex-none border border-[var(--color-line)] rounded-[10px]"
       aria-label={label}
       title={label}
     >
@@ -89,7 +89,7 @@ export function BloqueTienda({
   }, [firmantesPrevios, informes]);
 
   return (
-    <div className="border-t border-black/[.3] ml-3.5 sm:ml-6 border-l-2 border-l-[var(--color-divider)]">
+    <div className="border-t border-[var(--color-line)] ml-3.5 sm:ml-6 border-l-2 border-l-[var(--color-divider)]">
       <div className="flex items-center gap-2 px-3.5 py-2">
         <button
           type="button"
@@ -98,7 +98,7 @@ export function BloqueTienda({
           className="flex-1 min-w-0 flex items-center gap-2.5 min-h-9 bg-transparent border-0 cursor-pointer text-[var(--color-text)] text-left"
         >
           <Flecha abierto={tienda.abierto} />
-          <span className="font-extrabold text-ui truncate">{nombre}</span>
+          <span className="font-semibold text-ui truncate">{nombre}</span>
           <span className="text-cap opacity-66 tabular-nums flex-none">
             {informes.length} {informes.length === 1 ? "informe" : "informes"}
           </span>

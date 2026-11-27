@@ -11,6 +11,8 @@ import { useSucursalForm } from "@/components/admin/maestros/useSucursalForm";
 import Confirmar, { type ConfirmarCfg } from "@/components/ui/Confirmar";
 import SelectBuscable from "@/components/ui/SelectBuscable";
 import EstadoActivo from "@/components/ui/EstadoActivo";
+import Icono from "@/components/ui/Icono";
+import { esDatoDePrueba } from "@/lib/ui/pruebas";
 import { Toast, useToast } from "@/components/ui/Toast";
 import { guardarMallAction, guardarTiendasMallAction } from "@/app/actions/maestros";
 import { conMismaDireccion } from "@/lib/ui/direcciones";
@@ -99,7 +101,18 @@ export default function MallsTable({
           },
         }}
         columns={[
-          { key: "nombre", label: "Mall" },
+          {
+            key: "nombre",
+            label: "Mall",
+            render: (m) => (
+              <div className="celda">
+                <Link href={`/admin/malls/${m.id}`}>
+                  <b>{m.nombre}</b>
+                </Link>
+                {esDatoDePrueba(m.nombre) ? <span className="flag test">Prueba</span> : null}
+              </div>
+            ),
+          },
           { key: "direccion", label: "Dirección" },
           { key: "comuna", label: "Comuna", render: (m) => m.comuna || "—" },
           {
@@ -153,28 +166,44 @@ export default function MallsTable({
           })
         }
         emptyRow={{ nombre: "", direccion: "", comuna: "", region: REGIONES[0], activo: true, motivoInactivo: "" }}
+        resumen={
+          <section className="pv-strip" aria-label="Resumen de malls">
+            <div className="pv-kpi">
+              <span className="pv-k-l">Malls activos</span>
+              <span className="pv-k-v">{malls.filter((m) => m.activo).length}</span>
+              <span className="pv-k-n">{malls.filter((m) => !m.activo).length} inactivos</span>
+            </div>
+            <div className="pv-kpi">
+              <span className="pv-k-l">Tiendas en malls</span>
+              <span className="pv-k-v">{sucursales.filter((x) => x.mallId).length}</span>
+              <span className="pv-k-n">de {sucursales.length} sucursales</span>
+            </div>
+            <div className="pv-kpi">
+              <span className="pv-k-l">Malls sin tiendas</span>
+              <span className="pv-k-v">{malls.filter((m) => !tiendasPorMall.get(m.id)).length}</span>
+              <span className="pv-k-n">Agrégalas desde la fila</span>
+            </div>
+            <div className="pv-kpi">
+              <span className="pv-k-l">Regiones</span>
+              <span className="pv-k-v">{regiones.length}</span>
+              <span className="pv-k-n">con al menos un mall</span>
+            </div>
+          </section>
+        }
         accionFila={(m) => (
           <>
-            <Link
-              href={`/admin/malls/${m.id}`}
-              className="btn btn-icon w-8 h-8 border border-black/[.3] mr-1.5"
-              aria-label={`Ficha de ${m.nombre}`}
-              title="Ver ficha y visitas"
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7" />
-              </svg>
+            <Link href={`/admin/malls/${m.id}`} className="btn-icono" aria-label={`Ficha de ${m.nombre}`} title="Ver ficha y visitas">
+              <Icono nombre="ficha" />
             </Link>
             {puede(ref, "malls.editar") ? (
               <button
+                type="button"
                 onClick={() => setTiendasDe(m)}
-                className="btn btn-icon w-8 h-8 border border-black/[.3]"
+                className="btn-icono"
                 aria-label={`Tiendas de ${m.nombre}`}
                 title="Tiendas del mall"
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M4 9l1.5-5h13L20 9M4 9v11h16V9M4 9h16M9 20v-6h6v6" />
-                </svg>
+                <Icono nombre="sucursales" />
               </button>
             ) : null}
           </>
@@ -339,9 +368,9 @@ function TiendasDialogo({
       guardando={guardando}
     >
       {/* Dos bloques separados: arriba se busca y agrega, abajo queda lo que ya está en el mall. */}
-      <div className="border border-black/[.3]">
+      <div className="border border-[var(--color-line)] rounded-[10px]">
         <div className="px-4 py-3 bg-[var(--color-surface)] border-b border-[var(--color-divider-soft)]">
-          <div className="font-extrabold text-cap ">Agregar tiendas</div>
+          <div className="font-semibold text-cap ">Agregar tiendas</div>
         </div>
 
         <label className="flex items-center gap-2.5 px-4 py-3 text-meta cursor-pointer border-b border-[var(--color-divider-soft)]">
@@ -370,11 +399,11 @@ function TiendasDialogo({
                 <div className="mb-2 text-cap opacity-66 tabular-nums">
                   {encontradas.length} {encontradas.length === 1 ? "resultado" : "resultados"}
                 </div>
-                <div className="max-h-60 overflow-y-auto border border-black/[.18]">
+                <div className="max-h-60 overflow-y-auto border border-[var(--color-line)] rounded-[10px]">
                   {encontradas.map((s) => {
                     const otro = otroMall(s);
                     return (
-                      <div key={s.id} className="flex items-center gap-3 px-4 py-3 border-b border-black/[.18] last:border-b-0">
+                      <div key={s.id} className="flex items-center gap-3 px-4 py-3 border-b border-[var(--color-line)] last:border-b-0">
                         <div className="flex-1 min-w-0">
                           <div className="text-ui truncate">{etiqueta(s)}</div>
                           <div className="mt-0.5 text-cap opacity-66 truncate">{otro ? `Ya en ${otro} · ${s.direccion}` : s.direccion}</div>
@@ -382,7 +411,7 @@ function TiendasDialogo({
                         <button
                           type="button"
                           onClick={() => agregar(s.id)}
-                          className="btn btn-icon w-8 h-8 flex-none border border-black/[.3]"
+                          className="btn btn-icon w-8 h-8 flex-none border border-[var(--color-line)] rounded-[10px]"
                           aria-label={`Agregar ${s.nombre} al mall`}
                           title="Agregar al mall"
                         >
@@ -432,9 +461,9 @@ function TiendasDialogo({
         </div>
       </div>
 
-      <div className="mt-6 border border-black/[.3]">
+      <div className="mt-6 border border-[var(--color-line)] rounded-[10px]">
         <div className="flex items-center gap-2.5 px-4 py-3 bg-[var(--color-surface)] border-b border-[var(--color-divider-soft)]">
-          <div className="font-extrabold text-cap ">Tiendas del mall</div>
+          <div className="font-semibold text-cap ">Tiendas del mall</div>
           <div className="ml-auto text-cap opacity-66 tabular-nums">
             {tiendas.length} {tiendas.length === 1 ? "tienda" : "tiendas"}
           </div>
@@ -447,7 +476,7 @@ function TiendasDialogo({
         ) : null}
 
         {tiendas.map((s) => (
-          <div key={s.id} className="flex items-center gap-3 px-4 py-3 border-b border-black/[.18] last:border-b-0">
+          <div key={s.id} className="flex items-center gap-3 px-4 py-3 border-b border-[var(--color-line)] last:border-b-0">
             <div className="flex-1 min-w-0">
               <div className="text-ui truncate">{etiqueta(s)}</div>
               <div className="mt-0.5 text-cap opacity-66 truncate">{s.direccion}</div>
@@ -456,7 +485,7 @@ function TiendasDialogo({
             <button
               type="button"
               onClick={() => setIds((prev) => prev.filter((x) => x !== s.id))}
-              className="btn btn-icon w-8 h-8 flex-none border border-black/[.3]"
+              className="btn btn-icon w-8 h-8 flex-none border border-[var(--color-line)] rounded-[10px]"
               aria-label={`Quitar ${s.nombre} del mall`}
               title="Quitar del mall"
             >

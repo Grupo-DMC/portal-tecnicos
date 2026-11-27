@@ -1,4 +1,5 @@
 "use client";
+import Espera from "@/components/ui/Espera";
 
 import { useState } from "react";
 import { guardarSeccionesActaAction } from "@/app/actions/admin";
@@ -49,23 +50,23 @@ export function SeccionesObligatoriasActa({
   }
 
   return (
-    <div className="border-t-2 border-[var(--color-divider)] pt-4 mb-11">
-      <h2 className="font-extrabold text-h3 leading-[1.15] tracking-[-.02em] mb-1">Secciones obligatorias del acta</h2>
+    <div className="border-t border-[var(--color-line)] pt-4 mb-11">
+      <h2 className="font-semibold text-h3 leading-[1.15] tracking-[-.02em] mb-1">Secciones obligatorias del acta</h2>
       <p className="m-0 mb-4 text-meta opacity-68 max-w-[74ch]">
         El técnico no puede cerrar la visita hasta llenar las secciones que marques acá. Las tres primeras son
         obligatorias siempre. Vale para las actas que se cierren desde ahora; las ya cerradas y su corrección no se
         tocan.
       </p>
 
-      <div className="border-2 border-[var(--color-text)] bg-[var(--color-surface-3)]">
+      <div className="border border-[var(--color-line)] rounded-[14px] bg-[var(--color-surface-3)]">
         <ul className="m-0 p-0 list-none">
           {SIEMPRE.map((s) => (
             <li
               key={s.n}
               className="flex items-center gap-3 px-3.5 py-3 border-b border-[var(--color-divider)] opacity-70"
             >
-              <span className="tabular-nums font-extrabold w-5">{s.n}</span>
-              <span className="flex-1 min-w-0 font-extrabold text-ui">{s.titulo}</span>
+              <span className="tabular-nums font-semibold w-5">{s.n}</span>
+              <span className="flex-1 min-w-0 font-semibold text-ui">{s.titulo}</span>
               <span className="tag tag-neutral">Siempre obligatoria</span>
             </li>
           ))}
@@ -76,14 +77,14 @@ export function SeccionesObligatoriasActa({
                 <label
                   className={`flex items-center gap-3 px-3.5 py-3 ${soloLectura ? "cursor-default" : "cursor-pointer"}`}
                 >
-                  <span className="tabular-nums font-extrabold w-5">{s.n}</span>
+                  <span className="tabular-nums font-semibold w-5">{s.n}</span>
                   <span className="flex-1 min-w-0">
-                    <span className="block font-extrabold text-ui">{s.titulo}</span>
+                    <span className="block font-semibold text-ui">{s.titulo}</span>
                     <span className="block text-meta opacity-66">
                       {activa ? `Para cerrar: ${s.exige.charAt(0).toLowerCase()}${s.exige.slice(1)}` : "Opcional."}
                     </span>
                   </span>
-                  <span className="text-cap font-extrabold">Hacer obligatorio completar</span>
+                  <span className="text-cap font-semibold">Hacer obligatorio completar</span>
                   <input
                     type="checkbox"
                     checked={activa}
@@ -102,7 +103,7 @@ export function SeccionesObligatoriasActa({
 
       <div className="flex items-center gap-3 mt-3">
         <button className="btn btn-primary min-h-10 px-4" onClick={guardar} disabled={soloLectura || guardando || !sucio}>
-          {soloLectura ? "Solo lectura" : guardando ? "Guardando…" : sucio ? "Guardar secciones" : "Sin cambios"}
+          {soloLectura ? "Solo lectura" : <Espera activo={guardando} accion="Guardando">{sucio ? "Guardar secciones" : "Sin cambios"}</Espera>}
         </button>
         {sucio && !guardando ? <span className="text-cap opacity-62">Cambios sin guardar</span> : null}
       </div>

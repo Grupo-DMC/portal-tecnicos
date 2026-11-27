@@ -1,4 +1,5 @@
 "use client";
+import Espera from "@/components/ui/Espera";
 
 import type { ClipGrabado } from "@/components/mobile/VideoSheet";
 import { mb, reloj, repararDuracionPreview } from "@/lib/ui/video";
@@ -11,10 +12,10 @@ import type { Giro } from "@/lib/ui/imagen";
 // ─────────────────────────────── piezas locales ───────────────────────────────
 
 export const entrada =
-  "w-full min-h-[52px] px-3.5 py-3 text-lead bg-[var(--color-surface-3)] border border-[var(--color-divider)] text-[var(--color-text)] caret-[var(--color-accent)] focus-visible:border-[var(--color-accent)] focus-visible:outline-none";
+  "w-full min-h-[52px] px-3.5 py-3 text-lead bg-[var(--color-surface-3)] border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] caret-[var(--color-accent)] focus-visible:border-[var(--color-accent)] focus-visible:outline-none";
 
 export const entradaSheet =
-  "w-full min-h-[52px] px-3.5 py-3 text-lead bg-[var(--color-surface)] border border-[var(--color-divider)] text-[var(--color-text)] caret-[var(--color-accent)] focus-visible:border-[var(--color-accent)] focus-visible:outline-none";
+  "w-full min-h-[52px] px-3.5 py-3 text-lead bg-[var(--color-surface)] border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] caret-[var(--color-accent)] focus-visible:border-[var(--color-accent)] focus-visible:outline-none";
 
 export function ahora(): string {
   const d = new Date();
@@ -46,10 +47,10 @@ export function Cabecera({
     <button
       type="button"
       onClick={onToggle}
-      className="w-full flex items-center gap-3 min-h-[64px] px-4 mt-5 first:mt-0 bg-[var(--color-neutral-300)] border-2 border-[var(--color-text)] cursor-pointer text-left text-[var(--color-text)] hover:bg-[var(--color-neutral-400)]"
+      className="w-full flex items-center gap-3 min-h-[64px] px-4 mt-5 first:mt-0 bg-[var(--color-neutral-300)] border border-[var(--color-line)] rounded-[14px] cursor-pointer text-left text-[var(--color-text)] hover:bg-[var(--color-neutral-400)]"
     >
       <span
-        className="w-8 h-8 flex-none grid place-items-center font-extrabold text-ui tabular-nums border-2 border-[var(--color-text)]"
+        className="w-8 h-8 flex-none grid place-items-center font-semibold text-ui tabular-nums border border-[var(--color-line)] rounded-[14px]"
         style={{
           background: ok ? "var(--color-accent)" : "var(--color-bg)",
           color: ok ? "var(--color-bg)" : "var(--color-text)",
@@ -59,9 +60,9 @@ export function Cabecera({
         {n}
       </span>
       <span className="flex-1 min-w-0">
-        <span className="block font-extrabold text-lead leading-[1.2]">{titulo}</span>
+        <span className="block font-semibold text-lead leading-[1.2]">{titulo}</span>
         {obligatoria ? (
-          <span className="block text-cap font-extrabold uppercase tracking-[.06em] text-[var(--color-accent-active)] mt-0.5">
+          <span className="block text-cap font-semibold uppercase tracking-[.06em] text-[var(--color-accent-active)] mt-0.5">
             Obligatorio
           </span>
         ) : null}
@@ -113,9 +114,9 @@ export function EstadoBorrador({
           <button
             onClick={onEnviarPendiente}
             disabled={enviando}
-            className="w-full min-h-[46px] flex items-center justify-between px-3.5 mt-2.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-meta cursor-pointer text-left disabled:opacity-60"
+            className="w-full min-h-[46px] flex items-center justify-between px-3.5 mt-2.5 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-semibold text-meta cursor-pointer text-left disabled:opacity-60"
           >
-            <span>{enviando ? "Enviando…" : "Enviar ahora"}</span>
+            <Espera activo={enviando} accion="Enviando">Enviar ahora</Espera>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M4 12a8 8 0 018-8c3 0 5.5 1.7 7 4M20 12a8 8 0 01-8 8c-3 0-5.5-1.7-7-4" />
               <path d="M19 4v4h-4M5 20v-4h4" />
@@ -125,7 +126,7 @@ export function EstadoBorrador({
       ) : null}
 
       {recuperado ? (
-        <div className="px-3.5 py-3 bg-[var(--color-surface)] border border-[var(--color-line-control)]">
+        <div className="px-3.5 py-3 bg-[var(--color-surface)] border border-[var(--color-line)] rounded-[10px]">
           <div className="text-cap opacity-66">Recuperamos lo que llevabas</div>
           <div className="text-meta leading-[1.45] mt-1.5">
             Esta acta quedó a medias {haceCuanto(recuperado.guardadoEn)} y se volvió a cargar tal cual.
@@ -134,7 +135,7 @@ export function EstadoBorrador({
           <div className="flex gap-3.5 items-center mt-2">
             <button
               onClick={onOcultarRecuperado}
-              className="min-h-10 px-1 bg-transparent border-0 font-extrabold text-meta cursor-pointer text-[var(--color-text)] underline underline-offset-4"
+              className="min-h-10 px-1 bg-transparent border-0 font-semibold text-meta cursor-pointer text-[var(--color-text)] underline underline-offset-4"
             >
               Seguir con esto
             </button>
@@ -208,10 +209,10 @@ export function Campo({
 export function PasoTitulo({ n, texto }: { n: string; texto: string }) {
   return (
     <div className="flex items-center gap-2.5 mb-2.5">
-      <span className="w-6 h-6 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap leading-none tabular-nums">
+      <span className="w-6 h-6 flex-none grid place-items-center bg-[var(--color-text)] text-[var(--color-bg)] font-semibold text-cap leading-none tabular-nums">
         {n}
       </span>
-      <span className="font-extrabold text-lead leading-[1.2]">{texto}</span>
+      <span className="font-semibold text-lead leading-[1.2]">{texto}</span>
     </div>
   );
 }
@@ -228,21 +229,21 @@ export function Contador({
 }) {
   const altura = alto ? "min-h-[58px]" : "min-h-[54px]";
   return (
-    <div className="flex-none flex items-center border border-[var(--color-divider)] bg-[var(--color-surface-3)]">
+    <div className="flex-none flex items-center border border-[var(--color-line)] rounded-[10px] bg-[var(--color-surface-3)]">
       <button
         type="button"
         onClick={() => onCambiar(-1)}
         aria-label="Quitar uno"
-        className={`w-[44px] ${altura} bg-transparent border-0 cursor-pointer text-[var(--color-text)] font-extrabold text-h2 leading-none`}
+        className={`w-[44px] ${altura} bg-transparent border-0 cursor-pointer text-[var(--color-text)] font-semibold text-h2 leading-none`}
       >
         −
       </button>
-      <div className="min-w-[28px] text-center font-extrabold text-h3 leading-none tabular-nums">{valor}</div>
+      <div className="min-w-[28px] text-center font-semibold text-h3 leading-none tabular-nums">{valor}</div>
       <button
         type="button"
         onClick={() => onCambiar(1)}
         aria-label="Agregar uno"
-        className={`w-[44px] ${altura} bg-transparent border-0 cursor-pointer text-[var(--color-text)] font-extrabold text-h2 leading-none`}
+        className={`w-[44px] ${altura} bg-transparent border-0 cursor-pointer text-[var(--color-text)] font-semibold text-h2 leading-none`}
       >
         +
       </button>
@@ -255,7 +256,7 @@ export function BotonGuardar({ texto, onClick, habilitado }: { texto: string; on
     <button
       onClick={onClick}
       aria-disabled={!habilitado}
-      className="w-full min-h-[54px] flex items-center justify-between px-4 border-0 font-extrabold text-body cursor-pointer text-left hover:brightness-95"
+      className="w-full min-h-[54px] flex items-center justify-between px-4 border-0 font-semibold text-body cursor-pointer text-left hover:brightness-95"
       style={{
         background: habilitado ? "var(--color-accent)" : "var(--color-neutral-500)",
         color: habilitado ? "var(--color-bg)" : "var(--color-surface-3)",
@@ -315,7 +316,7 @@ export function GaleriaFotos({
   return (
     <div className="grid grid-cols-3 gap-2">
       {fotos.map((f) => (
-        <div key={f.id} className="relative aspect-square border border-[var(--color-divider)] overflow-hidden bg-[var(--color-neutral-300)]">
+        <div key={f.id} className="relative aspect-square border border-[var(--color-line)] rounded-[10px] overflow-hidden bg-[var(--color-neutral-300)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={f.src} alt="" className="w-full h-full object-cover" />
           <button
@@ -335,21 +336,21 @@ export function GaleriaFotos({
       ))}
       <button
         onClick={onCamara}
-        className="relative aspect-square flex flex-col items-center justify-center gap-1.5 border border-black/[.5] cursor-pointer bg-[var(--color-text)] text-[var(--color-bg)] overflow-hidden hover:bg-[var(--color-neutral-900)]"
+        className="relative aspect-square flex flex-col items-center justify-center gap-1.5 border border-[var(--color-line)] rounded-[10px] cursor-pointer bg-[var(--color-text)] text-[var(--color-bg)] overflow-hidden hover:bg-[var(--color-neutral-900)]"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
           <path d="M3 8h3l2-3h8l2 3h3v12H3z" />
           <circle cx="12" cy="13" r="3.4" />
         </svg>
-        <span className="font-extrabold text-cap ">Cámara</span>
+        <span className="font-semibold text-cap ">Cámara</span>
       </button>
-      <label className="relative aspect-square flex flex-col items-center justify-center gap-1.5 border border-dashed border-black/[.5] cursor-pointer bg-[var(--color-surface-3)] overflow-hidden hover:bg-[var(--color-surface-2)]">
+      <label className="relative aspect-square flex flex-col items-center justify-center gap-1.5 border border-dashed border-[var(--color-line)] cursor-pointer bg-[var(--color-surface-3)] overflow-hidden hover:bg-[var(--color-surface-2)]">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1f1c21" strokeWidth="1.8">
           <path d="M4 5h16v14H4z" />
           <path d="M4 16l5-5 4 4 3-3 4 4" />
           <circle cx="9" cy="9" r="1.4" />
         </svg>
-        <span className="font-extrabold text-cap ">Galería</span>
+        <span className="font-semibold text-cap ">Galería</span>
         <input type="file" accept="image/*" multiple onChange={onArchivos} className="absolute w-px h-px opacity-0 pointer-events-none" />
       </label>
     </div>
@@ -373,7 +374,7 @@ export function ListaVideos({
   return (
     <div className="grid gap-2 mt-3 mb-1">
       {videos.map((v) => (
-        <div key={v.id} className="border border-[var(--color-divider)] bg-[var(--color-surface-3)]">
+        <div key={v.id} className="border border-[var(--color-line)] rounded-[10px] bg-[var(--color-surface-3)]">
           <video
             src={v.src}
             controls
@@ -389,7 +390,7 @@ export function ListaVideos({
             <button
               onClick={() => onQuitar(v)}
               aria-label="Quitar video"
-              className="ml-auto w-8 h-8 grid place-items-center bg-transparent border border-[var(--color-divider)] cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
+              className="ml-auto w-8 h-8 grid place-items-center bg-transparent border border-[var(--color-line)] rounded-[10px] cursor-pointer text-[var(--color-text)] hover:bg-black/[.07]"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
                 <path d="M6 6l12 12M18 6L6 18" />
@@ -415,7 +416,7 @@ export function ListaVideos({
               {clips.has(v.id) ? (
                 <button
                   onClick={() => onReintentar(v)}
-                  className="mt-2 min-h-[38px] w-full px-3 bg-[var(--color-text)] text-[var(--color-bg)] border-0 font-extrabold text-cap cursor-pointer text-left hover:bg-[var(--color-neutral-900)]"
+                  className="mt-2 min-h-[38px] w-full px-3 bg-[var(--color-text)] text-[var(--color-bg)] border-0 font-semibold text-cap cursor-pointer text-left hover:bg-[var(--color-neutral-900)]"
                 >
                   Reintentar la subida
                 </button>

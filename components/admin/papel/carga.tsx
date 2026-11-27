@@ -1,4 +1,5 @@
 "use client";
+import Espera from "@/components/ui/Espera";
 
 import Link from "next/link";
 import Dialogo from "@/components/admin/Dialogo";
@@ -15,13 +16,8 @@ export function EncabezadoPapel({ fv }: { fv: VisitasPapelApi }) {
   const { anio, setAnio, guardados, tecnicosLibres, agregarTecnico, anios } = fv;
   return (
     <>
-      <p className="text-meta leading-[1.55] opacity-75 max-w-[760px]">
-        Para pasar al sistema los informes que se hicieron a mano. Cada informe entra como visita{" "}
-        <strong>completada</strong>, con el folio del año del informe, sin fotos, video ni firma dibujada. Lo que
-        escribes se guarda en este navegador hasta que lo guardes en el sistema.
-      </p>
 
-      <div className="mt-5 border border-black/[.3]">
+      <div className="mt-5 border border-[var(--color-line)] rounded-[10px]">
         <div className="grid grid-cols-1 sm:grid-cols-[200px_minmax(0,360px)] gap-4 p-3.5">
           <div className="field min-w-0">
             <label htmlFor="pp-anio">Año</label>
@@ -53,7 +49,7 @@ export function EncabezadoPapel({ fv }: { fv: VisitasPapelApi }) {
       </div>
 
       {guardados.length ? (
-        <details className="mt-5 border border-[var(--color-divider-soft)] bg-[var(--color-surface)]">
+        <details className="mt-5 border border-[var(--color-line)] rounded-[10px] bg-[var(--color-surface)]">
           <summary className="px-3.5 py-2.5 cursor-pointer text-meta">
             <strong>{guardados.length}</strong> {guardados.length === 1 ? "informe guardado" : "informes guardados"} en
             esta sesión
@@ -61,7 +57,7 @@ export function EncabezadoPapel({ fv }: { fv: VisitasPapelApi }) {
           <ul className="px-3.5 pb-3 m-0 list-none grid gap-1 text-meta max-h-60 overflow-y-auto">
             {guardados.map((g) => (
               <li key={g.folio} className="flex gap-2">
-                <Link href={`/admin/visitas/${encodeURIComponent(g.folio)}`} className="font-extrabold tabular-nums underline">
+                <Link href={`/admin/visitas/${encodeURIComponent(g.folio)}`} className="font-semibold tabular-nums underline">
                   {g.folio}
                 </Link>
                 <span className="opacity-75 truncate">{g.nombre}</span>
@@ -123,7 +119,7 @@ export function RecuadrosTecnicos({ fv }: { fv: VisitasPapelApi }) {
         const nombreTec = nombreTecnico(b.tecnicoId);
 
         return (
-          <section key={b.tecnicoId} className="mt-6 border-2 border-[var(--color-text)]">
+          <section key={b.tecnicoId} className="mt-6 border border-[var(--color-line)] rounded-[14px]">
             <div className="flex items-center gap-2 px-3.5 py-2.5 bg-[var(--color-text)] text-[var(--color-bg)]">
               <button
                 type="button"
@@ -133,7 +129,7 @@ export function RecuadrosTecnicos({ fv }: { fv: VisitasPapelApi }) {
               >
                 <Flecha abierto={b.abierto} />
                 <span className="text-cap opacity-70 flex-none">Técnico</span>
-                <span className="font-extrabold text-lead truncate">{nombreTec}</span>
+                <span className="font-semibold text-lead truncate">{nombreTec}</span>
                 <span className="text-cap opacity-70 tabular-nums flex-none">
                   {gruposDelTecnico.length} {gruposDelTecnico.length === 1 ? "cliente" : "clientes"} · {delTecnico.length}{" "}
                   {delTecnico.length === 1 ? "informe" : "informes"}
@@ -200,7 +196,7 @@ export function RecuadrosTecnicos({ fv }: { fv: VisitasPapelApi }) {
                   const nombre = nombreCliente(g.clienteId);
 
                   return (
-                    <div key={g.key} className="mt-3.5 border-2 border-black/[.45]">
+                    <div key={g.key} className="mt-3.5 border-2 border-[var(--color-line)]">
                       <div className="flex items-center gap-2 px-3.5 py-2 bg-[var(--color-surface)]">
                         <button
                           type="button"
@@ -209,7 +205,7 @@ export function RecuadrosTecnicos({ fv }: { fv: VisitasPapelApi }) {
                           className="flex-1 min-w-0 flex items-center gap-2.5 min-h-10 bg-transparent border-0 cursor-pointer text-[var(--color-text)] text-left"
                         >
                           <Flecha abierto={g.abierto} />
-                          <span className="font-extrabold text-lead truncate">{nombre}</span>
+                          <span className="font-semibold text-lead truncate">{nombre}</span>
                           <span className="text-cap opacity-66 tabular-nums flex-none">
                             {tiendasDelGrupo.length} {tiendasDelGrupo.length === 1 ? "tienda" : "tiendas"} · {delGrupo.length}{" "}
                             {delGrupo.length === 1 ? "informe" : "informes"}
@@ -318,7 +314,7 @@ export function BarraGuardar({ fv }: { fv: VisitasPapelApi }) {
     <>
       {/* Barra fija para guardar */}
       {informes.length || guardando ? (
-        <div className="fixed bottom-0 right-0 left-0 lg:left-[248px] z-20 bg-[var(--color-bg)] border-t-2 border-[var(--color-divider)] px-4 md:px-7 py-3 flex items-center gap-3 flex-wrap">
+        <div className="fixed bottom-0 right-0 left-0 min-[1025px]:left-[272px] z-20 bg-[var(--color-bg)] border-t border-[var(--color-line)] px-4 md:px-7 py-3 flex items-center gap-3 flex-wrap">
           <div className="text-meta tabular-nums">
             <strong>{completos}</strong> de {informes.length} {informes.length === 1 ? "informe completo" : "informes completos"}
             {" · "}
@@ -339,7 +335,7 @@ export function BarraGuardar({ fv }: { fv: VisitasPapelApi }) {
             disabled={Boolean(guardando) || completos === 0}
             className="btn btn-primary"
           >
-            {guardando ? "Guardando…" : `Guardar ${completos} ${completos === 1 ? "informe" : "informes"}`}
+            <Espera activo={Boolean(guardando)} accion="Guardando">{`Guardar ${completos} ${completos === 1 ? "informe" : "informes"}`}</Espera>
           </button>
         </div>
       ) : null}
@@ -383,7 +379,7 @@ export function DialogosPapel({ fv }: { fv: VisitasPapelApi }) {
               if (!del.length) return null;
               return (
                 <li key={b.tecnicoId} className="flex gap-3 border-b border-[var(--color-divider-soft)] pb-1.5">
-                  <span className="font-extrabold truncate">{nombreTecnico(b.tecnicoId)}</span>
+                  <span className="font-semibold truncate">{nombreTecnico(b.tecnicoId)}</span>
                   <span className="ml-auto tabular-nums flex-none">
                     {listos} {listos === 1 ? "informe" : "informes"}
                   </span>

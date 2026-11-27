@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import MaestroTable from "@/components/admin/MaestroTable";
 import EstadoActivo from "@/components/ui/EstadoActivo";
 import { guardarTecnicoAction } from "@/app/actions/maestros";
 import { mensajeRut, mensajeTel, rutLimpio } from "@/lib/ui/formato";
+import { puede, useReferencias } from "@/lib/ui/referencias";
+import { ocultarRut } from "@/lib/ui/reservado";
 import type { Tecnico } from "@/lib/types";
 
 export default function TecnicosTable({
@@ -13,8 +16,18 @@ export default function TecnicosTable({
   tecnicos: Tecnico[];
   pestanas?: React.ReactNode;
 }) {
+  // Los RUT van ocultos; quien administra roles puede destaparlos mientras mira.
+  const puedeVerRut = puede(useReferencias(), "usuarios.roles");
+  const [rutCompleto, setRutCompleto] = useState(false);
   return (
     <MaestroTable<Tecnico>
+      accionesCabecera={
+        puedeVerRut ? (
+          <button type="button" className="btn-out" aria-pressed={rutCompleto} onClick={() => setRutCompleto((x) => !x)}>
+            Mostrar RUT completos
+          </button>
+        ) : null
+      }
       title="Usuarios"
       pestanas={pestanas}
       modulo="tecnicos"
@@ -26,7 +39,7 @@ export default function TecnicosTable({
       searchKeys={(t) => `${t.nombreCompleto} ${t.rut} ${t.email} ${t.telefono ?? ""}`}
       columns={[
         { key: "nombreCompleto", label: "Nombre" },
-        { key: "rut", label: "RUT" },
+        { key: "rut", label: "RUT", render: (t) => (rutCompleto ? t.rut : ocultarRut(t.rut)) },
         { key: "email", label: "Correo" },
         { key: "telefono", label: "Teléfono" },
         {

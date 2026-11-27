@@ -205,22 +205,22 @@ export default function FirmaSheet({
         aria-label="Firma a lo ancho"
         className="fixed inset-0 z-[80] bg-[var(--color-bg)] flex flex-col"
       >
-        <div className="flex items-center gap-2.5 px-4 py-2.5 border-b-2 border-[var(--color-divider)] flex-none">
+        <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-[var(--color-line)] flex-none">
           <div className="min-w-0">
             <div className="text-cap opacity-62">Firma de la tienda</div>
-            <div className="font-extrabold text-body leading-[1.2] truncate">{nombre || "Responsable"}</div>
+            <div className="font-semibold text-body leading-[1.2] truncate">{nombre || "Responsable"}</div>
           </div>
           <button
             type="button"
             onClick={limpiar}
-            className="ml-auto min-h-11 px-3 bg-transparent border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-meta cursor-pointer"
+            className="ml-auto min-h-11 px-3 bg-transparent border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] font-semibold text-meta cursor-pointer"
           >
             Limpiar
           </button>
           <button
             type="button"
             onClick={confirmar}
-            className="min-h-11 px-4 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-meta cursor-pointer"
+            className="min-h-11 px-4 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-semibold text-meta cursor-pointer"
           >
             Confirmar firma
           </button>
@@ -247,7 +247,7 @@ export default function FirmaSheet({
             }
           >
             <div
-              className="border border-[var(--color-divider)] relative"
+              className="border border-[var(--color-line)] rounded-[10px] relative"
               // Girado, el lienzo toma el ALTO de la pantalla como ancho: al
               // rotarlo 90° queda ocupando la pantalla completa a lo ancho.
               style={
@@ -303,7 +303,7 @@ export default function FirmaSheet({
               autoComplete="off"
               autoCorrect="off"
               spellCheck={false}
-              className="w-full min-h-[52px] px-3.5 py-3 text-lead bg-[var(--color-surface)] border border-[var(--color-divider)] text-[var(--color-text)] caret-[var(--color-accent)] focus-visible:border-[var(--color-accent)] focus-visible:outline-none"
+              className="w-full min-h-[52px] px-3.5 py-3 text-lead bg-[var(--color-surface)] border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] caret-[var(--color-accent)] focus-visible:border-[var(--color-accent)] focus-visible:outline-none"
             />
           </div>
           <div className="flex-1 min-w-0">
@@ -319,7 +319,7 @@ export default function FirmaSheet({
               onChange={(e) => setRut(fmtRut(e.target.value))}
               placeholder="11.111.111-1"
               autoComplete="off"
-              className="w-full min-h-[52px] px-3.5 py-3 text-lead tabular-nums bg-[var(--color-surface)] border border-[var(--color-divider)] text-[var(--color-text)] caret-[var(--color-accent)] focus-visible:border-[var(--color-accent)] focus-visible:outline-none"
+              className="w-full min-h-[52px] px-3.5 py-3 text-lead tabular-nums bg-[var(--color-surface)] border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] caret-[var(--color-accent)] focus-visible:border-[var(--color-accent)] focus-visible:outline-none"
             />
             {rut.trim() && rutCompleto(rut) && !rutDvCorrecto(rut) ? (
               <div className="mt-1 text-cap text-[var(--color-accent-800)]">
@@ -332,7 +332,7 @@ export default function FirmaSheet({
         <button
           type="button"
           onClick={() => setALoAncho(true)}
-          className="w-full min-h-[54px] flex items-center justify-between px-4 mb-3 bg-[var(--color-text)] text-[var(--color-bg)] border-0 font-extrabold text-ui cursor-pointer text-left"
+          className="w-full min-h-[54px] flex items-center justify-between px-4 mb-3 bg-[var(--color-text)] text-[var(--color-bg)] border-0 font-semibold text-ui cursor-pointer text-left"
         >
           <span>Firmar a lo ancho (más espacio)</span>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -342,7 +342,7 @@ export default function FirmaSheet({
         </button>
 
         <div className="text-cap opacity-66 mb-1.5">O firma dentro del recuadro</div>
-        <div className="relative border border-[var(--color-divider)] bg-[var(--color-surface-3)]">
+        <div className="relative border border-[var(--color-line)] rounded-[10px] bg-[var(--color-surface-3)]">
           <div className="h-[220px] [&>canvas]:w-full [&>canvas]:h-[220px]">{lienzo}</div>
           <div className="absolute left-3.5 right-3.5 bottom-[34px] h-px bg-[var(--color-divider-soft)] pointer-events-none" />
         </div>
@@ -361,7 +361,7 @@ export default function FirmaSheet({
         <button
           type="button"
           onClick={confirmar}
-          className="w-full min-h-[58px] flex items-center justify-between px-4.5 mt-2 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-extrabold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)] active:bg-[var(--color-accent-active)]"
+          className="w-full min-h-[58px] flex items-center justify-between px-4.5 mt-2 bg-[var(--color-accent)] text-[var(--color-bg)] border-0 font-semibold text-lead cursor-pointer text-left hover:bg-[var(--color-accent-hover)] active:bg-[var(--color-accent-active)]"
         >
           <span>Confirmar firma</span>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">

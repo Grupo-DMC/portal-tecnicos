@@ -26,7 +26,7 @@ export default async function CambiarPasswordPage() {
             <Image src="/DMC-logo.png" alt="Grupo dMC — Ideas tecnológicas de seguridad" width={172} height={73} priority />
           </div>
           <div className="h-0.5 bg-[var(--color-text)] mt-[18px]" />
-          <h1 className="font-extrabold text-display leading-[1.06] tracking-[-.03em] mt-[22px] mb-2.5">
+          <h1 className="font-semibold text-display leading-[1.06] tracking-[-.01em] mt-[22px] mb-2.5">
             Elige tu
             <br />
             contraseña

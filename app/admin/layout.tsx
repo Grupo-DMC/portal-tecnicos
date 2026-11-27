@@ -7,7 +7,7 @@ import { getPerfil } from "@/lib/data/cuenta";
 import { nombreVisible, urlFotoUsuario } from "@/lib/ui/cuenta";
 import { UsuarioLocalProvider } from "@/lib/ui/usuario-local";
 import { ReferenciasProvider } from "@/lib/ui/referencias";
-import AdminSidebar from "@/components/admin/AdminSidebar";
+import AdminSidebar, { type NavItem } from "@/components/admin/AdminSidebar";
 import VigilanteSesion from "@/components/ui/VigilanteSesion";
 import { tiene } from "@/lib/permisos";
 
@@ -40,9 +40,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <UsuarioLocalProvider usuarioId={sesion.usuario.id}>
     <ReferenciasProvider valor={referencias}>
       <VigilanteSesion />
-      {/* En el celular el menú es un cajón que se abre desde la barra de arriba
-          (ver AdminSidebar); desde lg vuelve a ser la columna fija de siempre. */}
-      <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)] lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">
+      {/* Como `.app` de la demo: hasta 1024 px el menú es un cajón que se abre desde la
+          barra de arriba (ver AdminSidebar); desde ahí es la columna fija de 272 px. */}
+      <div className="dmc-marco">
         <AdminSidebar
           nombre={nombreCoordinador}
           foto={fotoCoordinador}
@@ -50,33 +50,29 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           usuarioId={sesion.usuario.id}
           permisos={sesion.permisos}
           modos={sesion.modos}
-          operacion={[
-            { href: "/admin", label: "Panel", n: "" },
-            { href: "/admin/visitas", label: "Visitas", n: conteos.visitas },
-            { href: "/admin/reagendas", label: "Reagendas y pendientes", n: conteos.reagendas },
-            { href: "/admin/problemas", label: "Problemas", n: conteos.problemasAbiertos },
-          ].filter(visible)}
-          maestros={[
-            // "Técnicos" y "Contraseñas pedidas" viven dentro de Usuarios: el
-            // número en rojo es lo que queda sin atender en esa pestaña.
-            {
-              href: "/admin/usuarios",
-              label: "Usuarios",
-              n: conteos.usuarios,
-              pendientes: tiene(sesion.permisos, "usuarios.contrasenas") ? conteos.solicitudesPassword : 0,
-            },
-            { href: "/admin/clientes", label: "Clientes", n: referencias.clientes.length },
-            { href: "/admin/malls", label: "Malls", n: referencias.malls.length },
-            { href: "/admin/sucursales", label: "Sucursales", n: referencias.sucursales.length },
-            { href: "/admin/contactos", label: "Contactos", n: "" },
+          operacion={([
+            { href: "/admin", label: "Panel", icono: "panel", n: "" },
+            { href: "/admin/visitas", label: "Visitas", icono: "visitas", n: conteos.visitas },
+            { href: "/admin/problemas", label: "Problemas", icono: "problemas", n: conteos.problemasAbiertos, alerta: true },
+          ] satisfies NavItem[]).filter(visible)}
+          maestros={([
+            // "Técnicos" y "Contraseñas pedidas" viven dentro de Usuarios; lo pendiente se avisa ahí y en la campanita.
+            { href: "/admin/usuarios", label: "Usuarios", icono: "usuarios", n: conteos.usuarios },
+            { href: "/admin/clientes", label: "Clientes", icono: "clientes", n: referencias.clientes.length },
+            { href: "/admin/malls", label: "Malls", icono: "malls", n: referencias.malls.length },
+            { href: "/admin/sucursales", label: "Sucursales", icono: "sucursales", n: referencias.sucursales.length },
             {
               href: "/admin/checklist",
               label: "Checklist",
+              icono: "checklist",
               n: referencias.motivos.length + referencias.problemas.length + referencias.trabajos.length,
             },
-          ].filter(visible)}
+          ] satisfies NavItem[]).filter(visible)}
         />
-        <div className="min-w-0 flex flex-col">{children}</div>
+        <div className="dmc contenido">
+          {children}
+          <p className="foot">Grupo DMC, Ideas Tecnológicas de Seguridad.</p>
+        </div>
       </div>
     </ReferenciasProvider>
     </UsuarioLocalProvider>

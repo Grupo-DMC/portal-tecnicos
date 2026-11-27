@@ -18,7 +18,7 @@ import {
 } from "@/app/actions/admin";
 import { ESTADO_VISITA_LABEL, nombreDeQuienLaTomo } from "@/lib/ui/estado";
 import { mensajeRut, mensajeTel, normalizarTel } from "@/lib/ui/formato";
-import { hoyISO, fechaCL } from "@/lib/ui/fecha";
+import { hoyISO, fechaCL, sumarDias } from "@/lib/ui/fecha";
 import { algunoPideHora } from "@/lib/ui/motivos";
 import { cargoVigente } from "@/lib/ui/cargos";
 import { etiquetaPersona, usePersonasLocal } from "@/lib/ui/personas-local";
@@ -52,7 +52,7 @@ type Opciones = ReturnType<typeof opciones>;
  * un solo campo; marcada, aparece el segundo y la visita vale cualquier día
  * entre los dos. Usa `fecha`, `margen` y `fechaHasta` del formulario.
  */
-export function camposFecha(form: FormValores, ayuda?: string): CampoDef[] {
+export function camposFecha(form: FormValores, ayuda?: string, minimo?: string): CampoDef[] {
   const conMargen = form.margen === true;
   const desde: CampoDef = {
     k: "fecha",
@@ -60,6 +60,7 @@ export function camposFecha(form: FormValores, ayuda?: string): CampoDef[] {
     tipo: "date",
     casilla: { k: "margen", label: "Margen de días" },
     ayuda,
+    minimo,
   };
   if (!conMargen) return [desde];
   return [
@@ -68,7 +69,7 @@ export function camposFecha(form: FormValores, ayuda?: string): CampoDef[] {
       k: "fechaHasta",
       label: "Hasta",
       tipo: "date",
-      ayuda: "Al técnico le aparece en «Hoy» cada día del margen, hasta que la cierre.",
+      minimo: String(form.fecha || "") ? sumarDias(String(form.fecha), 1) : minimo,
     },
   ];
 }
@@ -95,6 +96,8 @@ export interface OrigenProblema {
   tipoNombre: string;
   descripcion: string | null;
   solucion: string | null;
+  /** El técnico de la visita donde se levantó: va de nuevo, salvo que se cambie. */
+  tecnicoId?: number | null;
 }
 
 const MOTIVO_POR_FALLA: Record<string, string> = {
@@ -240,6 +243,7 @@ export default function VisitaDialogo({
     // Los tres se escriben y filtran: son los catálogos que crecen.
     {
       k: "clienteId",
+      grupo: "Local",
       label: "Cliente",
       tipo: "select",
       buscable: true,
@@ -256,24 +260,24 @@ export default function VisitaDialogo({
       altaClienteId: String(form.clienteId),
       opciones: opc.sucursalesDe(String(form.clienteId)),
     },
-    { k: "tecnicoId", label: "Técnico asignado", tipo: "select", buscable: true, opciones: opc.tecnicos },
+    { k: "tecnicoId", grupo: "Quién va", label: "Técnico asignado", tipo: "select", buscable: true, opciones: opc.tecnicos },
     {
       k: "ayudanteId",
       label: "Técnico ayudante (opcional)",
       tipo: "select",
       buscable: true,
       opciones: opcAyudante,
-      ayuda: "Si van dos al local. Lo ve en su celular; el acta la llena el asignado.",
     },
     {
       k: "motivoCodigo",
+      grupo: "Motivo",
       label: "Motivo de la visita",
       span: 2,
       tipo: "checks",
       opciones: opc.motivos,
-      ayuda: "Marca todos los que correspondan. El primero es el que encabeza la ficha del técnico.",
     },
-    ...camposFecha(form),
+    // Al agendar no se elige una fecha pasada; al corregir una visita ya hecha, sí.
+    ...camposFecha(form, undefined, visita ? undefined : hoyISO()).map((c, i) => (i === 0 ? { ...c, grupo: "Cuándo" } : c)),
     {
       k: "hora",
       label: esInstalacion ? "Hora de la instalación (obligatoria)" : "Hora de llegada (opcional)",
@@ -282,12 +286,21 @@ export default function VisitaDialogo({
       span: form.margen === true ? 2 : 1,
       ayuda: esInstalacion
         ? "En instalación la hora es obligatoria: la tienda tiene que dejar el acceso libre."
-        : "Si la dejas vacía, el técnico la realiza en cualquier momento del día.",
+        : undefined,
+    },
+    {
+      k: "trabajo",
+      grupo: "Qué hay que hacer",
+      label: "Qué se necesita hacer",
+      span: 2,
+      tipo: "area",
+      ph: "Ej: calibrar las 3 antenas EAS del pórtico principal; falsa alarma cada 10 min desde el lunes.",
     },
     ...(personas.length
       ? [
           {
             k: "persona",
+            grupo: "Contacto en tienda",
             label: "Personas del local",
             span: 2,
             tipo: "select",
@@ -296,17 +309,15 @@ export default function VisitaDialogo({
               { v: "", t: "Escribir otra persona" },
               ...personas.map((p) => ({ v: String(p.id), t: etiquetaPersona(p) })),
             ],
-            ayuda: "Quienes ya recibieron o firmaron en esta tienda. Al elegir una se llenan sus datos abajo.",
           } satisfies CampoDef,
         ]
       : []),
-    { k: "responsable", label: "Responsable de tienda", span: 2, ph: "Nombre de quien recibe" },
+    { k: "responsable", grupo: personas.length ? undefined : "Contacto en tienda", label: "Responsable de tienda", span: 2, ph: "Nombre de quien recibe" },
     {
       k: "respRut",
       label: "RUT del responsable",
       tipo: "rut",
       ph: "12.345.678-9",
-      ayuda: "Opcional al agendar. Si va, el técnico lo encuentra ya escrito en el acta.",
     },
     { k: "respTelefono", label: "Teléfono del responsable", tipo: "tel" },
     ...(ref.cargos.length
@@ -320,13 +331,6 @@ export default function VisitaDialogo({
           } satisfies CampoDef,
         ]
       : []),
-    {
-      k: "trabajo",
-      label: "Qué se necesita hacer",
-      span: 2,
-      tipo: "area",
-      ph: "Ej: calibrar las 3 antenas EAS del pórtico principal; falsa alarma cada 10 min desde el lunes.",
-    },
     {
       k: "acceso",
       label: "Indicaciones de acceso (opcional)",
@@ -538,14 +542,14 @@ export function ReprogramarDialogo({
 
   const campos: CampoDef[] = [
     { k: "tecnicoId", label: "Técnico que asistirá", tipo: "select", opciones: opc.tecnicos },
-    { k: "fecha", label: "Nueva fecha", tipo: "date" },
+    { k: "fecha", label: "Nueva fecha", tipo: "date", minimo: hoyISO() },
     {
       k: "hora",
       label: esInstalacion ? "Hora de la instalación (obligatoria)" : "Hora de llegada (opcional)",
       tipo: "time",
       ayuda: esInstalacion
         ? "En instalación la hora es obligatoria."
-        : "Si la dejas vacía, el técnico la realiza en cualquier momento del día.",
+        : undefined,
     },
   ];
 

@@ -76,7 +76,7 @@ export default function VisorFotos({
         className="flex-none flex items-center gap-3 px-4 py-3 border-b border-white/15 text-[#f4f3f5]"
       >
         <div className="min-w-0">
-          <div className="font-extrabold text-ui leading-[1.2] truncate">{foto.titulo || "Foto del trabajo"}</div>
+          <div className="font-semibold text-ui leading-[1.2] truncate">{foto.titulo || "Foto del trabajo"}</div>
           {foto.subtitulo ? <div className="text-cap opacity-70 tabular-nums mt-0.5">{foto.subtitulo}</div> : null}
         </div>
         {total > 1 ? (
@@ -126,7 +126,7 @@ export default function VisorFotos({
               type="button"
               onClick={() => ir(-1)}
               aria-label="Foto anterior"
-              className="min-h-11 px-3.5 flex items-center gap-2 bg-transparent border border-white/25 text-[#f4f3f5] font-extrabold text-meta cursor-pointer hover:bg-white/10"
+              className="min-h-11 px-3.5 flex items-center gap-2 bg-transparent border border-white/25 text-[#f4f3f5] font-semibold text-meta cursor-pointer hover:bg-white/10"
             >
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
                 <path d="M15 6l-6 6 6 6" />
@@ -137,7 +137,7 @@ export default function VisorFotos({
               type="button"
               onClick={() => ir(1)}
               aria-label="Foto siguiente"
-              className="min-h-11 px-3.5 flex items-center gap-2 bg-transparent border border-white/25 text-[#f4f3f5] font-extrabold text-meta cursor-pointer hover:bg-white/10"
+              className="min-h-11 px-3.5 flex items-center gap-2 bg-transparent border border-white/25 text-[#f4f3f5] font-semibold text-meta cursor-pointer hover:bg-white/10"
             >
               <span>Siguiente</span>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
@@ -149,7 +149,7 @@ export default function VisorFotos({
         <button
           type="button"
           onClick={() => setAmpliada((v) => !v)}
-          className="ml-auto min-h-11 px-3.5 flex items-center gap-2 bg-transparent border border-white/25 text-[#f4f3f5] font-extrabold text-meta cursor-pointer hover:bg-white/10"
+          className="ml-auto min-h-11 px-3.5 flex items-center gap-2 bg-transparent border border-white/25 text-[#f4f3f5] font-semibold text-meta cursor-pointer hover:bg-white/10"
         >
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
             <circle cx="11" cy="11" r="7" />

@@ -1,21 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import DatePicker from "@/components/ui/DatePicker";
+import Espera from "@/components/ui/Espera";
+import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { FormValores } from "@/components/admin/Dialogo";
 import { usePathname, useRouter } from "next/navigation";
 import { recordarUrlVisitas } from "@/lib/ui/filtro-recordado";
-import Tag from "@/components/Tag";
-import AdminHeader from "@/components/admin/AdminHeader";
-import FiltrosBar, { type ChipFiltro } from "@/components/admin/FiltrosBar";
-import VisitaDialogo from "@/components/admin/VisitaDialogos";
+import Icono from "@/components/ui/Icono";
+import SelectMultiple from "@/components/ui/SelectMultiple";
+import NuevaVisitaHoja from "@/components/admin/NuevaVisitaHoja";
 import VisitasMasivasDialogo from "@/components/admin/VisitasMasivasDialogo";
 import VisitasLoteDialogo, { type AccionLote } from "@/components/admin/VisitasLoteDialogo";
 import { Toast, useToast } from "@/components/ui/Toast";
-import { ESTADO_VISITA_LABEL, ESTADO_VISITA_TAG, textoMotivos } from "@/lib/ui/estado";
-import { textoFechaVisita, fechaCL } from "@/lib/ui/fecha";
+import { ESTADO_VISITA_LABEL, textoMotivos } from "@/lib/ui/estado";
+import { dmyAIso, fechaCL, hoyISO, isoADmy } from "@/lib/ui/fecha";
+import { diaDeLista, llegada, PILL_VISITA } from "@/lib/ui/lista-visitas";
+import { iniciales } from "@/lib/ui/cuenta";
+import { plural } from "@/lib/ui/plural";
+import { esDatoDePrueba } from "@/lib/ui/pruebas";
 import {
   ELIMINADAS,
-  ESTADOS_FILTRO,
   LIMITES,
   SIN_FILTROS,
   urlFiltrosVisitas,
@@ -95,6 +99,27 @@ export default function VisitasTable({
   const [seleccionando, setSeleccionando] = useState(false);
   const [marcadas, setMarcadas] = useState<Visita[]>([]);
   const [lote, setLote] = useState<AccionLote | null>(null);
+  const [verFiltros, setVerFiltros] = useState(false);
+  const [fechas, setFechas] = useState({ desde: f.desde, hasta: f.hasta });
+  useEffect(() => {
+    setFechas({ desde: f.desde, hasta: f.hasta });
+  }, [f.desde, f.hasta]);
+  /** La recién creada se destaca un momento en la lista. */
+  const [nuevaFolio, setNuevaFolio] = useState<string | null>(null);
+
+  // «/» lleva a la búsqueda, salvo que ya se esté escribiendo en otra parte.
+  const cajaBusqueda = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const alTeclear = (e: KeyboardEvent) => {
+      const en = e.target as HTMLElement;
+      if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (en.closest("input, textarea, select, [contenteditable=true], [role=dialog]")) return;
+      e.preventDefault();
+      cajaBusqueda.current?.focus();
+    };
+    document.addEventListener("keydown", alTeclear);
+    return () => document.removeEventListener("keydown", alTeclear);
+  }, []);
 
   // El permiso abre la selección; cada acción pide además el suyo.
   const accionesLote: { accion: AccionLote; label: string }[] = puede(ref, "visitas.masivo")
@@ -177,419 +202,455 @@ export default function VisitasTable({
     );
   }
 
-  // La fecha con margen de días ("desde → hasta") necesita el doble de ancho.
-  const hayMargen = visitas.some((v) => v.fechaHasta);
   const mostrarMotivo = conMotivoTecnico || f.estados.includes("REAGENDADA") || f.estados.includes("PENDIENTE");
   const sinEste = (lista: string[], v: string) => lista.filter((x) => x !== v);
 
-  const chips: ChipFiltro[] = [];
-  for (const e of f.estados) {
-    chips.push({
-      label: e === ELIMINADAS ? "Eliminadas" : `Estado: ${ESTADO_VISITA_LABEL[e as EstadoVisita]}`,
-      onQuitar: () => setF((p) => ({ estados: sinEste(p.estados, e) })),
-    });
+  // Las pestañas son el filtro de estado. Si la URL trae una mezcla que no es
+  // ninguna pestaña, cada estado aparece como filtro puesto, para poder quitarlo.
+  const porEstado = pagina.porEstado;
+  const cuantas = (estados: EstadoVisita[]) => estados.reduce((n, e) => n + (porEstado?.[e] ?? 0), 0);
+  const todas = Object.values(porEstado ?? {}).reduce((n, x) => n + x, 0);
+  const mismos = (a: readonly string[]) => a.length === f.estados.length && a.every((e) => f.estados.includes(e));
+  const pestanas = [
+    { id: "todas", label: "Todas", estados: [] as string[], n: porEstado ? todas : undefined },
+    ...PESTANAS.filter((p) => !p.siHay || cuantas(p.estados) > 0 || mismos(p.estados)).map((p) => ({
+      id: p.id,
+      label: p.label,
+      estados: p.estados as string[],
+      n: porEstado ? cuantas(p.estados) : undefined,
+    })),
+    ...(eliminadas !== undefined ? [{ id: "eliminadas", label: "Eliminadas", estados: [ELIMINADAS], n: eliminadas }] : []),
+  ];
+  const pestana = pestanas.find((p) => mismos(p.estados));
+
+  const chips: { label: string; quitar: () => void }[] = [];
+  if (!pestana) {
+    for (const e of f.estados) {
+      chips.push({
+        label: e === ELIMINADAS ? "Eliminadas" : `Estado: ${ESTADO_VISITA_LABEL[e as EstadoVisita]}`,
+        quitar: () => setF((p) => ({ estados: sinEste(p.estados, e) })),
+      });
+    }
   }
   // Lo elegido más abajo en la cadena que deje de caber lo descarta el servidor.
   for (const r of f.regiones) {
-    chips.push({ label: `Zona: ${r}`, onQuitar: () => setF((p) => ({ regiones: sinEste(p.regiones, r) })) });
+    chips.push({ label: `Zona: ${r}`, quitar: () => setF((p) => ({ regiones: sinEste(p.regiones, r) })) });
   }
   for (const mid of f.mallIds) {
     const m = malls.find(([id]) => String(id) === mid);
-    chips.push({ label: `Mall: ${m?.[1] ?? ""}`, onQuitar: () => setF((p) => ({ mallIds: sinEste(p.mallIds, mid) })) });
+    chips.push({ label: `Mall: ${m?.[1] ?? ""}`, quitar: () => setF((p) => ({ mallIds: sinEste(p.mallIds, mid) })) });
   }
   for (const cid of f.clienteIds) {
     const c = clientes.find(([id]) => String(id) === cid);
-    chips.push({ label: `Cliente: ${c?.[1] ?? ""}`, onQuitar: () => setF((p) => ({ clienteIds: sinEste(p.clienteIds, cid) })) });
+    chips.push({ label: `Cliente: ${c?.[1] ?? ""}`, quitar: () => setF((p) => ({ clienteIds: sinEste(p.clienteIds, cid) })) });
   }
   for (const mid of f.marcaIds) {
     const m = marcas.find(([id]) => String(id) === mid);
-    chips.push({ label: `Marca: ${m?.[1] ?? ""}`, onQuitar: () => setF((p) => ({ marcaIds: sinEste(p.marcaIds, mid) })) });
+    chips.push({ label: `Marca: ${m?.[1] ?? ""}`, quitar: () => setF((p) => ({ marcaIds: sinEste(p.marcaIds, mid) })) });
   }
   for (const sid of f.sucursalIds) {
     const t = tiendas.find(([id]) => String(id) === sid);
-    chips.push({ label: `Tienda: ${t?.[1] ?? ""}`, onQuitar: () => setF((p) => ({ sucursalIds: sinEste(p.sucursalIds, sid) })) });
+    chips.push({ label: `Tienda: ${t?.[1] ?? ""}`, quitar: () => setF((p) => ({ sucursalIds: sinEste(p.sucursalIds, sid) })) });
   }
-  if (f.desde) chips.push({ label: `Desde: ${fechaCL(f.desde)}`, onQuitar: () => setF(() => ({ desde: "" })) });
-  if (f.hasta) chips.push({ label: `Hasta: ${fechaCL(f.hasta)}`, onQuitar: () => setF(() => ({ hasta: "" })) });
+  if (f.desde) chips.push({ label: `Desde: ${fechaCL(f.desde)}`, quitar: () => setF(() => ({ desde: "" })) });
+  if (f.hasta) chips.push({ label: `Hasta: ${fechaCL(f.hasta)}`, quitar: () => setF(() => ({ hasta: "" })) });
   for (const tid of f.tecnicoIds) {
     const t = tecnicos.find((x) => String(x.id) === tid);
-    chips.push({ label: `Técnico: ${t?.nombreCompleto ?? ""}`, onQuitar: () => setF((p) => ({ tecnicoIds: sinEste(p.tecnicoIds, tid) })) });
+    chips.push({ label: `Técnico: ${t?.nombreCompleto ?? ""}`, quitar: () => setF((p) => ({ tecnicoIds: sinEste(p.tecnicoIds, tid) })) });
+  }
+  const acotada = chips.length > 0 || Boolean(f.q);
+
+  // Limpiar filtros no toca cuántas visitas se ven por página.
+  function limpiar() {
+    setBusqueda("");
+    setFechas({ desde: "", hasta: "" });
+    ir({ ...SIN_FILTROS, limite: f.limite });
   }
 
+  // Las fechas se escriben y viajan juntas con «Ver resultados».
+  function verResultados(e: React.FormEvent) {
+    e.preventDefault();
+    if (fechas.desde && fechas.hasta && fechas.desde > fechas.hasta) return;
+    if (fechas.desde !== f.desde || fechas.hasta !== f.hasta) ir(fechas);
+    setVerFiltros(false);
+  }
+
+  const selectores = [
+    { id: "fv-region", label: "Zona", vacio: "Todas las zonas", valores: f.regiones, opciones: regiones.map((r) => ({ v: r, t: r })), campo: "regiones" },
+    { id: "fv-mall", label: "Mall", vacio: "Todos los malls", valores: f.mallIds, opciones: malls.map(([id, n]) => ({ v: String(id), t: n })), campo: "mallIds" },
+    { id: "fv-cliente", label: "Cliente", vacio: "Todos los clientes", valores: f.clienteIds, opciones: clientes.map(([id, n]) => ({ v: String(id), t: n })), campo: "clienteIds" },
+    ...(f.clienteIds.length
+      ? [
+          { id: "fv-marca", label: "Marca", vacio: "Todas las marcas", valores: f.marcaIds, opciones: marcas.map(([id, n]) => ({ v: String(id), t: n })), campo: "marcaIds" },
+          { id: "fv-tienda", label: "Sucursal", vacio: "Todas las sucursales", valores: f.sucursalIds, opciones: tiendas.map(([id, n]) => ({ v: String(id), t: n })), campo: "sucursalIds" },
+        ]
+      : []),
+    { id: "fv-tecnico", label: "Técnico", vacio: "Todos los técnicos", valores: f.tecnicoIds, opciones: tecnicos.map((t) => ({ v: String(t.id), t: t.nombreCompleto })), campo: "tecnicoIds" },
+  ];
+
+  const hoy = hoyISO();
+  const columnas = 6 + (conCasillas ? 1 : 0) + (mostrarMotivo ? 1 : 0);
+  const primera = pagina.total === 0 ? 0 : (pagina.pagina - 1) * f.limite + 1;
+  const ultima = primera === 0 ? 0 : primera + visitas.length - 1;
+  const irAPagina = (n: number) => {
+    ir({ pagina: n });
+    window.scrollTo({ top: 0 });
+  };
+
   return (
-    <>
-      <AdminHeader title={title}>
-        {accionesLote.length ? (
-          <button
-            onClick={() => (seleccionando ? salirDeSeleccion() : setSeleccionando(true))}
-            aria-pressed={seleccionando}
-            className={`btn ${seleccionando ? "btn-primary" : "btn-secondary"}`}
-          >
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <rect x="3" y="3" width="8" height="8" />
-              <rect x="3" y="14" width="8" height="7" />
-              <path d="M14 7l2 2 4-4M14 17.5h7" />
-            </svg>
-            <span>{seleccionando ? "Salir de acciones múltiples" : "Acciones múltiples"}</span>
-          </button>
-        ) : null}
-        {permiteCrear && puede(ref, "visitas.crear") ? (
-          <>
-            <button onClick={() => setMasivas({ porMall: false })} className="btn btn-secondary">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
-              </svg>
-              <span>Visitas masivas</span>
-            </button>
-            <button onClick={() => setNueva(true)} className="btn btn-primary">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-              <span>Nueva visita</span>
-            </button>
-          </>
-        ) : null}
-      </AdminHeader>
-
-      <div className="pb-10 animate-fade-in">
-        <FiltrosBar
-          busqueda={busqueda}
-          phBusqueda={
-            conMotivoTecnico ? "Buscar folio, cliente, sucursal reagendada…" : "Buscar folio, cliente, sucursal…"
-          }
-          onBusqueda={setBusqueda}
-          conteo={`${pagina.total} ${pagina.total === 1 ? "registro" : "registros"}`}
-          chips={chips}
-          // Limpiar filtros no toca cuántas visitas se ven por página.
-          onLimpiar={() => {
-            setBusqueda("");
-            ir({ ...SIN_FILTROS, limite: f.limite });
-          }}
-          acciones={
-            <label className="flex items-center gap-2 text-cap opacity-80">
-              <span>Mostrar</span>
-              <select
-                value={f.limite}
-                onChange={(e) => ir({ limite: Number(e.target.value) })}
-                aria-label="Visitas por página"
-                className="input w-auto min-h-9 py-1 pr-2 tabular-nums"
-              >
-                {LIMITES.map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </label>
-          }
-          campos={[
-            {
-              id: "fv-estado",
-              label: "Estado de la visita",
-              tipo: "multi",
-              textoVacio: "Todos los estados",
-              valor: "",
-              valores: f.estados,
-              opciones: [
-                ...ESTADOS_FILTRO.map((e) => ({ v: e, t: ESTADO_VISITA_LABEL[e] })),
-                ...(eliminadas !== undefined ? [{ v: ELIMINADAS, t: `Eliminadas (${eliminadas})` }] : []),
-              ],
-              onChange: () => {},
-              // Las eliminadas se miran solas: marcarlas desmarca el resto, y al revés.
-              onChangeMulti: (v) =>
-                setF((p) => ({
-                  estados: !v.includes(ELIMINADAS)
-                    ? v
-                    : p.estados.includes(ELIMINADAS)
-                      ? sinEste(v, ELIMINADAS)
-                      : [ELIMINADAS],
-                })),
-            },
-            // En cascada: cada selector ofrece solo lo que cabe en lo elegido
-            // arriba (región → mall → cliente → marca → sucursal).
-            {
-              id: "fv-region",
-              label: "Zona (región)",
-              tipo: "multi",
-              textoVacio: "Todas las zonas",
-              valor: "",
-              valores: f.regiones,
-              opciones: regiones.map((r) => ({ v: r, t: r })),
-              onChange: () => {},
-              onChangeMulti: (v) => setF(() => ({ regiones: v })),
-            },
-            {
-              id: "fv-mall",
-              label: "Mall",
-              tipo: "multi",
-              textoVacio: "Todos los malls",
-              valor: "",
-              valores: f.mallIds,
-              opciones: malls.map(([id, n]) => ({ v: String(id), t: n })),
-              onChange: () => {},
-              onChangeMulti: (v) => setF(() => ({ mallIds: v })),
-            },
-            {
-              id: "fv-cliente",
-              label: "Cliente",
-              tipo: "multi",
-              textoVacio: "Todos los clientes",
-              valor: "",
-              valores: f.clienteIds,
-              opciones: clientes.map(([id, n]) => ({ v: String(id), t: n })),
-              onChange: () => {},
-              onChangeMulti: (v) => setF(() => ({ clienteIds: v })),
-            },
-            ...(f.clienteIds.length
-              ? [
-                  {
-                    id: "fv-marca",
-                    label: "Marca",
-                    tipo: "multi" as const,
-                    textoVacio: "Todas las marcas",
-                    valor: "",
-                    valores: f.marcaIds,
-                    opciones: marcas.map(([id, n]) => ({ v: String(id), t: n })),
-                    onChange: () => {},
-                    onChangeMulti: (v: string[]) => setF(() => ({ marcaIds: v })),
-                  },
-                  {
-                    id: "fv-tienda",
-                    label: "Sucursal",
-                    tipo: "multi" as const,
-                    textoVacio: "Todas las sucursales",
-                    valor: "",
-                    valores: f.sucursalIds,
-                    opciones: tiendas.map(([id, n]) => ({ v: String(id), t: n })),
-                    onChange: () => {},
-                    onChangeMulti: (v: string[]) => setF(() => ({ sucursalIds: v })),
-                  },
-                ]
-              : []),
-            {
-              id: "fv-desde",
-              label: "Desde",
-              tipo: "fecha",
-              valor: f.desde,
-              opciones: [],
-              onChange: (v) => setF(() => ({ desde: v })),
-            },
-            {
-              id: "fv-hasta",
-              label: "Hasta",
-              tipo: "fecha",
-              valor: f.hasta,
-              opciones: [],
-              onChange: (v) => setF(() => ({ hasta: v })),
-            },
-            {
-              id: "fv-tecnico",
-              label: "Técnico",
-              tipo: "multi",
-              textoVacio: "Todos los técnicos",
-              valor: "",
-              valores: f.tecnicoIds,
-              opciones: tecnicos.map((t) => ({ v: String(t.id), t: t.nombreCompleto })),
-              onChange: () => {},
-              onChangeMulti: (v) => setF(() => ({ tecnicoIds: v })),
-            },
-          ]}
-        />
-
-        {/* Anchos fijos: las columnas de texto se reparten lo que sobra y se
-            cortan con "…", así el botón de ver nunca se sale de la pantalla. */}
-        <div
-          className={`px-4 md:px-7 overflow-x-auto transition-opacity ${cargando ? "opacity-50" : ""}`}
-          aria-busy={cargando}
-        >
-          <table className="table table-fixed min-w-[900px] max-md:min-w-0 tabla-apilable">
-            <colgroup>
-              {conCasillas ? <col style={{ width: 44 }} /> : null}
-              <col style={{ width: 124 }} />
-              <col style={{ width: hayMargen ? 200 : 108 }} />
-              <col style={{ width: "20%" }} />
-              <col />
-              <col />
-              <col />
-              <col style={{ width: 150 }} />
-              {mostrarMotivo ? <col /> : null}
-              <col style={{ width: 52 }} />
-            </colgroup>
-            <thead>
-              <tr>
-                {conCasillas ? (
-                  <th>
-                    <Casilla
-                      marcada={todasMarcadas}
-                      onAlternar={alternarVisibles}
-                      label={todasMarcadas ? "Desmarcar las que se ven" : "Marcar todas las que se ven"}
-                    />
-                  </th>
-                ) : null}
-                <th>Folio</th>
-                <th>Fecha</th>
-                <th>Cliente</th>
-                <th>Sucursal</th>
-                <th>Técnico</th>
-                <th>Motivo</th>
-                <th>Estado</th>
-                {mostrarMotivo ? <th>Motivo del técnico</th> : null}
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {visitas.map((v) => (
-                <tr
-                  key={v.id}
-                  onClick={() => (conCasillas ? alternar(v) : router.push(`/admin/visitas/${v.folio}`))}
-                  className={`cursor-pointer hover:bg-black/5 ${conCasillas && esMarcada(v.folio) ? "bg-black/[.07]" : ""}`}
-                >
-                  {conCasillas ? (
-                    <td data-c="sel">
-                      <Casilla
-                        marcada={esMarcada(v.folio)}
-                        onAlternar={() => alternar(v)}
-                        label={`Marcar ${v.folio}`}
-                      />
-                    </td>
-                  ) : null}
-                  <td data-c="folio" className="font-semibold tabular-nums whitespace-nowrap">{v.folio}</td>
-                  <td data-c="fecha" className="tabular-nums opacity-65 whitespace-nowrap">{textoFechaVisita(v)}</td>
-                  <td data-c="cliente">
-                    <Recorte
-                      texto={
-                        v.marca && v.marca.nombre !== v.cliente?.nombreFantasia
-                          ? `${v.cliente?.nombreFantasia ?? ""} · ${v.marca.nombre}`
-                          : v.cliente?.nombreFantasia
-                      }
-                    />
-                  </td>
-                  <td data-c="sucursal" className="opacity-70">
-                    <Recorte texto={v.sucursal?.nombre} />
-                  </td>
-                  <td data-c="tecnico" className="opacity-70">
-                    <Recorte
-                      texto={
-                        v.tecnicoAyudante
-                          ? `${v.tecnico?.nombreCompleto ?? ""} + ${v.tecnicoAyudante.nombreCompleto}`
-                          : v.tecnico?.nombreCompleto
-                      }
-                    />
-                  </td>
-                  <td data-c="motivo" className="opacity-70">
-                    <Recorte texto={textoMotivos(v)} />
-                  </td>
-                  <td data-c="estado">
-                    {v.eliminacion ? (
-                      <Tag variant="dark">Eliminada</Tag>
-                    ) : (
-                      <Tag variant={ESTADO_VISITA_TAG[v.estado]}>{ESTADO_VISITA_LABEL[v.estado]}</Tag>
-                    )}
-                    {/* El acta se corrigió después de cerrarla: qué parte y por qué, al pasar el mouse y en el acta. */}
-                    {v.ediciones?.length ? (
-                      <span
-                        className="tag tag-outline ml-1.5"
-                        title={`Editada · ${v.ediciones[0].secciones.join(", ")} · ${v.ediciones[0].motivo}`}
-                      >
-                        Editada
-                      </span>
-                    ) : null}
-                  </td>
-                  {mostrarMotivo ? (
-                    <td data-c="motivo-tecnico" className="opacity-70">
-                      <Recorte
-                        texto={v.motivoPendiente ?? v.reagendamientos?.[0]?.motivo ?? "Sin motivo registrado"}
-                      />
-                    </td>
-                  ) : null}
-                  <td data-c="ver" className="text-right whitespace-nowrap md:max-lg:sticky md:max-lg:right-0 md:max-lg:z-[1] md:max-lg:bg-[var(--color-bg)] md:max-lg:border-l md:max-lg:border-l-[var(--color-line)] md:max-lg:shadow-[28px_0_0_var(--color-bg)]">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        router.push(`/admin/visitas/${v.folio}`);
-                      }}
-                      className="btn btn-icon w-8 h-8 border border-black/[.3]"
-                      aria-label={`Ver acta ${v.folio}`}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z" />
-                        <circle cx="12" cy="12" r="2.6" />
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {visitas.length === 0 ? (
-            <div className="py-14 text-center">
-              <div className="font-extrabold text-lead mb-1.5">Nada que mostrar</div>
-              <div className="text-meta opacity-66">Ajusta la búsqueda o los filtros.</div>
-            </div>
-          ) : null}
-        </div>
-
-        {pagina.paginas > 1 ? (
-          <Paginas
-            pagina={pagina.pagina}
-            paginas={pagina.paginas}
-            ocupado={cargando}
-            onIr={(n) => {
-              ir({ pagina: n });
-              window.scrollTo({ top: 0 });
-            }}
-          />
-        ) : null}
-
-        {/* La barra de las acciones: pegada abajo mientras se va marcando. */}
-        {conCasillas ? (
-          <div className="sticky bottom-0 z-10 mt-4 flex items-center gap-2.5 flex-wrap px-4 md:px-7 py-3 bg-[var(--color-bg)] border-t-2 border-[var(--color-divider)]">
-            <div className="font-extrabold text-meta tabular-nums">
-              {marcadas.length === 0
-                ? "Marca las visitas en la tabla"
-                : `${seleccionadas.length} ${seleccionadas.length === 1 ? "visita marcada" : "visitas marcadas"}`}
-            </div>
-            {marcadas.length > 0 ? (
+    <div className="dmc pagina">
+      <div className="wrap">
+        <header className="top">
+          <div>
+            <h1>{title}</h1>
+            <p>
+              {porEstado
+                ? acotada
+                  ? `${plural(todas, "visita", "visitas")} con estos filtros`
+                  : plural(todas, "visita registrada", "visitas registradas")
+                : null}
+            </p>
+          </div>
+          <div className="v-actions">
+            {accionesLote.length ? (
               <button
                 type="button"
-                onClick={() => setMarcadas([])}
-                className="min-h-8 px-1 bg-transparent border-0 text-[var(--color-accent-active)] text-cap underline underline-offset-[3px] cursor-pointer"
+                className="btn-out"
+                aria-pressed={seleccionando}
+                onClick={() => (seleccionando ? salirDeSeleccion() : setSeleccionando(true))}
               >
-                Desmarcar todas
+                <Icono nombre="multiple" />
+                {seleccionando ? "Salir de acciones múltiples" : "Acciones múltiples"}
               </button>
             ) : null}
-            <div className="ml-auto flex gap-2 flex-wrap">
-              <button
-                type="button"
-                disabled={cerradasMarcadas.length === 0 || descargando}
-                onClick={descargarActas}
-                title={cerradasMarcadas.length === 0 ? "Solo las visitas con el acta cerrada tienen PDF" : undefined}
-                className="btn btn-secondary min-h-10 px-3.5"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                  <path d="M12 4v11M7 11l5 5 5-5M4 20h16" />
-                </svg>
-                <span>
-                  {descargando
-                    ? "Descargando…"
-                    : `Descargar actas${cerradasMarcadas.length ? ` (${cerradasMarcadas.length})` : ""}`}
-                </span>
-              </button>
-              {accionesLote.map((a) => (
-                <button
-                  key={a.accion}
-                  type="button"
-                  disabled={seleccionadas.length === 0}
-                  onClick={() => setLote(a.accion)}
-                  className={`btn ${a.accion === "modificar" ? "btn-primary" : "btn-secondary"} min-h-10 px-3.5`}
-                >
-                  {a.label}
+            {permiteCrear && puede(ref, "visitas.crear") ? (
+              <>
+                <button type="button" className="btn-out" onClick={() => setMasivas({ porMall: false })}>
+                  <Icono nombre="lista" />
+                  Visitas masivas
+                </button>
+                <button type="button" className="btn-pri" onClick={() => setNueva(true)}>
+                  <Icono nombre="mas" />
+                  Nueva visita
+                </button>
+              </>
+            ) : null}
+          </div>
+        </header>
+
+        <section className="v-card" aria-label="Listado de visitas">
+          <div className="v-bar">
+            <div className="v-tabs" role="tablist" aria-label="Estado de la visita">
+              {pestanas.map((p) => (
+                <button key={p.id} type="button" role="tab" aria-selected={pestana?.id === p.id} onClick={() => ir({ estados: p.estados })}>
+                  {p.label}{" "}
+                  {p.n !== undefined ? <span>{p.n.toLocaleString("es-CL")}</span> : null}
                 </button>
               ))}
             </div>
+            <div className="v-tools">
+              <label className="v-search">
+                <Icono nombre="buscar" />
+                <span className="sr">Buscar folio, cliente, sucursal o técnico</span>
+                <input
+                  ref={cajaBusqueda}
+                  type="search"
+                  value={busqueda}
+                  onChange={(e) => setBusqueda(e.target.value)}
+                  placeholder="Buscar folio, cliente, sucursal o técnico"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <kbd aria-hidden="true">/</kbd>
+              </label>
+              <button
+                type="button"
+                className={chips.length ? "v-fbtn on" : "v-fbtn"}
+                aria-expanded={verFiltros}
+                aria-controls="vi-filtros"
+                aria-label={chips.length ? `Filtros, ${plural(chips.length, "puesto", "puestos")}` : "Filtros"}
+                onClick={() => setVerFiltros((x) => !x)}
+              >
+                <Icono nombre="filtros" />
+                Filtros
+                {chips.length ? <span className="v-fbadge">{chips.length}</span> : null}
+              </button>
+            </div>
           </div>
-        ) : null}
+
+          {verFiltros ? (
+            <form className="v-filters" id="vi-filtros" onSubmit={verResultados} noValidate>
+              <div className="v-fgrid">
+                {selectores.map((c) => (
+                  <div className="fr" key={c.id}>
+                    <label htmlFor={c.id}>{c.label}</label>
+                    <SelectMultiple
+                      id={c.id}
+                      valores={c.valores}
+                      opciones={c.opciones}
+                      onChange={(v) => ir({ [c.campo]: v })}
+                      textoVacio={c.vacio}
+                      ariaLabel={c.label}
+                    />
+                  </div>
+                ))}
+                <div className="fr">
+                  <label htmlFor="fv-periodo">Período</label>
+                  {/* Visitas tiene programadas hacia adelante: aquí los días futuros sí se eligen. */}
+                  <DatePicker
+                    modo="range"
+                    id="fv-periodo"
+                    desde={isoADmy(fechas.desde)}
+                    hasta={isoADmy(fechas.hasta)}
+                    maximo={null}
+                    onChange={(d, h) => setFechas({ desde: dmyAIso(d), hasta: dmyAIso(h) })}
+                  />
+                </div>
+              </div>
+              <div className="v-fbtns">
+                <button type="button" className="btn-out sm" onClick={limpiar}>
+                  Limpiar
+                </button>
+                <button type="submit" className="btn-pri sm">
+                  Ver resultados
+                </button>
+              </div>
+            </form>
+          ) : null}
+
+          {chips.length ? (
+            <div className="v-active">
+              {chips.map((c) => (
+                <span className="fchip" key={c.label}>
+                  {c.label}
+                  <button type="button" onClick={c.quitar} aria-label={`Quitar ${c.label}`}>
+                    ✕
+                  </button>
+                </span>
+              ))}
+              <button type="button" className="enlace" onClick={limpiar}>
+                Quitar todos
+              </button>
+            </div>
+          ) : null}
+
+          {conCasillas ? (
+            <div className="v-bulk">
+              <div className="v-bulk-ops">
+                <span className="v-bulk-n" aria-live="polite">
+                  {marcadas.length === 0
+                    ? "Marca las visitas en la tabla"
+                    : plural(seleccionadas.length, "visita marcada", "visitas marcadas")}
+                </span>
+                {marcadas.length > 0 ? (
+                  <button type="button" className="enlace" onClick={() => setMarcadas([])}>
+                    Desmarcar todas
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="btn-out sm"
+                  disabled={cerradasMarcadas.length === 0 || descargando}
+                  onClick={descargarActas}
+                  title={cerradasMarcadas.length === 0 ? "Solo las visitas con el acta cerrada tienen PDF" : undefined}
+                >
+                  <Icono nombre="descargar" />
+                  <Espera activo={descargando} accion="Descargando">{`Descargar actas${cerradasMarcadas.length ? ` (${cerradasMarcadas.length})` : ""}`}</Espera>
+                </button>
+                {accionesLote.map((a) => (
+                  <button
+                    key={a.accion}
+                    type="button"
+                    disabled={seleccionadas.length === 0}
+                    onClick={() => setLote(a.accion)}
+                    className={`${a.accion === "modificar" ? "btn-pri" : "btn-danger"} sm`}
+                  >
+                    {a.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className={cargando ? "v-table-wrap cargando" : "v-table-wrap"} aria-busy={cargando}>
+            <table className="vt">
+              <thead>
+                <tr>
+                  {conCasillas ? (
+                    <th scope="col" className="c-sel">
+                      <input
+                        type="checkbox"
+                        checked={todasMarcadas}
+                        onChange={alternarVisibles}
+                        aria-label={todasMarcadas ? "Desmarcar las que se ven" : "Marcar todas las que se ven"}
+                      />
+                    </th>
+                  ) : null}
+                  <th scope="col">Visita</th>
+                  <th scope="col">Cliente y sucursal</th>
+                  <th scope="col">Técnico</th>
+                  <th scope="col">Llegada</th>
+                  <th scope="col">Estado</th>
+                  {mostrarMotivo ? <th scope="col">Motivo del técnico</th> : null}
+                  <th scope="col">
+                    <span className="sr">Abrir</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {visitas.map((v, i) => {
+                  const cliente =
+                    v.marca && v.marca.nombre !== v.cliente?.nombreFantasia
+                      ? `${v.cliente?.nombreFantasia ?? ""} · ${v.marca.nombre}`
+                      : v.cliente?.nombreFantasia;
+                  const motivos = v.motivosNombres ?? [];
+                  const hora = llegada(v);
+                  const cuantasDelDia = pagina.porDia?.[v.fechaProgramada];
+                  return (
+                    <Fragment key={v.id}>
+                      {i === 0 || visitas[i - 1].fechaProgramada !== v.fechaProgramada ? (
+                        <tr className="v-day">
+                          <th colSpan={columnas} scope="rowgroup">
+                            <span>{diaDeLista(v.fechaProgramada, hoy)}</span>
+                            {cuantasDelDia ? <span>{plural(cuantasDelDia, "visita", "visitas")}</span> : null}
+                          </th>
+                        </tr>
+                      ) : null}
+                      <tr
+                        className={`v-row${conCasillas && esMarcada(v.folio) ? " is-sel" : ""}${nuevaFolio === v.folio ? " new-row" : ""}`}
+                        onClick={() => (conCasillas ? alternar(v) : router.push(`/admin/visitas/${v.folio}`))}
+                      >
+                        {conCasillas ? (
+                          <td className="c-sel">
+                            <input
+                              type="checkbox"
+                              checked={esMarcada(v.folio)}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={() => alternar(v)}
+                              aria-label={`Marcar ${v.folio}`}
+                            />
+                          </td>
+                        ) : null}
+                        <td className="c-vis">
+                          <span className="folio">{v.folio}</span>
+                          <span className="sub" title={textoMotivos(v)}>
+                            <span>{motivos[0] ?? textoMotivos(v)}</span>
+                            {motivos.length > 1 ? <b> +{motivos.length - 1}</b> : null}
+                          </span>
+                        </td>
+                        <td className="c-cli">
+                          <span className="cli" title={cliente}>
+                            {cliente}
+                          </span>
+                          <span className="sub" title={v.sucursal?.nombre}>
+                            {v.sucursal?.nombre}
+                          </span>
+                          {esDatoDePrueba(v.cliente?.nombreFantasia, v.sucursal?.nombre) ? <span className="flag test">Prueba</span> : null}
+                        </td>
+                        <td className="c-tec">
+                          <span className="mini-av" aria-hidden="true">
+                            {iniciales(v.tecnico?.nombreCompleto ?? "")}
+                          </span>
+                          <span>
+                            <span>{v.tecnico?.nombreCompleto}</span>
+                            {v.tecnicoAyudante ? <span className="sub">+ {v.tecnicoAyudante.nombreCompleto}</span> : null}
+                          </span>
+                        </td>
+                        <td className={hora.fija ? "c-hora" : "c-hora suave"}>{hora.texto}</td>
+                        <td className="c-est">
+                          {v.eliminacion ? (
+                            <span className="pill off">Eliminada</span>
+                          ) : (
+                            <span className={`pill ${PILL_VISITA[v.estado]}`}>{ESTADO_VISITA_LABEL[v.estado]}</span>
+                          )}
+                          {/* El acta se corrigió después de cerrarla: qué parte y por qué, al pasar el mouse y en el acta. */}
+                          {v.ediciones?.length ? (
+                            <span
+                              className="flag test editada"
+                              title={`Editada · ${v.ediciones[0].secciones.join(", ")} · ${v.ediciones[0].motivo}`}
+                            >
+                              Editada
+                            </span>
+                          ) : null}
+                        </td>
+                        {mostrarMotivo ? (
+                          <td className="c-motivo">{v.motivoPendiente ?? v.reagendamientos?.[0]?.motivo ?? "Sin motivo registrado"}</td>
+                        ) : null}
+                        <td className="c-go">
+                          <button
+                            type="button"
+                            aria-label={`Ver acta ${v.folio}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/admin/visitas/${v.folio}`);
+                            }}
+                          >
+                            <Icono nombre="adelante" />
+                          </button>
+                        </td>
+                      </tr>
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {visitas.length === 0 ? (
+            <div className="v-empty">
+              <b>{acotada || f.estados.length ? "No hay visitas con esa búsqueda" : "Todavía no hay visitas"}</b>
+              <span>
+                {acotada || f.estados.length ? "Prueba con otro estado o quita filtros." : "Cuando programes una, aparece aquí."}
+              </span>
+              {acotada || f.estados.length ? (
+                <button type="button" className="btn-out sm" onClick={limpiar}>
+                  Quitar filtros
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div className="v-pager">
+            <span>
+              {primera.toLocaleString("es-CL")}–{ultima.toLocaleString("es-CL")} de {plural(pagina.total, "registro", "registros")}
+            </span>
+            <span className="v-pager-r">
+              <label className="v-per">
+                Filas
+                <select value={f.limite} onChange={(e) => ir({ limite: Number(e.target.value) })} aria-label="Visitas por página">
+                  {LIMITES.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <nav className="v-pager-btns" aria-label="Páginas">
+                <button
+                  type="button"
+                  className="pg"
+                  aria-label="Página anterior"
+                  disabled={pagina.pagina <= 1 || cargando}
+                  onClick={() => irAPagina(pagina.pagina - 1)}
+                >
+                  ‹
+                </button>
+                <span>
+                  {pagina.pagina} / {pagina.paginas}
+                </span>
+                <button
+                  type="button"
+                  className="pg"
+                  aria-label="Página siguiente"
+                  disabled={pagina.pagina >= pagina.paginas || cargando}
+                  onClick={() => irAPagina(pagina.pagina + 1)}
+                >
+                  ›
+                </button>
+              </nav>
+            </span>
+          </div>
+        </section>
       </div>
 
       {lote ? (
@@ -608,15 +669,13 @@ export default function VisitasTable({
       ) : null}
 
       {nueva ? (
-        <VisitaDialogo
-          onPorMall={(inicial) => {
-            setNueva(false);
-            setMasivas({ porMall: true, inicial });
-          }}
+        <NuevaVisitaHoja
           onCerrar={() => setNueva(false)}
+          onAviso={aviso}
           onHecho={(mensaje, folio) => {
             aviso(mensaje);
-            if (folio) router.refresh();
+            setNuevaFolio(folio);
+            router.refresh();
           }}
         />
       ) : null}
@@ -634,48 +693,21 @@ export default function VisitasTable({
       ) : null}
 
       <Toast texto={toast} variante="panel" />
-    </>
+    </div>
   );
 }
 
-/** Anterior, «Página n de m» y siguiente, bajo la tabla. */
-function Paginas({
-  pagina,
-  paginas,
-  ocupado,
-  onIr,
-}: {
-  pagina: number;
-  paginas: number;
-  ocupado: boolean;
-  onIr: (pagina: number) => void;
-}) {
-  return (
-    <nav aria-label="Páginas" className="flex items-center justify-center gap-3 px-4 md:px-7 pt-5">
-      <button
-        type="button"
-        disabled={pagina <= 1 || ocupado}
-        onClick={() => onIr(pagina - 1)}
-        className="btn btn-secondary min-h-10 px-3.5"
-      >
-        Anterior
-      </button>
-      <span className="text-cap opacity-62 tabular-nums">
-        Página {pagina} de {paginas}
-      </span>
-      <button
-        type="button"
-        disabled={pagina >= paginas || ocupado}
-        onClick={() => onIr(pagina + 1)}
-        className="btn btn-secondary min-h-10 px-3.5"
-      >
-        Siguiente
-      </button>
-    </nav>
-  );
-}
+/** Las pestañas de estado. Las de `siHay` solo aparecen cuando tienen visitas. */
+const PESTANAS: { id: string; label: string; estados: EstadoVisita[]; siHay?: boolean }[] = [
+  { id: "programadas", label: "Programadas", estados: ["PROGRAMADA"] },
+  { id: "en-curso", label: "En curso", estados: ["EN_CURSO"] },
+  { id: "completadas", label: "Completadas", estados: ["COMPLETADA"] },
+  { id: "canceladas", label: "Canceladas", estados: ["CANCELADA", "CANCELADA_ADMIN"] },
+  { id: "pendientes", label: "Pendientes", estados: ["PENDIENTE"], siHay: true },
+  { id: "reagendadas", label: "Reagendadas", estados: ["REAGENDADA"], siHay: true },
+];
 
-/** La casilla de "Acciones múltiples": el mismo cuadrado de los diálogos. */
+/** La casilla cuadrada que todavía usa Reagendas. */
 export function Casilla({ marcada, onAlternar, label }: { marcada: boolean; onAlternar: () => void; label: string }) {
   return (
     <button
@@ -701,20 +733,5 @@ export function Casilla({ marcada, onAlternar, label }: { marcada: boolean; onAl
         ) : null}
       </span>
     </button>
-  );
-}
-
-/**
- * Texto de celda en una sola línea, cortado con "…" si no cabe.
- *
- * Un motivo o un nombre largo estiraba la fila y desordenaba toda la tabla.
- * Así todas las filas quedan de la misma altura; el texto completo sale al
- * pasar el mouse y, entero, en el acta.
- */
-function Recorte({ texto }: { texto: string | null | undefined }) {
-  return (
-    <span className="block truncate" title={texto ?? undefined}>
-      {texto}
-    </span>
   );
 }

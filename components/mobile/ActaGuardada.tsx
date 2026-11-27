@@ -1,4 +1,5 @@
 "use client";
+import Espera from "@/components/ui/Espera";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -12,6 +13,7 @@ import { fechaHoraCorta, resumenEdicion } from "@/lib/ui/edicion";
 import { nombreArchivoActa, nombreZipMultimedia } from "@/lib/ui/nombre-acta";
 import type { CatalogoProblema, CatalogoTrabajo, Visita } from "@/lib/types";
 import { fechaCL } from "@/lib/ui/fecha";
+import { ocultarRut } from "@/lib/ui/reservado";
 
 /**
  * El acta ya guardada, vista desde el celular del técnico.
@@ -106,7 +108,7 @@ export default function ActaGuardada({
   return (
     <div className="animate-fade-in">
       <div className="px-4 pt-5">
-        <h1 className="font-extrabold text-h2 leading-[1.1] tracking-[-.02em] mb-0.5">
+        <h1 className="font-semibold text-h2 leading-[1.1] tracking-[-.02em] mb-0.5">
           {visita.sucursal?.nombre}
         </h1>
         <div className="text-ui opacity-60">
@@ -116,7 +118,7 @@ export default function ActaGuardada({
           <a
             href={`/api/visita/acta/${encodeURIComponent(visita.folio)}`}
             download={nombreArchivoActa(visita)}
-            className="w-full min-h-[50px] flex items-center justify-between px-4 mt-3.5 bg-[var(--color-accent)] text-[var(--color-bg)] font-extrabold text-ui hover:bg-[var(--color-accent-hover)]"
+            className="w-full min-h-[50px] flex items-center justify-between px-4 mt-3.5 bg-[var(--color-accent)] text-[var(--color-bg)] font-semibold text-ui hover:bg-[var(--color-accent-hover)]"
           >
             <span>Descargar PDF</span>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -128,7 +130,7 @@ export default function ActaGuardada({
           <>
             <Link
               href={`/tecnico/visitas/${encodeURIComponent(visita.folio)}/editar`}
-              className="w-full min-h-[50px] flex items-center justify-between px-4 mt-2.5 border border-[var(--color-divider)] text-[var(--color-text)] font-extrabold text-ui hover:bg-black/[.07]"
+              className="w-full min-h-[50px] flex items-center justify-between px-4 mt-2.5 border border-[var(--color-line)] rounded-[10px] text-[var(--color-text)] font-semibold text-ui hover:bg-black/[.07]"
             >
               <span>Editar acta</span>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -143,7 +145,7 @@ export default function ActaGuardada({
         ) : cerrada ? (
           // Sin permiso o fuera de plazo: en vez de explicar, un solo botón.
           pedidoEn ? (
-            <div className="mt-2.5 px-3.5 py-3 bg-[var(--color-surface)] border border-[var(--color-line-control)] text-meta leading-[1.45]">
+            <div className="mt-2.5 px-3.5 py-3 bg-[var(--color-surface)] border border-[var(--color-line)] rounded-[10px] text-meta leading-[1.45]">
               Pediste editar esta acta. Coordinación te la habilita y te avisamos aquí: vuelve a abrir la visita en unos
               minutos.
             </div>
@@ -153,9 +155,9 @@ export default function ActaGuardada({
                 type="button"
                 onClick={() => void pedirEdicion()}
                 disabled={pidiendo}
-                className="w-full min-h-[50px] flex items-center justify-between px-4 mt-2.5 border border-[var(--color-divider)] bg-transparent text-[var(--color-text)] font-extrabold text-ui cursor-pointer text-left hover:bg-black/[.07] disabled:opacity-60"
+                className="w-full min-h-[50px] flex items-center justify-between px-4 mt-2.5 border border-[var(--color-line)] rounded-[10px] bg-transparent text-[var(--color-text)] font-semibold text-ui cursor-pointer text-left hover:bg-black/[.07] disabled:opacity-60"
               >
-                <span>{pidiendo ? "Enviando…" : "Pedir edición a coordinación"}</span>
+                <Espera activo={pidiendo} accion="Enviando">Pedir edición a coordinación</Espera>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                   <path d="M4 20h4l10-10-4-4L4 16v4z" />
                   <path d="M14 6l4 4" />
@@ -176,8 +178,8 @@ export default function ActaGuardada({
               Acta editada · {ediciones.length} {ediciones.length === 1 ? "vez" : "veces"}
             </div>
             {ediciones.map((e) => (
-              <div key={e.id} className="mt-2.5 pt-2.5 border-t border-black/[.15] first:border-t-0 first:pt-0 text-meta leading-[1.45]">
-                <div className="font-extrabold">{e.secciones.join(" · ")}</div>
+              <div key={e.id} className="mt-2.5 pt-2.5 border-t border-[var(--color-line)] first:border-t-0 first:pt-0 text-meta leading-[1.45]">
+                <div className="font-semibold">{e.secciones.join(" · ")}</div>
                 <div className="mt-0.5">Motivo: {e.motivo}</div>
                 <div className="text-cap opacity-66 mt-0.5">{resumenEdicion(e)}</div>
               </div>
@@ -185,16 +187,16 @@ export default function ActaGuardada({
           </div>
         ) : null}
         {ejec?.registradoOffline ? (
-          <div className="mt-3 px-3.5 py-2.5 bg-[var(--color-surface)] border border-[var(--color-line-control)] text-meta leading-[1.45]">
+          <div className="mt-3 px-3.5 py-2.5 bg-[var(--color-surface)] border border-[var(--color-line)] rounded-[10px] text-meta leading-[1.45]">
             Se llenó sin señal y se sincronizó
             {ejec.sincronizadoEn ? ` el ${ejec.sincronizadoEn.slice(0, 16).replace("T", " a las ")}` : " al recuperar cobertura"}.
           </div>
         ) : null}
       </div>
 
-      <div className="mx-4 mt-4 border border-[var(--color-divider)] bg-[var(--color-surface-3)] px-4 pt-1 pb-4">
+      <div className="mx-4 mt-4 border border-[var(--color-line)] rounded-[10px] bg-[var(--color-surface-3)] px-4 pt-1 pb-4">
         {filas.map((f) => (
-          <div key={f.k} className="py-2.5 border-b border-black/[.2]">
+          <div key={f.k} className="py-2.5 border-b border-[var(--color-line)]">
             <div className="text-cap opacity-66">{f.k}</div>
             <div className="text-ui mt-1">
               {f.v || "—"}
@@ -211,7 +213,7 @@ export default function ActaGuardada({
                 {t.motivoCodigo ? (
                   <div className="text-cap opacity-62">{nombreMotivo(t.motivoCodigo)}</div>
                 ) : null}
-                <div className="font-extrabold text-body leading-[1.25]">
+                <div className="font-semibold text-body leading-[1.25]">
                   {nombreTrabajo(catalogoTrabajos, t.trabajoCodigo)}
                 </div>
                 {t.subtrabajos.length > 0 ? (
@@ -219,7 +221,7 @@ export default function ActaGuardada({
                     {t.subtrabajos.map((s) => (
                       <span
                         key={s.id}
-                        className="px-2 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap leading-[1.2] tabular-nums"
+                        className="px-2 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-semibold text-cap leading-[1.2] tabular-nums"
                       >
                         {s.etiqueta}
                         {s.cantidad > 1 ? ` × ${s.cantidad}` : ""}
@@ -239,7 +241,7 @@ export default function ActaGuardada({
             {visita.problemas.map((p) => (
               <div key={p.id} className="px-3 py-3 mb-2 bg-[var(--color-accent-200)] border border-[var(--color-accent-300)]">
                 <div className="flex items-baseline gap-2 flex-wrap">
-                  <div className="font-extrabold text-ui leading-[1.25] text-[var(--color-accent-800)]">
+                  <div className="font-semibold text-ui leading-[1.25] text-[var(--color-accent-800)]">
                     {nombreProblema(catalogoProblemas, p.tipoCodigo)}
                   </div>
                   <EstadoProblemaTag estado={p.estado} className="ml-auto" />
@@ -249,7 +251,7 @@ export default function ActaGuardada({
                     {p.items.map((it) => (
                       <span
                         key={it.id}
-                        className="px-2 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap leading-[1.2] tabular-nums"
+                        className="px-2 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-semibold text-cap leading-[1.2] tabular-nums"
                       >
                         {it.etiqueta} × {it.cantidad}
                       </span>
@@ -260,7 +262,7 @@ export default function ActaGuardada({
                   <div className="text-meta leading-[1.5] text-[var(--color-accent-800)] mt-1.5">{p.descripcion}</div>
                 ) : null}
                 {p.solucion ? (
-                  <div className="text-meta leading-[1.5] text-[var(--color-accent-800)] mt-1.5 pt-1.5 border-t border-black/[.15]">
+                  <div className="text-meta leading-[1.5] text-[var(--color-accent-800)] mt-1.5 pt-1.5 border-t border-[var(--color-line)]">
                     {p.estado === "RESUELTO" ? "Se realizó: " : "Sugerido: "}
                     {p.solucion}
                   </div>
@@ -281,7 +283,7 @@ export default function ActaGuardada({
                   type="button"
                   onClick={() => visor.abrir(i)}
                   aria-label={`Ver la foto ${i + 1} en grande`}
-                  className="relative aspect-square p-0 border border-black/[.3] overflow-hidden bg-[var(--color-neutral-300)] cursor-zoom-in"
+                  className="relative aspect-square p-0 border border-[var(--color-line)] rounded-[10px] overflow-hidden bg-[var(--color-neutral-300)] cursor-zoom-in"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -307,7 +309,7 @@ export default function ActaGuardada({
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                   <path d="M12 4v11M7 11l5 5 5-5M4 20h16" />
                 </svg>
-                <span>{bajando ? "Descargando…" : "Descargar fotos y videos"}</span>
+                <Espera activo={Boolean(bajando)} accion="Descargando">Descargar fotos y videos</Espera>
               </button>
               {aviso ? <div className="text-meta opacity-66">{aviso}</div> : null}
             </div>
@@ -316,14 +318,14 @@ export default function ActaGuardada({
 
         {/* Comentario interno: lo ve coordinación, no el cliente ni el PDF. */}
         {ejec?.comentarioInterno || internos.length || fotosInternas.length || videosInternos.length ? (
-          <div className="mt-4 px-3 py-3 bg-[var(--color-surface)] border border-[var(--color-line-control)]">
+          <div className="mt-4 px-3 py-3 bg-[var(--color-surface)] border border-[var(--color-line)] rounded-[10px]">
             <div className="text-cap opacity-66">Comentario interno · no lo ve el cliente</div>
             {internos.length > 0 ? (
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {internos.map((x) => (
                   <span
                     key={x.codigo}
-                    className="px-2 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-extrabold text-cap leading-[1.2]"
+                    className="px-2 py-1 bg-[var(--color-text)] text-[var(--color-bg)] font-semibold text-cap leading-[1.2]"
                   >
                     {x.nombre}
                   </span>
@@ -339,7 +341,7 @@ export default function ActaGuardada({
                     type="button"
                     onClick={() => visor.abrir(fotosTrabajo.length + i)}
                     aria-label="Ver la foto interna en grande"
-                    className="relative aspect-square p-0 border border-black/[.3] overflow-hidden cursor-zoom-in"
+                    className="relative aspect-square p-0 border border-[var(--color-line)] rounded-[10px] overflow-hidden cursor-zoom-in"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={f.archivoUrl} alt="Foto interna" className="w-full h-full object-cover" loading="lazy" />
@@ -371,7 +373,7 @@ export default function ActaGuardada({
             <div className="h-px bg-[var(--color-text)] mt-1" />
             <div className="text-cap mt-1.5">
               {firma.nombre}
-              {firma.rut ? ` · ${firma.rut}` : ""}
+              {firma.rut ? ` · ${ocultarRut(firma.rut)}` : ""}
             </div>
             <div className="text-cap opacity-62">Responsable de tienda</div>
           </div>
